@@ -67,4 +67,6 @@ Julia Da Silva Maia – 25016200
 Prof. Me. Mateus Pereira Dias<br>
 mateus.dias@puc-campinas.edu.br
 
+Profa. Renata Antonia Tadeu Arantes<br>
+renata.arantes@puc-campinas.edu.br
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
