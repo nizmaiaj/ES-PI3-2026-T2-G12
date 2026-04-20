@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'tela_cadastro.dart';
+import 'tela_esqueciSenha.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -9,31 +10,44 @@ class TelaLogin extends StatefulWidget {
 }
 
 class _TelaLoginState extends State<TelaLogin> {
+  // chave de validação do formúlario
+  final _formKey = GlobalKey<FormState>();
+
   // Controladores para capturar o que o usuário digita
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
+
   // Função que será chamada ao clicar no botão Entrar
   void _fazerLogin() {
-    String email = _emailController.text;
-    String senha = _senhaController.text;
+    // Valida o formulario antes de prosseguir
+    if (_formKey.currentState!.validate()) {
+      String email = _emailController.text;
+      String senha = _senhaController.text;
 
-    // Aqui é onde você faria a validação real (ex: Firebase ou API)
-    if (email == 'teste@puc.com' && senha == '123456') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login realizado com sucesso!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('E-mail ou senha inválidos.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Aqui é onde você faria a validação real (ex: Firebase ou API)
+      if (email == 'teste@puc.com' && senha == '123456') {
+        _showMesage('Login eralizado com sucesso!', Colors.green);
+      } else {
+        _showMesage('E-mail os senha invalidos.', Colors.red);
+      }
     }
+  }
+
+  void _showMesage(String mensagem, Color cor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: cor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -59,7 +73,7 @@ class _TelaLoginState extends State<TelaLogin> {
                 'Mescla Invest',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               // 2. A CAIXA CINZA
               Container(
@@ -77,41 +91,39 @@ class _TelaLoginState extends State<TelaLogin> {
                 ),
                 child: Column(
                   children: [
-                    // Campo de E-mail (dentro da caixa)
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'E-mail',
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        filled: true,
-                        fillColor:
-                            Colors.white, // Fundo branco para destacar no cinza
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none, // Remove a linha preta
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Campo de Senha (dentro da caixa)
-                    TextField(
-                      controller: _senhaController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Senha',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        filled: true,
-                        fillColor:
-                            Colors.white, // Fundo branco para destacar no cinza
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none, // Remove a linha preta
-                        ),
+                    const Text(
+                      "Entrar",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    //E-mail
+                    _LoginInputField(
+                      hint: 'E-mail',
+                      controller: _emailController,
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) =>
+                          (value == null || !value.contains('@'))
+                          ? 'E-mail inválido'
+                          : null,
+                    ),
+
+                    //Senha
+                    _LoginInputField(
+                      hint: 'Senha',
+                      controller: _senhaController,
+                      icon: Icons.lock_outline,
+                      isPassword: true,
+                      validator: (value) => (value == null || value.length < 6)
+                          ? 'Senha muito curta'
+                          : null,
+                    ),
+
+                    const SizedBox(height: 8),
 
                     // Botão de entrar (dentro da caixa)
                     SizedBox(
@@ -119,7 +131,9 @@ class _TelaLoginState extends State<TelaLogin> {
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[900], // Azul escuro
+                          backgroundColor: const Color(
+                            0xFF4A3BB9,
+                          ), // Azul escuro
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -129,12 +143,30 @@ class _TelaLoginState extends State<TelaLogin> {
                         child: const Text(
                           'ENTRAR',
                           style: TextStyle(
-                            fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 12),
+
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TelaEsqueciSenha(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Esqueci a senha',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -144,13 +176,61 @@ class _TelaLoginState extends State<TelaLogin> {
                           ),
                         );
                       },
-                      child: const Text('Cadastrar-se'),
+                      child: const Text(
+                        'Não tem conta? Cadastrar-se',
+                        style: TextStyle(color: Colors.blue),
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+//Widget de Input especializado para  a tela de Login
+// Widget de Input especializado para a tela de Login
+class _LoginInputField extends StatelessWidget {
+  final String hint;
+  final TextEditingController controller;
+  final IconData icon;
+  final bool isPassword;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
+  const _LoginInputField({
+    required this.hint,
+    required this.controller,
+    required this.icon,
+    this.isPassword = false,
+    this.keyboardType,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword,
+        keyboardType: keyboardType,
+        validator: validator,
+        decoration: InputDecoration(
+          hintText: hint,
+          prefixIcon: Icon(icon, color: Colors.grey),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+          errorStyle: const TextStyle(height: 0.7),
         ),
       ),
     );
