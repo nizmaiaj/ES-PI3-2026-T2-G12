@@ -31,7 +31,6 @@ class _TelaCadastroState extends State<TelaCadastro> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -45,105 +44,119 @@ class _TelaCadastroState extends State<TelaCadastro> {
           style: TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0),
-          child: Column(
-            children: [
-              Image.asset('assets/logo_mescla.png', height: 80),
-              const SizedBox(height: 12),
-              const Text(
-                "MesclaInvest",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 30),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromARGB(255, 255, 255, 255), // Azul topo
+              Color.fromARGB(255, 40, 42, 159),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              children: [
+                Image.asset('assets/logo_mescla.png', height: 80),
+                const SizedBox(height: 12),
+                const Text(
+                  "MesclaInvest",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 30),
 
-              // CAIXA CINZA
-              Form(
-                key: _formKey,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0), // Cinza claro da imagem
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Cadastrar-se",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                // CAIXA CINZA
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0), // Cinza claro da imagem
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Cadastrar-se",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      _buildInput("Nome Completo", _nomeController),
-                      _buildInput(
-                        "Cpf",
-                        _cpfController,
-                        keyboard: TextInputType.number,
-                      ),
-                      _buildInput(
-                        "e-mail",
-                        _emailController,
-                        keyboard: TextInputType.emailAddress,
-                      ),
-                      _buildInput("Senha", _senhaController, obscure: true),
-                      _buildInput(
-                        "Confirmar senha",
-                        _confirmarSenhaController,
-                        obscure: true,
-                      ),
-                      const SizedBox(height: 32),
-                      // BOTÃO ENTRAR (Roxo)
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
+                        _buildInput("Nome Completo", _nomeController),
+                        _buildInput(
+                          "Cpf",
+                          _cpfController,
+                          keyboard: TextInputType.number,
+                        ),
+                        _buildInput(
+                          "e-mail",
+                          _emailController,
+                          keyboard: TextInputType.emailAddress,
+                        ),
+                        _buildInput("Senha", _senhaController, obscure: true),
+                        _buildInput(
+                          "Confirmar senha",
+                          _confirmarSenhaController,
+                          obscure: true,
+                        ),
+                        const SizedBox(height: 32),
+                        // BOTÃO ENTRAR (Roxo)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                // Lógica de cadastro
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4C3BCF),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              "Criar conta",
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextButton(
                           onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              // Lógica de cadastro
-                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TelaLogin(),
+                              ),
+                            );
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4C3BCF),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
                           child: const Text(
-                            "Criar conta",
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            'Já tem conta? Login',
+                            style: TextStyle(color: Colors.blue),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TelaLogin(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Já tem conta? Login',
-                          style: TextStyle(color: Colors.blue),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              // Para voltar a tela de login caso já tenha uma conta
-            ],
+                // Para voltar a tela de login caso já tenha uma conta
+              ],
+            ),
           ),
         ),
       ),

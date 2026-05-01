@@ -37,8 +37,8 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 255, 255, 255), // Azul topo
-              Color.fromARGB(255, 40, 42, 159), // Rosa base
+              Color.fromARGB(255, 255, 255, 255), // Branco topo
+              Color.fromARGB(255, 40, 42, 159), // Azul Base
             ],
           ),
         ),
@@ -230,20 +230,20 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
   }
 
   // Widget para as linhas de validação (Texto com ícone)
-  // Widget _buildValidationRow(IconData icon, String text, Color color) {
-  //   return Row(
-  //     children: [
-  //       Icon(icon, size: 18, color: color),
-  //       const SizedBox(width: 8),
-  //       Text(
-  //         text,
-  //         style: TextStyle(
-  //           color: color,
-  //           fontSize: 13,
-  //           fontWeight: FontWeight.w500,
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+  Widget _buildValidationRow(IconData icon, String text, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
 }

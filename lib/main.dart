@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/tela_login.dart';
+import 'pages/tela_catalogo.dart';
 
 void main() {
   runApp(const MeuApp());
@@ -18,7 +19,7 @@ class MeuApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true, // Usa o design mais recente do Google
       ),
-      home: const TelaLogin(),
+      home: const TelaCatalogo(),
     );
   }
 }

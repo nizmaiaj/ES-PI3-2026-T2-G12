@@ -53,138 +53,154 @@ class _TelaLoginState extends State<TelaLogin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 1. Logo (Imagem)
-              Image.asset(
-                'assets/logo_mescla.png',
-                height: 100,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 24),
-
-              // Título fora da caixa
-              const Text(
-                'Mescla Invest',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 32),
-
-              // 2. A CAIXA CINZA
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(
-                    255,
-                    216,
-                    215,
-                    215,
-                  ), // Cor cinza clara
-                  borderRadius: BorderRadius.circular(
-                    20,
-                  ), // Bordas arredondadas
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Entrar",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    //E-mail
-                    _LoginInputField(
-                      hint: 'E-mail',
-                      controller: _emailController,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) =>
-                          (value == null || !value.contains('@'))
-                          ? 'E-mail inválido'
-                          : null,
-                    ),
-
-                    //Senha
-                    _LoginInputField(
-                      hint: 'Senha',
-                      controller: _senhaController,
-                      icon: Icons.lock_outline,
-                      isPassword: true,
-                      validator: (value) => (value == null || value.length < 6)
-                          ? 'Senha muito curta'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Botão de entrar (dentro da caixa)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(
-                            0xFF4A3BB9,
-                          ), // Azul escuro
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _fazerLogin,
-                        child: const Text(
-                          'ENTRAR',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const TelaEsqueciSenha(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Esqueci a senha',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const TelaCadastro(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Não tem conta? Cadastrar-se',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromARGB(255, 255, 255, 255), // Azul topo
+              Color.fromARGB(255, 40, 42, 159),
             ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 1. Logo (Imagem)
+                Image.asset(
+                  'assets/logo_mescla.png',
+                  height: 100,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 24),
+
+                // Título fora da caixa
+                const Text(
+                  'Mescla Invest',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 32),
+
+                // 2. A CAIXA CINZA
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 40,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.4),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(45),
+                        bottom: Radius.circular(45),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Entrar",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        //E-mail
+                        _LoginInputField(
+                          hint: 'E-mail',
+                          controller: _emailController,
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) =>
+                              (value == null || !value.contains('@'))
+                              ? 'E-mail inválido'
+                              : null,
+                        ),
+
+                        //Senha
+                        _LoginInputField(
+                          hint: 'Senha',
+                          controller: _senhaController,
+                          icon: Icons.lock_outline,
+                          isPassword: true,
+                          validator: (value) =>
+                              (value == null || value.length < 6)
+                              ? 'Senha muito curta'
+                              : null,
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Botão de entrar (dentro da caixa)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(
+                                0xFF4A3BB9,
+                              ), // Azul escuro
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _fazerLogin,
+                            child: const Text(
+                              'ENTRAR',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TelaEsqueciSenha(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Esqueci a senha',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ),
+
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TelaCadastro(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Não tem conta? Cadastrar-se',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
