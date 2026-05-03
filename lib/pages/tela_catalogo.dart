@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'tela_visao_geral.dart';
 
 class TelaCatalogo extends StatefulWidget {
   const TelaCatalogo({super.key});
@@ -234,7 +235,15 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                               ),
                               const SizedBox(height: 8),
                               ElevatedButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          TelaVisaoGeral(startup: item),
+                                    ),
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF3F51B5),
                                   elevation: 0,
