@@ -9,11 +9,8 @@ class TelaRedefinirSenha extends StatefulWidget {
 
 class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controladores para as senhas
-  final TextEditingController _novaSenhaController = TextEditingController();
-  final TextEditingController _confirmarSenhaController =
-      TextEditingController();
+  final _novaSenhaController = TextEditingController();
+  final _confirmarSenhaController = TextEditingController();
 
   bool _obscureNovaSenha = true;
   bool _obscureConfirmarSenha = true;
@@ -29,221 +26,213 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: const BoxDecoration(
-          // Gradiente de fundo conforme a imagem
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 255, 255, 255), // Azul topo
-              Color.fromARGB(255, 40, 42, 159), // Rosa base
-            ],
+            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Botão de voltar e Header
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => Navigator.pop(context),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: Color(0xFF4C3BCF),
                   ),
+                  onPressed: () => Navigator.pop(context),
                 ),
-                const SizedBox(height: 10),
-
-                // Logo MesclaInvest (Usando o padrão do seu código anterior)
-                Image.asset('assets/logo_mescla.png', height: 70),
-                const SizedBox(height: 10),
-                const Text(
-                  'MesclaInvest',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Card Central (Efeito translúcido da imagem)
-                Form(
-                  key: _formKey,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 40,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4), // Vidro/Translúcido
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(45),
-                        bottom: Radius.circular(45),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 4),
+                      Image.asset('assets/logo_mescla.png', height: 70),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "MesclaInvest",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Center(
-                          child: Text(
-                            'Redefinir senha',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-                        const Text(
-                          'Digite e confirme sua nova senha para continuar',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
+                      const SizedBox(height: 24),
 
-                        // Campo Nova Senha
-                        const Text(
-                          'Nova senha',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECEDF5),
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        const SizedBox(height: 8),
-                        _buildPasswordField(
-                          controller: _novaSenhaController,
-                          obscure: _obscureNovaSenha,
-                          onToggle: () => setState(
-                            () => _obscureNovaSenha = !_obscureNovaSenha,
-                          ),
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        // Campo Confirmar Senha
-                        const Text(
-                          'Confirmar senha',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildPasswordField(
-                          controller: _confirmarSenhaController,
-                          obscure: _obscureConfirmarSenha,
-                          onToggle: () => setState(
-                            () => _obscureConfirmarSenha =
-                                !_obscureConfirmarSenha,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        // Botão Salvar
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                // Lógica de salvar
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(
-                                0xFF4C3BCF,
-                              ), // Roxo do botão
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Center(
+                                child: Text(
+                                  "Redefinir senha",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                              elevation: 5,
-                            ),
-                            child: const Text(
-                              "Salvar nova senha",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                              const SizedBox(height: 12),
+                              const Center(
+                                child: Text(
+                                  "Digite e confirme sua nova senha para continuar",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 24),
+
+                              _buildLabeledPassword(
+                                label: "Nova senha",
+                                controller: _novaSenhaController,
+                                obscure: _obscureNovaSenha,
+                                onToggle: () => setState(
+                                  () => _obscureNovaSenha = !_obscureNovaSenha,
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return "Campo obrigatório";
+                                  if (v.length < 6) return "Mínimo 6 caracteres";
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              _buildLabeledPassword(
+                                label: "Confirmar senha",
+                                controller: _confirmarSenhaController,
+                                obscure: _obscureConfirmarSenha,
+                                onToggle: () => setState(
+                                  () => _obscureConfirmarSenha =
+                                      !_obscureConfirmarSenha,
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return "Campo obrigatório";
+                                  if (v != _novaSenhaController.text) {
+                                    return "As senhas não coincidem";
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              const SizedBox(height: 28),
+
+                              SizedBox(
+                                width: double.infinity,
+                                height: 55,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      // Lógica de salvar nova senha
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4C3BCF),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "Salvar nova senha",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 30),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // Widget para os campos de senha com o ícone de visibilidade
-  Widget _buildPasswordField({
+  Widget _buildLabeledPassword({
+    required String label,
     required TextEditingController controller,
     required bool obscure,
     required VoidCallback onToggle,
+    String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        decoration: InputDecoration(
-          hintText: "••••••",
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              obscure
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              color: const Color(0xFF4C3BCF),
-            ),
-            onPressed: onToggle,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
-      ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          obscureText: obscure,
+          decoration: InputDecoration(
+            hintText: "••••••",
+            hintStyle: const TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscure ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey,
+              ),
+              onPressed: onToggle,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Color(0xFF4C3BCF), width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+          ),
+          validator: validator,
+        ),
+      ],
     );
   }
-
-  // Widget para as linhas de validação (Texto com ícone)
-  // Widget _buildValidationRow(IconData icon, String text, Color color) {
-  //   return Row(
-  //     children: [
-  //       Icon(icon, size: 18, color: color),
-  //       const SizedBox(width: 8),
-  //       Text(
-  //         text,
-  //         style: TextStyle(
-  //           color: color,
-  //           fontSize: 13,
-  //           fontWeight: FontWeight.w500,
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
 }
