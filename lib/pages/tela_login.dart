@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'tela_cadastro.dart';
 import 'tela_esqueciSenha.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -25,17 +26,38 @@ class _TelaLoginState extends State<TelaLogin> {
   }
 
   // Função que será chamada ao clicar no botão Entrar
-  void _fazerLogin() {
-    // Valida o formulario antes de prosseguir
-    if (_formKey.currentState!.validate()) {
-      String email = _emailController.text;
-      String senha = _senhaController.text;
+  Future<void> _fazerLogin() async {
+    // Troque a linha 30 por esta:
+    if (_formKey.currentState?.validate() ?? false) {
+      try {
+        print("Fazendo seu login...");
 
-      // Aqui é onde você faria a validação real (ex: Firebase ou API)
-      if (email == 'teste@puc.com' && senha == '123456') {
-        _showMesage('Login eralizado com sucesso!', Colors.green);
-      } else {
-        _showMesage('E-mail os senha invalidos.', Colors.red);
+        //Instancia a função apontando para a região correta
+        final callable = FirebaseFunctions.instanceFor(
+          region: 'southamerica-east1',
+        ).httpsCallable('loginUsuario');
+
+        //Chama a função passando os dados que o LoginInput espera
+        final result = await callable.call({
+          "email": _emailController.text,
+          "senha": _senhaController.text,
+        });
+
+        //O retorno contém o JSON definiDO no return do handler
+        final data = result.data as Map<String, dynamic>;
+
+        if (data['success'] == true) {
+          _showMesage(
+            'Login Realizado, ${data['usuario']['email']}!',
+            Colors.green,
+          );
+          // Lógica de navegação para a home aqui
+        }
+      } on FirebaseFunctionsException catch (e) {
+        //Captura os erros HttpsError
+        _showMesage(e.message ?? 'Erro ao autenticar', Colors.red);
+      } catch (e) {
+        _showMesage('Erro inesperado de conexão.', Colors.red);
       }
     }
   }
@@ -54,7 +76,8 @@ class _TelaLoginState extends State<TelaLogin> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
+      body: Form(
+        key: _formKey,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Column(
