@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
+import '../services/auth_service.dart';
 import 'tela_cadastro.dart';
-import 'tela_esqueciSenha.dart';
+import 'tela_esqueci_senha.dart';
+import 'tela_home.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -15,6 +18,7 @@ class _TelaLoginState extends State<TelaLogin> {
   final _senhaController = TextEditingController();
 
   bool _senhaVisivel = false;
+  bool _carregando = false;
   String? _erroLogin;
 
   @override
@@ -24,19 +28,30 @@ class _TelaLoginState extends State<TelaLogin> {
     super.dispose();
   }
 
-  void _fazerLogin() {
+  Future<void> _fazerLogin() async {
     setState(() => _erroLogin = null);
 
     if (!_formKey.currentState!.validate()) return;
 
-    final email = _emailController.text.trim();
-    final senha = _senhaController.text;
+    setState(() => _carregando = true);
 
-    // Validação temporária — será substituída pela integração com backend
-    if (email == 'teste@puc.com' && senha == 'Teste@1') {
-      // Navegar para a tela principal
-    } else {
-      setState(() => _erroLogin = 'E-mail ou senha inválidos');
+    try {
+      await AuthService().login(
+        email: _emailController.text.trim(),
+        password: _senhaController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const TelaHome()),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _erroLogin = error.message);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
     }
   }
 
@@ -79,7 +94,7 @@ class _TelaLoginState extends State<TelaLogin> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Boas-vindas ao MesclaInvest!",
+                            'Boas-vindas ao MesclaInvest!',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -88,38 +103,38 @@ class _TelaLoginState extends State<TelaLogin> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            "Precisamos desses dados para acessar o aplicativo",
+                            'Precisamos desses dados para acessar o aplicativo',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.black54,
                             ),
                           ),
                           const SizedBox(height: 28),
-
-                          _buildLabel("Email"),
+                          _buildLabel('E-mail'),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: _inputDecoration("e-mail"),
+                            decoration: _inputDecoration('exemplo@email.com'),
                             validator: (v) {
-                              if (v == null || v.isEmpty) return "Campo obrigatório";
+                              if (v == null || v.isEmpty) {
+                                return 'Campo obrigatório';
+                              }
                               if (!RegExp(
                                 r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$',
                               ).hasMatch(v)) {
-                                return "E-mail inválido";
+                                return 'E-mail inválido';
                               }
                               return null;
                             },
                           ),
                           const SizedBox(height: 16),
-
-                          _buildLabel("Senha"),
+                          _buildLabel('Senha'),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: _senhaController,
                             obscureText: !_senhaVisivel,
-                            decoration: _inputDecoration("Senha").copyWith(
+                            decoration: _inputDecoration('Senha').copyWith(
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _senhaVisivel
@@ -133,15 +148,17 @@ class _TelaLoginState extends State<TelaLogin> {
                               ),
                             ),
                             validator: (v) {
-                              if (v == null || v.isEmpty) return "Campo obrigatório";
-                              if (v.length < 6) return "Senha muito curta";
+                              if (v == null || v.isEmpty) {
+                                return 'Campo obrigatório';
+                              }
+                              if (v.length < 6) return 'Senha muito curta';
                               return null;
                             },
                           ),
-
                           if (_erroLogin != null) ...[
                             const SizedBox(height: 14),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Icon(
                                   Icons.error_outline,
@@ -149,53 +166,66 @@ class _TelaLoginState extends State<TelaLogin> {
                                   size: 18,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(
-                                  "Erro: $_erroLogin",
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 13,
+                                Expanded(
+                                  child: Text(
+                                    'Erro: $_erroLogin',
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ],
-
                           const SizedBox(height: 28),
-
                           SizedBox(
                             width: double.infinity,
                             height: 55,
                             child: ElevatedButton(
-                              onPressed: _fazerLogin,
+                              onPressed: _carregando ? null : _fazerLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4C3BCF),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                               ),
-                              child: const Text(
-                                "Entrar",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child: _carregando
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Entrar',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ),
-
                           const SizedBox(height: 20),
-
                           Center(
                             child: TextButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const TelaEsqueciSenha(),
-                                ),
-                              ),
+                              onPressed: _carregando
+                                  ? null
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const TelaEsqueciSenha(),
+                                        ),
+                                      ),
                               child: const Text(
-                                "Esqueceu a senha?",
+                                'Esqueceu a senha?',
                                 style: TextStyle(
                                   color: Color(0xFF4C3BCF),
                                   fontWeight: FontWeight.w500,
@@ -203,25 +233,26 @@ class _TelaLoginState extends State<TelaLogin> {
                               ),
                             ),
                           ),
-
                           Center(
                             child: TextButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const TelaCadastro(),
-                                ),
-                              ),
+                              onPressed: _carregando
+                                  ? null
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const TelaCadastro(),
+                                        ),
+                                      ),
                               child: RichText(
                                 text: const TextSpan(
-                                  text: "Não tem conta? ",
+                                  text: 'Não tem conta? ',
                                   style: TextStyle(
                                     color: Colors.black54,
                                     fontSize: 14,
                                   ),
                                   children: [
                                     TextSpan(
-                                      text: "Cadastre-se",
+                                      text: 'Cadastre-se',
                                       style: TextStyle(
                                         color: Color(0xFF4C3BCF),
                                         fontWeight: FontWeight.w600,

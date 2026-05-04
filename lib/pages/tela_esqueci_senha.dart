@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+
 class TelaEsqueciSenha extends StatefulWidget {
   const TelaEsqueciSenha({super.key});
 
@@ -11,10 +13,39 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
+  bool _carregando = false;
+  String? _mensagem;
+  String? _erro;
+
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _enviarEmail() async {
+    setState(() {
+      _mensagem = null;
+      _erro = null;
+    });
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _carregando = true);
+
+    try {
+      final mensagem = await AuthService().forgotPassword(
+        email: _emailController.text.trim(),
+      );
+
+      if (!mounted) return;
+      setState(() => _mensagem = mensagem);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _erro = error.message);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
   }
 
   @override
@@ -38,7 +69,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                     Icons.arrow_back_ios,
                     color: Color(0xFF4C3BCF),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _carregando ? null : () => Navigator.pop(context),
                 ),
               ),
               Expanded(
@@ -50,14 +81,13 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
                       const Text(
-                        "MesclaInvest",
+                        'MesclaInvest',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 24),
-
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -69,7 +99,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                           child: Column(
                             children: [
                               const Text(
-                                "Esqueci a senha",
+                                'Esqueci a senha',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -77,7 +107,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                "Digite seu e-mail para receber o código de verificação",
+                                'Digite seu e-mail para receber o link de recuperação',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -85,53 +115,79 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                 ),
                               ),
                               const SizedBox(height: 24),
-
                               _buildLabeledInput(
-                                label: "Email",
-                                hint: "exemplo@email.com",
+                                label: 'E-mail',
+                                hint: 'exemplo@email.com',
                                 controller: _emailController,
                                 keyboard: TextInputType.emailAddress,
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return "Campo obrigatório";
+                                  if (v == null || v.isEmpty) {
+                                    return 'Campo obrigatório';
+                                  }
                                   if (!RegExp(
                                     r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$',
                                   ).hasMatch(v)) {
-                                    return "E-mail inválido";
+                                    return 'E-mail inválido';
                                   }
                                   return null;
                                 },
                               ),
-
+                              if (_mensagem != null) ...[
+                                const SizedBox(height: 14),
+                                _buildStatusMessage(
+                                  _mensagem!,
+                                  Colors.green,
+                                  Icons.check_circle_outline,
+                                ),
+                              ],
+                              if (_erro != null) ...[
+                                const SizedBox(height: 14),
+                                _buildStatusMessage(
+                                  _erro!,
+                                  Colors.red,
+                                  Icons.error_outline,
+                                ),
+                              ],
                               const SizedBox(height: 24),
-
                               SizedBox(
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      // Lógica para enviar e-mail
-                                    }
-                                  },
+                                  onPressed:
+                                      _carregando ? null : _enviarEmail,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF4C3BCF),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
-                                  child: const Text(
-                                    "Enviar e-mail",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  child: _carregando
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Enviar e-mail',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                 ),
                               ),
                               const SizedBox(height: 16),
                               TextButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: _carregando
+                                    ? null
+                                    : () => Navigator.pop(context),
                                 child: const Text(
                                   'Voltar para o Login',
                                   style: TextStyle(color: Color(0xFF4C3BCF)),
@@ -150,6 +206,22 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatusMessage(String message, Color color, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            message,
+            style: TextStyle(color: color, fontSize: 13),
+          ),
+        ),
+      ],
     );
   }
 

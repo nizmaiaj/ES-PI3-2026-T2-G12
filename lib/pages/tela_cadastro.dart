@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/auth_service.dart';
+import 'tela_home.dart';
+
 class CpfInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -67,6 +70,8 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
   bool _senhaVisivel = false;
   bool _confirmarSenhaVisivel = false;
+  bool _carregando = false;
+  String? _erroCadastro;
 
   bool _temMinCaracteres = false;
   bool _temMaiuscula = false;
@@ -103,6 +108,39 @@ class _TelaCadastroState extends State<TelaCadastro> {
     super.dispose();
   }
 
+  Future<void> _fazerCadastro() async {
+    setState(() => _erroCadastro = null);
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _carregando = true);
+
+    try {
+      await AuthService().register(
+        nomeCompleto: _nomeController.text.trim(),
+        email: _emailController.text.trim(),
+        cpf: _somenteDigitos(_cpfController.text),
+        telefone: _somenteDigitos(_telefoneController.text),
+        password: _senhaController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const TelaHome()),
+        (_) => false,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _erroCadastro = error.message);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  String _somenteDigitos(String value) => value.replaceAll(RegExp(r'\D'), '');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,7 +162,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                     Icons.arrow_back_ios,
                     color: Color(0xFF4C3BCF),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _carregando ? null : () => Navigator.pop(context),
                 ),
               ),
               Expanded(
@@ -136,14 +174,13 @@ class _TelaCadastroState extends State<TelaCadastro> {
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
                       const Text(
-                        "MesclaInvest",
+                        'MesclaInvest',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 20),
-
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -157,7 +194,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
                             children: [
                               const Center(
                                 child: Text(
-                                  "Crie sua conta",
+                                  'Crie sua conta',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -165,59 +202,66 @@ class _TelaCadastroState extends State<TelaCadastro> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-
                               _buildLabeledInput(
-                                label: "Nome completo",
-                                hint: "João Silva",
+                                label: 'Nome completo',
+                                hint: 'João Silva',
                                 controller: _nomeController,
-                                validator: (v) =>
-                                    v!.trim().isEmpty ? "Campo obrigatório" : null,
+                                validator: (v) => v!.trim().isEmpty
+                                    ? 'Campo obrigatório'
+                                    : null,
                               ),
                               _buildLabeledInput(
-                                label: "Email",
-                                hint: "exemplo@email.com",
+                                label: 'E-mail',
+                                hint: 'exemplo@email.com',
                                 controller: _emailController,
                                 keyboard: TextInputType.emailAddress,
                                 validator: (v) {
-                                  if (v!.isEmpty) return "Campo obrigatório";
+                                  if (v!.isEmpty) return 'Campo obrigatório';
                                   if (!RegExp(
                                     r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$',
                                   ).hasMatch(v)) {
-                                    return "E-mail inválido";
+                                    return 'E-mail inválido';
                                   }
                                   return null;
                                 },
                               ),
                               _buildLabeledInput(
-                                label: "CPF",
-                                hint: "000.000.000-00",
+                                label: 'CPF',
+                                hint: '000.000.000-00',
                                 controller: _cpfController,
                                 keyboard: TextInputType.number,
                                 formatters: [CpfInputFormatter()],
                                 validator: (v) {
-                                  final digits = v!.replaceAll(RegExp(r'\D'), '');
-                                  if (digits.isEmpty) return "Campo obrigatório";
-                                  if (digits.length != 11) return "CPF inválido";
+                                  final digits = _somenteDigitos(v!);
+                                  if (digits.isEmpty) {
+                                    return 'Campo obrigatório';
+                                  }
+                                  if (digits.length != 11) {
+                                    return 'CPF inválido';
+                                  }
                                   return null;
                                 },
                               ),
                               _buildLabeledInput(
-                                label: "Telefone",
-                                hint: "(11) 91234-5678",
+                                label: 'Telefone',
+                                hint: '(11) 91234-5678',
                                 controller: _telefoneController,
                                 keyboard: TextInputType.phone,
                                 formatters: [PhoneInputFormatter()],
                                 validator: (v) {
-                                  final digits = v!.replaceAll(RegExp(r'\D'), '');
-                                  if (digits.isEmpty) return "Campo obrigatório";
-                                  if (digits.length < 10) return "Telefone inválido";
+                                  final digits = _somenteDigitos(v!);
+                                  if (digits.isEmpty) {
+                                    return 'Campo obrigatório';
+                                  }
+                                  if (digits.length < 10) {
+                                    return 'Telefone inválido';
+                                  }
                                   return null;
                                 },
                               ),
-
                               _buildLabeledInput(
-                                label: "Senha",
-                                hint: "••••••",
+                                label: 'Senha',
+                                hint: '••••••',
                                 controller: _senhaController,
                                 obscure: !_senhaVisivel,
                                 suffixIcon: IconButton(
@@ -232,33 +276,31 @@ class _TelaCadastroState extends State<TelaCadastro> {
                                   ),
                                 ),
                                 validator: (v) {
-                                  if (v!.isEmpty) return "Campo obrigatório";
+                                  if (v!.isEmpty) return 'Campo obrigatório';
                                   if (!_senhaValida) {
-                                    return "A senha não atende aos requisitos";
+                                    return 'A senha não atende aos requisitos';
                                   }
                                   return null;
                                 },
                               ),
-
                               const SizedBox(height: 4),
                               _buildSenhaIndicador(
-                                "Pelo menos 6 caracteres",
+                                'Pelo menos 6 caracteres',
                                 _temMinCaracteres,
                               ),
                               _buildSenhaIndicador(
-                                "Letra maiúscula",
+                                'Letra maiúscula',
                                 _temMaiuscula,
                               ),
-                              _buildSenhaIndicador("Número", _temNumero),
+                              _buildSenhaIndicador('Número', _temNumero),
                               _buildSenhaIndicador(
-                                "Caractere especial (!@#\$...)",
+                                'Caractere especial (!@#\$...)',
                                 _temEspecial,
                               ),
                               const SizedBox(height: 8),
-
                               _buildLabeledInput(
-                                label: "Confirmar senha",
-                                hint: "••••••",
+                                label: 'Confirmar senha',
+                                hint: '••••••',
                                 controller: _confirmarSenhaController,
                                 obscure: !_confirmarSenhaVisivel,
                                 suffixIcon: IconButton(
@@ -274,48 +316,82 @@ class _TelaCadastroState extends State<TelaCadastro> {
                                   ),
                                 ),
                                 validator: (v) {
-                                  if (v!.isEmpty) return "Campo obrigatório";
+                                  if (v!.isEmpty) return 'Campo obrigatório';
                                   if (v != _senhaController.text) {
-                                    return "As senhas não coincidem";
+                                    return 'As senhas não coincidem';
                                   }
                                   return null;
                                 },
                               ),
-
+                              if (_erroCadastro != null) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        _erroCadastro!,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 24),
-
                               SizedBox(
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      // Lógica de cadastro
-                                    }
-                                  },
+                                  onPressed:
+                                      _carregando ? null : _fazerCadastro,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF4C3BCF),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
-                                  child: const Text(
-                                    "Cadastrar-se",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  child: _carregando
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Cadastrar-se',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                 ),
                               ),
                               const SizedBox(height: 16),
                               Center(
                                 child: TextButton(
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: _carregando
+                                      ? null
+                                      : () => Navigator.pop(context),
                                   child: const Text(
                                     'Já tem conta? Login',
-                                    style: TextStyle(color: Color(0xFF4C3BCF)),
+                                    style: TextStyle(
+                                      color: Color(0xFF4C3BCF),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -392,7 +468,10 @@ class _TelaCadastroState extends State<TelaCadastro> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
-                borderSide: const BorderSide(color: Color(0xFF4C3BCF), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFF4C3BCF),
+                  width: 1.5,
+                ),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
