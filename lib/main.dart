@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'pages/tela_login.dart';
-import 'pages/tela_catalogo.dart';
+// import 'package:es_pi3_2026_t2_g12/pages/tela_login.dart';
+// import 'pages/tela_cadastro.dart';
+// import 'package:es_pi3_2026_t2_g12/pages/tela_visao_geral.dart';
+import 'pages/tela_home.dart';
 
 void main() {
   runApp(const MeuApp());
@@ -19,7 +21,7 @@ class MeuApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true, // Usa o design mais recente do Google
       ),
-      home: const TelaCatalogo(),
+      home: const TelaHome(nomeDigitado: "Fernanda"),
     );
   }
 }

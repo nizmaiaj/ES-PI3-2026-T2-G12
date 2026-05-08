@@ -82,7 +82,9 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                       vertical: 40,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4), // Vidro/Translúcido
+                      color: Colors.white.withValues(
+                        alpha: 0.4,
+                      ), // Vidro/Translúcido
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(45),
                         bottom: Radius.circular(45),
@@ -194,7 +196,7 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

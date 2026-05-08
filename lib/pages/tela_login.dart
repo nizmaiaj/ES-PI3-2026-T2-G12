@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'tela_cadastro.dart';
 import 'tela_esqueciSenha.dart';
+import 'tela_home.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -34,8 +35,18 @@ class _TelaLoginState extends State<TelaLogin> {
       // Aqui é onde você faria a validação real (ex: Firebase ou API)
       if (email == 'teste@puc.com' && senha == '123456') {
         _showMesage('Login eralizado com sucesso!', Colors.green);
+
+        //Navegar para a tela home, passando o nome
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TelaHome(
+              nomeDigitado: "Usuario Teste",
+            ), //moke: tenho que trocar quando integrar o banco
+          ),
+        );
       } else {
-        _showMesage('E-mail os senha invalidos.', Colors.red);
+        _showMesage('E-mail os senha Incorretos', Colors.red);
       }
     }
   }
@@ -96,7 +107,7 @@ class _TelaLoginState extends State<TelaLogin> {
                       vertical: 40,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.9),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(45),
                         bottom: Radius.circular(45),

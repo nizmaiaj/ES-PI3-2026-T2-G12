@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'tela_login.dart';
+import 'tela_home.dart';
 
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
@@ -116,6 +117,15 @@ class _TelaCadastroState extends State<TelaCadastro> {
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
                                 // Lógica de cadastro
+                                String nomeDoFormulario = _nomeController.text;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TelaHome(
+                                      nomeDigitado: nomeDoFormulario,
+                                    ),
+                                  ),
+                                );
                               }
                             },
                             style: ElevatedButton.styleFrom(

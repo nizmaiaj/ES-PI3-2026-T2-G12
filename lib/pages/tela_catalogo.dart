@@ -71,7 +71,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
           // HEADER AZUL (Topo Inteiro)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
             decoration: const BoxDecoration(
               color: Color(0xFF3F51B5),
               borderRadius: BorderRadius.only(
@@ -316,7 +316,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
               children: [
                 Icon(Icons.search, color: Color(0xFF3F51B5)),
                 Text(
-                  "Pesquisar",
+                  "Catálogo",
                   style: TextStyle(fontSize: 10, color: Color(0xFF3F51B5)),
                 ),
               ],
