@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'pages/tela_login.dart';
 import 'pages/tela_catalogo.dart';
 
 void main() {

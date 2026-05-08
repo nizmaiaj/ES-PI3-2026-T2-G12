@@ -198,8 +198,8 @@ class _TelaLoginState extends State<TelaLogin> {
                                         strokeWidth: 2.5,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text(
@@ -218,12 +218,12 @@ class _TelaLoginState extends State<TelaLogin> {
                               onPressed: _carregando
                                   ? null
                                   : () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const TelaEsqueciSenha(),
-                                        ),
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const TelaEsqueciSenha(),
                                       ),
+                                    ),
                               child: const Text(
                                 'Esqueceu a senha?',
                                 style: TextStyle(
@@ -238,11 +238,11 @@ class _TelaLoginState extends State<TelaLogin> {
                               onPressed: _carregando
                                   ? null
                                   : () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const TelaCadastro(),
-                                        ),
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const TelaCadastro(),
                                       ),
+                                    ),
                               child: RichText(
                                 text: const TextSpan(
                                   text: 'Não tem conta? ',
@@ -271,143 +271,6 @@ class _TelaLoginState extends State<TelaLogin> {
               ),
               const SizedBox(height: 24),
             ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 1. Logo (Imagem)
-                Image.asset(
-                  'assets/logo_mescla.png',
-                  height: 100,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 24),
-
-                // Título fora da caixa
-                const Text(
-                  'Mescla Invest',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 32),
-
-                // 2. A CAIXA CINZA
-                Form(
-                  key: _formKey,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 40,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.4),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(45),
-                        bottom: Radius.circular(45),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          "Entrar",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        //E-mail
-                        _LoginInputField(
-                          hint: 'E-mail',
-                          controller: _emailController,
-                          icon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) =>
-                              (value == null || !value.contains('@'))
-                              ? 'E-mail inválido'
-                              : null,
-                        ),
-
-                        //Senha
-                        _LoginInputField(
-                          hint: 'Senha',
-                          controller: _senhaController,
-                          icon: Icons.lock_outline,
-                          isPassword: true,
-                          validator: (value) =>
-                              (value == null || value.length < 6)
-                              ? 'Senha muito curta'
-                              : null,
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Botão de entrar (dentro da caixa)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(
-                                0xFF4A3BB9,
-                              ), // Azul escuro
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: _fazerLogin,
-                            child: const Text(
-                              'ENTRAR',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TelaEsqueciSenha(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Esqueci a senha',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TelaCadastro(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Não tem conta? Cadastrar-se',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
