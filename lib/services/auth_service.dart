@@ -1,8 +1,6 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:http/http.dart' as http;
-
-import 'api_config.dart';
 import 'auth_session.dart';
 
 class AuthException implements Exception {
@@ -15,20 +13,26 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  AuthService({http.Client? client}) : _client = client;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
-  final http.Client? _client;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
-    final data = await _post('/auth/login', {
-      'email': email,
-      'password': password,
-    });
+  Future<void> login({required String email, required String password}) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    _saveSession(data);
+      await _saveSession(credential.user);
+    } on FirebaseAuthException catch (error) {
+      throw AuthException(_authErrorMessage(error));
+    } catch (_) {
+      throw AuthException('Nao foi possivel fazer login. Tente novamente.');
+    }
   }
 
   Future<void> register({
@@ -38,74 +42,120 @@ class AuthService {
     required String telefone,
     required String password,
   }) async {
-    final data = await _post('/auth/register', {
-      'nomeCompleto': nomeCompleto,
-      'email': email,
-      'cpf': cpf,
-      'telefone': telefone,
-      'password': password,
-    });
-
-    _saveSession(data);
-  }
-
-  Future<String> forgotPassword({required String email}) async {
-    final data = await _post('/auth/forgot-password', {'email': email});
-    return data['message']?.toString() ??
-        'O link de recuperacao de senha foi enviado para o seu e-mail';
-  }
-
-  Future<Map<String, dynamic>> _post(
-    String path,
-    Map<String, dynamic> body,
-  ) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
-    final client = _client ?? http.Client();
+    User? createdUser;
 
     try {
-      final response = await client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
+      createdUser = credential.user;
 
-      final responseBody = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw AuthException(
-          responseBody['error']?.toString() ??
-              'Nao foi possivel concluir a operacao',
-        );
+      if (createdUser == null) {
+        throw AuthException('Nao foi possivel criar a conta.');
       }
 
-      return responseBody;
+      await createdUser.updateDisplayName(nomeCompleto);
+
+      final batch = _firestore.batch();
+      final userRef = _firestore.collection('users').doc(createdUser.uid);
+      final walletRef = _firestore.collection('wallets').doc(createdUser.uid);
+
+      batch.set(userRef, {
+        'uid': createdUser.uid,
+        'nomeCompleto': nomeCompleto,
+        'email': email,
+        'cpf': cpf,
+        'telefone': telefone,
+        'mfaHabilitado': false,
+        'mfaSecret': null,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      batch.set(walletRef, {
+        'userId': createdUser.uid,
+        'saldoReais': 1000.0,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+      await _saveSession(createdUser);
     } on AuthException {
       rethrow;
+    } on FirebaseAuthException catch (error) {
+      throw AuthException(_authErrorMessage(error));
+    } on FirebaseException catch (error) {
+      await createdUser?.delete().catchError((_) {});
+      throw AuthException(_firestoreErrorMessage(error));
     } catch (_) {
-      throw AuthException(
-        'Nao foi possivel conectar ao servidor. Verifique se o backend esta em execucao.',
-      );
-    } finally {
-      if (_client == null) client.close();
+      await createdUser?.delete().catchError((_) {});
+      throw AuthException('Nao foi possivel criar a conta. Tente novamente.');
     }
   }
 
-  void _saveSession(Map<String, dynamic> data) {
-    final uid = data['uid']?.toString();
-    final email = data['email']?.toString();
-    final token = data['token']?.toString();
+  Future<String> forgotPassword({required String email}) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return 'O link de recuperacao de senha foi enviado para o seu e-mail';
+    } on FirebaseAuthException catch (error) {
+      throw AuthException(_authErrorMessage(error));
+    } catch (_) {
+      throw AuthException('Nao foi possivel enviar o e-mail de recuperacao.');
+    }
+  }
 
-    if (uid == null || email == null || token == null) {
+  Future<void> _saveSession(User? user) async {
+    if (user == null || user.email == null) {
+      throw AuthException('Resposta de autenticacao invalida');
+    }
+
+    final token = await user.getIdToken();
+
+    if (token == null) {
       throw AuthException('Resposta de autenticacao invalida');
     }
 
     AuthSession.save(
-      uid: uid,
-      email: email,
+      uid: user.uid,
+      email: user.email!,
       token: token,
-      refreshToken: data['refreshToken']?.toString(),
+      refreshToken: user.refreshToken,
     );
+  }
+
+  String _authErrorMessage(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'Este e-mail ja esta cadastrado';
+      case 'invalid-email':
+        return 'Formato de e-mail invalido';
+      case 'operation-not-allowed':
+        return 'Login por e-mail e senha nao esta habilitado no Firebase';
+      case 'weak-password':
+        return 'A senha deve ter pelo menos 6 caracteres';
+      case 'user-disabled':
+        return 'Esta conta foi desativada';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'E-mail ou senha invalidos';
+      case 'network-request-failed':
+        return 'Nao foi possivel conectar ao Firebase. Verifique sua internet.';
+      default:
+        return error.message ?? 'Nao foi possivel concluir a operacao';
+    }
+  }
+
+  String _firestoreErrorMessage(FirebaseException error) {
+    switch (error.code) {
+      case 'permission-denied':
+        return 'Sem permissao para salvar os dados no Firestore. Verifique as regras do Firebase.';
+      case 'unavailable':
+        return 'Firestore indisponivel no momento. Tente novamente.';
+      default:
+        return error.message ??
+            'Nao foi possivel salvar os dados do usuario no Firestore.';
+    }
   }
 }

@@ -1,7 +1,11 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'pages/tela_catalogo.dart';
+import 'firebase_options.dart';
+import 'pages/tela_login.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MeuApp());
 }
 
@@ -18,7 +22,7 @@ class MeuApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true, // Usa o design mais recente do Google
       ),
-      home: const TelaCatalogo(),
+      home: TelaLogin(),
     );
   }
 }
