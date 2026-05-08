@@ -1078,9 +1078,16 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 backgroundColor: const Color(0xFF2C3680),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
+              child: const Text(
+                'Enviar pergunta privada',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -1111,8 +1118,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           TextField(
             decoration: InputDecoration(
               hintText: 'Digite sua pergunta...',
-              hintStyle:
-                  const TextStyle(color: Colors.grey, fontSize: 13),
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
               filled: true,
               fillColor: const Color(0xFFF8F9FE),
               border: OutlineInputBorder(
