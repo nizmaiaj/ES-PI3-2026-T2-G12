@@ -1,5 +1,55 @@
 import 'package:flutter/material.dart';
-import 'tela_login.dart';
+import 'package:flutter/services.dart';
+
+import '../services/auth_service.dart';
+import 'tela_home.dart';
+
+class CpfInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < digits.length && i < 11; i++) {
+      if (i == 3 || i == 6) buffer.write('.');
+      if (i == 9) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+
+    final string = buffer.toString();
+    return TextEditingValue(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+
+class PhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < digits.length && i < 11; i++) {
+      if (i == 0) buffer.write('(');
+      if (i == 2) buffer.write(') ');
+      if (i == 7) buffer.write('-');
+      buffer.write(digits[i]);
+    }
+
+    final string = buffer.toString();
+    return TextEditingValue(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
 
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
@@ -11,185 +61,453 @@ class TelaCadastro extends StatefulWidget {
 class _TelaCadastroState extends State<TelaCadastro> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores
   final _nomeController = TextEditingController();
-  final _cpfController = TextEditingController();
   final _emailController = TextEditingController();
+  final _cpfController = TextEditingController();
+  final _telefoneController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
+
+  bool _senhaVisivel = false;
+  bool _confirmarSenhaVisivel = false;
+  bool _carregando = false;
+  String? _erroCadastro;
+
+  bool _temMinCaracteres = false;
+  bool _temMaiuscula = false;
+  bool _temNumero = false;
+  bool _temEspecial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _senhaController.addListener(_validarSenha);
+  }
+
+  void _validarSenha() {
+    final senha = _senhaController.text;
+    setState(() {
+      _temMinCaracteres = senha.length >= 6;
+      _temMaiuscula = senha.contains(RegExp(r'[A-Z]'));
+      _temNumero = senha.contains(RegExp(r'[0-9]'));
+      _temEspecial = senha.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-]'));
+    });
+  }
+
+  bool get _senhaValida =>
+      _temMinCaracteres && _temMaiuscula && _temNumero && _temEspecial;
 
   @override
   void dispose() {
     _nomeController.dispose();
-    _cpfController.dispose();
     _emailController.dispose();
+    _cpfController.dispose();
+    _telefoneController.dispose();
     _senhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
   }
 
+  Future<void> _fazerCadastro() async {
+    setState(() => _erroCadastro = null);
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _carregando = true);
+
+    try {
+      await AuthService().register(
+        nomeCompleto: _nomeController.text.trim(),
+        email: _emailController.text.trim(),
+        cpf: _somenteDigitos(_cpfController.text),
+        telefone: _somenteDigitos(_telefoneController.text),
+        password: _senhaController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const TelaHome()),
+        (_) => false,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _erroCadastro = error.message);
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  String _somenteDigitos(String value) => value.replaceAll(RegExp(r'\D'), '');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        // O Flutter já coloca o ícone de voltar automaticamente se houver uma rota anterior
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Página de Cadastro",
-          style: TextStyle(color: Colors.grey, fontSize: 14),
-        ),
-      ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 255, 255, 255), // Azul topo
-              Color.fromARGB(255, 40, 42, 159),
-            ],
+            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              children: [
-                Image.asset('assets/logo_mescla.png', height: 80),
-                const SizedBox(height: 12),
-                const Text(
-                  "MesclaInvest",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: Color(0xFF4C3BCF),
+                  ),
+                  onPressed: _carregando ? null : () => Navigator.pop(context),
                 ),
-                const SizedBox(height: 30),
-
-                // CAIXA CINZA
-                Form(
-                  key: _formKey,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0), // Cinza claro da imagem
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          "Cadastrar-se",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 4),
+                      Image.asset('assets/logo_mescla.png', height: 70),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'MesclaInvest',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECEDF5),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Center(
+                                child: Text(
+                                  'Crie sua conta',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              _buildLabeledInput(
+                                label: 'Nome completo',
+                                hint: 'João Silva',
+                                controller: _nomeController,
+                                validator: (v) => v!.trim().isEmpty
+                                    ? 'Campo obrigatório'
+                                    : null,
+                              ),
+                              _buildLabeledInput(
+                                label: 'E-mail',
+                                hint: 'exemplo@email.com',
+                                controller: _emailController,
+                                keyboard: TextInputType.emailAddress,
+                                validator: (v) {
+                                  if (v!.isEmpty) return 'Campo obrigatório';
+                                  if (!RegExp(
+                                    r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$',
+                                  ).hasMatch(v)) {
+                                    return 'E-mail inválido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              _buildLabeledInput(
+                                label: 'CPF',
+                                hint: '000.000.000-00',
+                                controller: _cpfController,
+                                keyboard: TextInputType.number,
+                                formatters: [CpfInputFormatter()],
+                                validator: (v) {
+                                  final digits = _somenteDigitos(v!);
+                                  if (digits.isEmpty) {
+                                    return 'Campo obrigatório';
+                                  }
+                                  if (digits.length != 11) {
+                                    return 'CPF inválido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              _buildLabeledInput(
+                                label: 'Telefone',
+                                hint: '(11) 91234-5678',
+                                controller: _telefoneController,
+                                keyboard: TextInputType.phone,
+                                formatters: [PhoneInputFormatter()],
+                                validator: (v) {
+                                  final digits = _somenteDigitos(v!);
+                                  if (digits.isEmpty) {
+                                    return 'Campo obrigatório';
+                                  }
+                                  if (digits.length < 10) {
+                                    return 'Telefone inválido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              _buildLabeledInput(
+                                label: 'Senha',
+                                hint: '••••••',
+                                controller: _senhaController,
+                                obscure: !_senhaVisivel,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _senhaVisivel
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _senhaVisivel = !_senhaVisivel,
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v!.isEmpty) return 'Campo obrigatório';
+                                  if (!_senhaValida) {
+                                    return 'A senha não atende aos requisitos';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              _buildSenhaIndicador(
+                                'Pelo menos 6 caracteres',
+                                _temMinCaracteres,
+                              ),
+                              _buildSenhaIndicador(
+                                'Letra maiúscula',
+                                _temMaiuscula,
+                              ),
+                              _buildSenhaIndicador('Número', _temNumero),
+                              _buildSenhaIndicador(
+                                'Caractere especial (!@#\$...)',
+                                _temEspecial,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildLabeledInput(
+                                label: 'Confirmar senha',
+                                hint: '••••••',
+                                controller: _confirmarSenhaController,
+                                obscure: !_confirmarSenhaVisivel,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _confirmarSenhaVisivel
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _confirmarSenhaVisivel =
+                                        !_confirmarSenhaVisivel,
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if (v!.isEmpty) return 'Campo obrigatório';
+                                  if (v != _senhaController.text) {
+                                    return 'As senhas não coincidem';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              if (_erroCadastro != null) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        _erroCadastro!,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 55,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _carregando ? null : _fazerCadastro,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4C3BCF),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                  child: _carregando
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Cadastrar-se',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Center(
+                                child: TextButton(
+                                  onPressed: _carregando
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  child: const Text(
+                                    'Já tem conta? Login',
+                                    style: TextStyle(
+                                      color: Color(0xFF4C3BCF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-
-                        _buildInput("Nome Completo", _nomeController),
-                        _buildInput(
-                          "Cpf",
-                          _cpfController,
-                          keyboard: TextInputType.number,
-                        ),
-                        _buildInput(
-                          "e-mail",
-                          _emailController,
-                          keyboard: TextInputType.emailAddress,
-                        ),
-                        _buildInput("Senha", _senhaController, obscure: true),
-                        _buildInput(
-                          "Confirmar senha",
-                          _confirmarSenhaController,
-                          obscure: true,
-                        ),
-                        const SizedBox(height: 32),
-                        // BOTÃO ENTRAR (Roxo)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                // Lógica de cadastro
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4C3BCF),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            child: const Text(
-                              "Criar conta",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => TelaLogin(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Já tem conta? Login',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-
-                // Para voltar a tela de login caso já tenha uma conta
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // Widget interno para evitar repetição de código
-  Widget _buildInput(
-    String hint,
-    TextEditingController controller, {
+  Widget _buildLabeledInput({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
     bool obscure = false,
     TextInputType? keyboard,
+    List<TextInputFormatter>? formatters,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboard,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              children: const [
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: Color(0xFF4C3BCF)),
+                ),
+              ],
+            ),
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: controller,
+            obscureText: obscure,
+            keyboardType: keyboard,
+            inputFormatters: formatters,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Colors.grey),
+              filled: true,
+              fillColor: Colors.white,
+              suffixIcon: suffixIcon,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(
+                  color: Color(0xFF4C3BCF),
+                  width: 1.5,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+            ),
+            validator: validator,
           ),
-        ),
-        validator: (value) => value!.isEmpty ? "Campo obrigatório" : null,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSenhaIndicador(String texto, bool valido) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            valido ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: valido ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            texto,
+            style: TextStyle(
+              fontSize: 12,
+              color: valido ? Colors.green : Colors.red,
+            ),
+          ),
+        ],
       ),
     );
   }
