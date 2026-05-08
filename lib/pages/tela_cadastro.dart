@@ -403,7 +403,6 @@ class _TelaCadastroState extends State<TelaCadastro> {
                             ],
                           ),
                         ),
-<<<<<<< HEAD
                         const SizedBox(height: 24),
 
                         _buildInput("Nome Completo", _nomeController),
@@ -476,19 +475,15 @@ class _TelaCadastroState extends State<TelaCadastro> {
                         ),
                       ],
                     ),
-=======
                       ),
                       const SizedBox(height: 24),
                     ],
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
+        
   }
 
   Widget _buildLabeledInput({

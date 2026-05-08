@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-=======
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
 
 class TelaVisaoGeral extends StatefulWidget {
   final Map<String, String> startup;
@@ -23,14 +18,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   final TextEditingController _controllerPrivado = TextEditingController();
   final List<Map<String, dynamic>> _mensagensPrivadas = [
     {'texto': 'Campo destinado a pergunta do investidor', 'ehInvestidor': true},
-<<<<<<< HEAD
     {
       'texto': 'Campo destinado a pergunta do societário',
       'ehInvestidor': false,
     },
-=======
-    {'texto': 'Campo destinado a pergunta do societário', 'ehInvestidor': false},
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
   ];
 
   static const _azulPrimario = Color(0xFF3F51B5);
@@ -107,7 +98,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
       case 'Visão Geral':
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-<<<<<<< HEAD
           child: Column(
             children: [
               _buildConteudoCard(),
@@ -115,18 +105,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               _buildAreaInvestidor(),
             ],
           ),
-=======
-          child: Column(children: [
-            _buildConteudoCard(),
-            const SizedBox(height: 16),
-            _buildAreaInvestidor(),
-          ]),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         );
       case 'Sociedade':
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-<<<<<<< HEAD
           child: Column(
             children: [
               _buildEstruturaCard(),
@@ -134,13 +116,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               _buildApresentacaoSocios(),
             ],
           ),
-=======
-          child: Column(children: [
-            _buildEstruturaCard(),
-            const SizedBox(height: 16),
-            _buildApresentacaoSocios(),
-          ]),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         );
       case 'Conteúdo':
         return _buildConteudoConteudo();
@@ -171,15 +146,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           IconButton(
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-<<<<<<< HEAD
             icon: const Icon(
               Icons.arrow_back_ios,
               color: Colors.white,
               size: 20,
             ),
-=======
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 12),
@@ -195,16 +166,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               child: Image.asset(
                 widget.startup['imagem'] ?? '',
                 fit: BoxFit.cover,
-<<<<<<< HEAD
                 errorBuilder: (_, _, _) =>
                     const Icon(Icons.business, color: _azulPrimario, size: 36),
-=======
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.business,
-                  color: _azulPrimario,
-                  size: 36,
-                ),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
               ),
             ),
           ),
@@ -363,15 +326,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             widget.startup['desc'] ??
                 'Este campo é destinado a apresentar um resumo prévio da startup, '
                     'destacando seus principais objetivos, propostas e a atuação da empresa no mercado.',
-<<<<<<< HEAD
             style: const TextStyle(
               fontSize: 13,
               color: Colors.grey,
               height: 1.55,
             ),
-=======
-            style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.55),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
           ),
           const SizedBox(height: 22),
           const Text(
@@ -417,13 +376,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             _ehInvestidor
                 ? 'Bem-vindo! Acesse o balcão completo para comprar e vender tokens desta startup.'
                 : 'Se você já é investidor, poderá acessar o balcão completo para comprar e vender tokens. '
-<<<<<<< HEAD
                       'Caso ainda não investe nesta startup, você poderá iniciar sua participação adquirindo '
                       'seus primeiros tokens e desbloqueando recursos exclusivos para investidores',
-=======
-                    'Caso ainda não investe nesta startup, você poderá iniciar sua participação adquirindo '
-                    'seus primeiros tokens e desbloqueando recursos exclusivos para investidores',
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             style: const TextStyle(
               fontSize: 12,
               color: Colors.black54,
@@ -469,12 +423,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     backgroundColor: const Color(0xFF2C3680),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-<<<<<<< HEAD
                       borderRadius: BorderRadius.circular(12),
                     ),
-=======
-                        borderRadius: BorderRadius.circular(12)),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
@@ -491,12 +441,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     backgroundColor: _azulPrimario,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-<<<<<<< HEAD
                       borderRadius: BorderRadius.circular(12),
                     ),
-=======
-                        borderRadius: BorderRadius.circular(12)),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
@@ -577,12 +523,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     final s = _socios[i];
                     return Padding(
                       padding: EdgeInsets.only(
-<<<<<<< HEAD
                         bottom: i < _socios.length - 1 ? 12 : 0,
                       ),
-=======
-                          bottom: i < _socios.length - 1 ? 12 : 0),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                       child: _buildLegendaItem(
                         coresSocios[i],
                         '${s['nome']} (${s['cargo']})',
@@ -609,15 +551,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         ),
         const SizedBox(width: 8),
         Expanded(
-<<<<<<< HEAD
           child: Text(
             nome,
             style: const TextStyle(fontSize: 10, color: Colors.grey),
           ),
-=======
-          child: Text(nome,
-              style: const TextStyle(fontSize: 10, color: Colors.grey)),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         ),
         Text(
           percentual,
@@ -672,14 +609,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             children: List.generate(_socios.length, (i) {
               return Expanded(
                 child: Padding(
-<<<<<<< HEAD
                   padding: EdgeInsets.only(
                     right: i < _socios.length - 1 ? 8 : 0,
                   ),
-=======
-                  padding:
-                      EdgeInsets.only(right: i < _socios.length - 1 ? 8 : 0),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                   child: _buildSocioCardCompacto(_socios[i]),
                 ),
               );
@@ -707,26 +639,16 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               color: const Color(0xFFEDE7F6),
               borderRadius: BorderRadius.circular(19),
             ),
-<<<<<<< HEAD
             child: const Icon(
               Icons.person_outline,
               color: _azulPrimario,
               size: 22,
             ),
-=======
-            child: const Icon(Icons.person_outline,
-                color: _azulPrimario, size: 22),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
           ),
           const SizedBox(height: 8),
           Text(
             socio['nome']!,
-<<<<<<< HEAD
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-=======
-            style:
-                const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -786,15 +708,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             ...List.generate(_socios.length, (i) {
               return Padding(
                 padding: EdgeInsets.fromLTRB(
-<<<<<<< HEAD
                   16,
                   4,
                   16,
                   i == _socios.length - 1 ? 20 : 4,
                 ),
-=======
-                    16, 4, 16, i == _socios.length - 1 ? 20 : 4),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                 child: _buildSocioCardExpandido(_socios[i]),
               );
             }),
@@ -821,16 +739,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               color: const Color(0xFFEDE7F6),
               borderRadius: BorderRadius.circular(22),
             ),
-<<<<<<< HEAD
             child: const Icon(
               Icons.person_outline,
               color: _azulPrimario,
               size: 24,
             ),
-=======
-            child: const Icon(Icons.person_outline,
-                color: _azulPrimario, size: 24),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -840,7 +753,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 Text(
                   socio['nome']!,
                   style: const TextStyle(
-<<<<<<< HEAD
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
@@ -848,24 +760,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 Text(
                   socio['cargo']!,
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
-=======
-                      fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  socio['cargo']!,
-                  style:
-                      const TextStyle(fontSize: 11, color: Colors.grey),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                 ),
                 const SizedBox(height: 4),
                 Text(
                   socio['descricao']!,
-<<<<<<< HEAD
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
-=======
-                  style:
-                      const TextStyle(fontSize: 11, color: Colors.grey),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                 ),
               ],
             ),
@@ -919,13 +818,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             return Padding(
               padding: EdgeInsets.only(bottom: i < _videos.length - 1 ? 14 : 0),
               child: _buildVideoItem(
-<<<<<<< HEAD
                 _videos[i]['titulo']!,
                 _videos[i]['descricao']!,
               ),
-=======
-                  _videos[i]['titulo']!, _videos[i]['descricao']!),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             );
           }),
         ],
@@ -943,16 +838,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             color: const Color(0xFFD4D4D4),
             borderRadius: BorderRadius.circular(12),
           ),
-<<<<<<< HEAD
           child: const Icon(
             Icons.play_circle_outline,
             color: Colors.white,
             size: 38,
           ),
-=======
-          child: const Icon(Icons.play_circle_outline,
-              color: Colors.white, size: 38),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         ),
         const SizedBox(width: 14),
         Column(
@@ -960,12 +850,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           children: [
             Text(
               titulo,
-<<<<<<< HEAD
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-=======
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.bold),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
             const SizedBox(height: 4),
             Text(
@@ -1025,16 +910,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             color: const Color(0xFFEBEDF8),
             borderRadius: BorderRadius.circular(10),
           ),
-<<<<<<< HEAD
           child: const Icon(
             Icons.insert_drive_file_outlined,
             color: _azulPrimario,
             size: 22,
           ),
-=======
-          child: const Icon(Icons.insert_drive_file_outlined,
-              color: _azulPrimario, size: 22),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         ),
         const SizedBox(width: 14),
         Text(
@@ -1071,7 +951,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           const SizedBox(height: 16),
           ...List.generate(_faqItems.length, (i) {
             return Padding(
-<<<<<<< HEAD
               padding: EdgeInsets.only(
                 bottom: i < _faqItems.length - 1 ? 10 : 0,
               ),
@@ -1080,11 +959,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 _faqItems[i]['pergunta']!,
                 _faqItems[i]['resposta']!,
               ),
-=======
-              padding: EdgeInsets.only(bottom: i < _faqItems.length - 1 ? 10 : 0),
-              child: _buildPerguntaItem(
-                  i, _faqItems[i]['pergunta']!, _faqItems[i]['resposta']!),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             );
           }),
           const SizedBox(height: 16),
@@ -1122,16 +996,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 color: const Color(0xFFEDE7F6),
                 borderRadius: BorderRadius.circular(18),
               ),
-<<<<<<< HEAD
               child: const Icon(
                 Icons.person_outline,
                 color: _azulPrimario,
                 size: 20,
               ),
-=======
-              child: const Icon(Icons.person_outline,
-                  color: _azulPrimario, size: 20),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1141,27 +1010,19 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                   Text(
                     pergunta,
                     style: const TextStyle(
-<<<<<<< HEAD
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
-=======
-                        fontSize: 13, fontWeight: FontWeight.w600),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                   ),
                   if (expandido) ...[
                     const SizedBox(height: 6),
                     Text(
                       resposta,
                       style: const TextStyle(
-<<<<<<< HEAD
                         fontSize: 12,
                         color: Colors.grey,
                         height: 1.4,
                       ),
-=======
-                          fontSize: 12, color: Colors.grey, height: 1.4),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                     ),
                   ],
                 ],
@@ -1171,16 +1032,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             AnimatedRotation(
               turns: expandido ? 0.5 : 0,
               duration: const Duration(milliseconds: 200),
-<<<<<<< HEAD
               child: const Icon(
                 Icons.keyboard_arrow_down,
                 color: Colors.grey,
                 size: 22,
               ),
-=======
-              child: const Icon(Icons.keyboard_arrow_down,
-                  color: Colors.grey, size: 22),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
           ],
         ),
@@ -1211,12 +1067,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           const Text(
             'Como investidor, você pode enviar perguntas privadas diretamente a startup '
             'para obter informações estratégicas e exclusivas.',
-<<<<<<< HEAD
             style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
-=======
-            style:
-                TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -1227,17 +1078,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 backgroundColor: const Color(0xFF2C3680),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-<<<<<<< HEAD
-                  borderRadius: BorderRadius.circular(12),
-                ),
-=======
                     borderRadius: BorderRadius.circular(12)),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text(
-                'Acessar área do investidor',
-                style: TextStyle(color: Colors.white, fontSize: 13),
               ),
             ),
           ),
@@ -1268,12 +1111,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           TextField(
             decoration: InputDecoration(
               hintText: 'Digite sua pergunta...',
-<<<<<<< HEAD
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-=======
               hintStyle:
                   const TextStyle(color: Colors.grey, fontSize: 13),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
               filled: true,
               fillColor: const Color(0xFFF8F9FE),
               border: OutlineInputBorder(
@@ -1281,13 +1120,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(
-<<<<<<< HEAD
                 horizontal: 16,
                 vertical: 14,
               ),
-=======
-                  horizontal: 16, vertical: 14),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
           ),
         ],
@@ -1323,19 +1158,12 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     ),
                   ),
                   GestureDetector(
-<<<<<<< HEAD
                     onTap: () => setState(() => _investidorChatAberto = false),
                     child: const Icon(
                       Icons.arrow_back_ios,
                       color: Colors.grey,
                       size: 16,
                     ),
-=======
-                    onTap: () =>
-                        setState(() => _investidorChatAberto = false),
-                    child: const Icon(Icons.arrow_back_ios,
-                        color: Colors.grey, size: 16),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                   ),
                 ],
               ),
@@ -1344,14 +1172,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 'Acompanhe este canal para receber atualizações exclusivas assim que '
                 'sua solicitação for respondida',
                 style: TextStyle(
-<<<<<<< HEAD
                   fontSize: 11,
                   color: Colors.black54,
                   height: 1.5,
                 ),
-=======
-                    fontSize: 11, color: Colors.black54, height: 1.5),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
               ),
             ],
           ),
@@ -1360,12 +1184,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
             itemCount: _mensagensPrivadas.length,
-<<<<<<< HEAD
             itemBuilder: (_, i) => _buildMensagemBubble(_mensagensPrivadas[i]),
-=======
-            itemBuilder: (_, i) =>
-                _buildMensagemBubble(_mensagensPrivadas[i]),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
           ),
         ),
         _buildChatInput(),
@@ -1378,14 +1197,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-<<<<<<< HEAD
         mainAxisAlignment: ehInvestidor
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
-=======
-        mainAxisAlignment:
-            ehInvestidor ? MainAxisAlignment.end : MainAxisAlignment.start,
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!ehInvestidor) ...[
@@ -1396,27 +1210,17 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 color: Color(0xFFEDE7F6),
                 shape: BoxShape.circle,
               ),
-<<<<<<< HEAD
               child: const Icon(
                 Icons.person_outline,
                 color: _azulPrimario,
                 size: 18,
               ),
-=======
-              child: const Icon(Icons.person_outline,
-                  color: _azulPrimario, size: 18),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-<<<<<<< HEAD
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-=======
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 10),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
               decoration: BoxDecoration(
                 color: ehInvestidor ? _roxoChat : Colors.white,
                 borderRadius: BorderRadius.only(
@@ -1430,13 +1234,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 msg['texto'] as String,
                 style: TextStyle(
                   fontSize: 12,
-<<<<<<< HEAD
                   color: ehInvestidor ? Colors.white : const Color(0xFF1A1A2E),
-=======
-                  color: ehInvestidor
-                      ? Colors.white
-                      : const Color(0xFF1A1A2E),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                   height: 1.4,
                 ),
               ),
@@ -1451,16 +1249,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 color: Color(0xFFEDE7F6),
                 shape: BoxShape.circle,
               ),
-<<<<<<< HEAD
               child: const Icon(
                 Icons.person_outline,
                 color: _azulPrimario,
                 size: 18,
               ),
-=======
-              child: const Icon(Icons.person_outline,
-                  color: _azulPrimario, size: 18),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ),
           ],
         ],
@@ -1515,12 +1308,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     final texto = _controllerPrivado.text.trim();
     if (texto.isEmpty) return;
     setState(() {
-<<<<<<< HEAD
       _mensagensPrivadas.add({'texto': texto, 'ehInvestidor': true});
-=======
-      _mensagensPrivadas
-          .add({'texto': texto, 'ehInvestidor': true});
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
       _controllerPrivado.clear();
     });
   }
@@ -1542,15 +1330,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.home_outlined, color: _azulPrimario),
-<<<<<<< HEAD
               Text(
                 'Home',
                 style: TextStyle(fontSize: 10, color: _azulPrimario),
               ),
-=======
-              Text('Home',
-                  style: TextStyle(fontSize: 10, color: _azulPrimario)),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
             ],
           ),
           Column(

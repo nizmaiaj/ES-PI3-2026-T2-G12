@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import 'tela_cadastro.dart';
-<<<<<<< HEAD
-import 'tela_esqueciSenha.dart';
-=======
 import 'tela_esqueci_senha.dart';
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
 import 'tela_home.dart';
 
 class TelaLogin extends StatefulWidget {
@@ -35,24 +31,6 @@ class _TelaLoginState extends State<TelaLogin> {
   Future<void> _fazerLogin() async {
     setState(() => _erroLogin = null);
 
-<<<<<<< HEAD
-      // Aqui é onde você faria a validação real (ex: Firebase ou API)
-      if (email == 'teste@puc.com' && senha == '123456') {
-        _showMesage('Login eralizado com sucesso!', Colors.green);
-
-        //Navegar para a tela home, passando o nome
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const TelaHome(
-              nomeDigitado: "Usuario Teste",
-            ), //moke: tenho que trocar quando integrar o banco
-          ),
-        );
-      } else {
-        _showMesage('E-mail os senha Incorretos', Colors.red);
-      }
-=======
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _carregando = true);
@@ -74,7 +52,6 @@ class _TelaLoginState extends State<TelaLogin> {
       setState(() => _erroLogin = error.message);
     } finally {
       if (mounted) setState(() => _carregando = false);
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
     }
   }
 
@@ -108,16 +85,11 @@ class _TelaLoginState extends State<TelaLogin> {
                   child: Container(
                     padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(
-<<<<<<< HEAD
                       color: Colors.white.withValues(alpha: 0.9),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(45),
                         bottom: Radius.circular(45),
                       ),
-=======
-                      color: const Color(0xFFECEDF5),
-                      borderRadius: BorderRadius.circular(24),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                     ),
                     child: Form(
                       key: _formKey,

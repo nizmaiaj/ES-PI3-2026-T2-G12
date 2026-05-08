@@ -19,12 +19,10 @@ class TelaHome extends StatefulWidget {
 }
 
 class _TelaHomeState extends State<TelaHome> {
-<<<<<<< HEAD
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Controle de visibilidade do saldo
   bool _saldoVisivel = true;
-=======
   bool _patrimonioVisivel = false;
   int _selectedIndex = 0;
 
@@ -40,120 +38,10 @@ class _TelaHomeState extends State<TelaHome> {
   ];
 
   static const _roxo = Color(0xFF4C3BCF);
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-<<<<<<< HEAD
-      backgroundColor: const Color(0xFFF8F9FE),
-      key: _scaffoldKey,
-
-      // Aba lateral (Drawer)
-      endDrawer: NavigationDrawer(
-        children: [
-          const DrawerHeader(
-            child: Text(
-              "Minha Conta",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              "Sair da Conta",
-              style: TextStyle(color: Colors.red),
-            ),
-            onTap: () => Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const TelaLogin()),
-              (route) => false,
-            ),
-          ),
-        ],
-      ),
-
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Azul
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 50, 20, 30),
-              decoration: const BoxDecoration(
-                color: Color(0xFF3F51B5),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.account_circle,
-                              color: Colors.white,
-                            ),
-                            iconSize: 40,
-                            onPressed: () =>
-                                _scaffoldKey.currentState?.openEndDrawer(),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            "Olá, ${widget.nomeDigitado}",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Badge(
-                        label: const Text("1"),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
-                          ),
-                          onPressed: () {},
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Cartão de Patrimônio
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF5C6BC0), Color(0xFF3949AB)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-=======
       backgroundColor: const Color(0xFFF5F5FA),
       body: SafeArea(
         child: Column(
@@ -289,12 +177,10 @@ class _TelaHomeState extends State<TelaHome> {
                 decoration: BoxDecoration(
                   color: Colors.black26,
                   borderRadius: BorderRadius.circular(10),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-<<<<<<< HEAD
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -408,8 +294,7 @@ class _TelaHomeState extends State<TelaHome> {
             const SizedBox(height: 120), // Espaço para não cobrir com o menu
           ],
         ),
-      ),
-
+      )
       // MENU INFERIOR (Exatamente como você enviou, com correções de estilo)
       bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
@@ -490,7 +375,6 @@ class _TelaHomeState extends State<TelaHome> {
             ),
           ),
           const Icon(Icons.chevron_right, color: Color(0xFF3F51B5)),
-=======
                     const Text(
                       'Valor total investido',
                       style: TextStyle(color: Colors.white60, fontSize: 11),
@@ -526,13 +410,10 @@ class _TelaHomeState extends State<TelaHome> {
               ),
             ],
           ),
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
         ],
       ),
     );
   }
-<<<<<<< HEAD
-=======
 
   Widget _buildTokenItem(Map<String, String> token) {
     return Container(
@@ -652,5 +533,4 @@ class _TelaHomeState extends State<TelaHome> {
       ),
     );
   }
->>>>>>> 57aac70f4894110f1905e223dde2a6ef482cf30f
 }
