@@ -116,13 +116,10 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
     setState(() => _carregando = true);
 
-    final nome = _nomeController.text.trim();
-    final email = _emailController.text.trim();
-
     try {
       await AuthService().register(
-        nomeCompleto: nome,
-        email: email,
+        nomeCompleto: _nomeController.text.trim(),
+        email: _emailController.text.trim(),
         cpf: _somenteDigitos(_cpfController.text),
         telefone: _somenteDigitos(_telefoneController.text),
         password: _senhaController.text,
@@ -132,7 +129,9 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => TelaHome(nomeDigitado: nome)),
+        MaterialPageRoute(
+          builder: (_) => TelaHome(nomeDigitado: _nomeController.text.trim()),
+        ),
         (_) => false,
       );
     } on AuthException catch (error) {
