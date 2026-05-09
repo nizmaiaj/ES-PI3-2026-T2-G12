@@ -45,7 +45,9 @@ class _TelaLoginState extends State<TelaLogin> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const TelaHome()),
+        MaterialPageRoute(
+          builder: (_) => TelaHome(nomeDigitado: _emailController.text.trim()),
+        ),
       );
     } on AuthException catch (error) {
       if (!mounted) return;

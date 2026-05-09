@@ -1,9 +1,10 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 class TelaHome extends StatefulWidget {
-  const TelaHome({super.key});
+  final String nomeDigitado;
+
+  const TelaHome({super.key, required this.nomeDigitado});
 
   @override
   State<TelaHome> createState() => _TelaHomeState();
@@ -11,24 +12,12 @@ class TelaHome extends StatefulWidget {
 
 class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // Variável para controlar a troca de telas
 
   final String _patrimonioTotal = 'R\$ 58.430,00';
   final String _valorInvestido = 'R\$ 14.000,00';
 
   final List<Map<String, String>> _tokens = [
-    {
-      'nome': 'Nome',
-      'qtd': 'Qtd de tokens',
-      'valor': 'R\$ 480,00',
-      'variacao': '+6%',
-    },
-    {
-      'nome': 'Nome',
-      'qtd': 'Qtd de tokens',
-      'valor': 'R\$ 480,00',
-      'variacao': '+6%',
-    },
     {
       'nome': 'Nome',
       'qtd': 'Qtd de tokens',
@@ -58,29 +47,15 @@ class _TelaHomeState extends State<TelaHome> {
       body: SafeArea(
         child: Column(
           children: [
+            // O conteúdo troca aqui dependendo do clique no menu
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-                    _buildPatrimonioCard(),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Meus Tokens',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ..._tokens.map(_buildTokenItem),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _buildConteudoHome(), // Tela 0
+                  const Center(child: Text("Tela Catálogo")), // Tela 1
+                  const Center(child: Text("Tela Balcão")), // Tela 2
+                ],
               ),
             ),
             _buildBottomNav(),
@@ -89,6 +64,35 @@ class _TelaHomeState extends State<TelaHome> {
       ),
     );
   }
+
+  // Função que isola o conteúdo da sua Home (Header, Card, Lista)
+  Widget _buildConteudoHome() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 20),
+          _buildPatrimonioCard(),
+          const SizedBox(height: 24),
+          const Text(
+            'Meus Tokens',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._tokens.map(_buildTokenItem),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  // --- MÉTODOS DE COMPONENTES ---
 
   Widget _buildHeader() {
     return Row(
@@ -99,9 +103,9 @@ class _TelaHomeState extends State<TelaHome> {
           color: Colors.black87,
         ),
         const SizedBox(width: 8),
-        const Text(
-          'Olá, Fernanda',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Text(
+          'Olá, ${widget.nomeDigitado}', // Usa o nome vindo do login
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const Spacer(),
         Container(
@@ -148,9 +152,8 @@ class _TelaHomeState extends State<TelaHome> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () {
-                  setState(() => _patrimonioVisivel = !_patrimonioVisivel);
-                },
+                onTap: () =>
+                    setState(() => _patrimonioVisivel = !_patrimonioVisivel),
                 child: Icon(
                   _patrimonioVisivel ? Icons.visibility : Icons.visibility_off,
                   color: Colors.white70,
@@ -206,7 +209,6 @@ class _TelaHomeState extends State<TelaHome> {
                       'Valor total investido',
                       style: TextStyle(color: Colors.white60, fontSize: 11),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       _valorInvestido,
                       style: const TextStyle(
@@ -224,13 +226,8 @@ class _TelaHomeState extends State<TelaHome> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: _roxo,
-                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
                   ),
                 ),
                 child: const Text(
@@ -273,7 +270,6 @@ class _TelaHomeState extends State<TelaHome> {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Colors.black87,
                   ),
                 ),
                 Text(
@@ -291,7 +287,6 @@ class _TelaHomeState extends State<TelaHome> {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Colors.black87,
                 ),
               ),
               Text(
@@ -307,60 +302,85 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
+  // --- O SEU MENU INFERIOR COMO VOCÊ PASSOU ---
   Widget _buildBottomNav() {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Home'},
-      {'icon': Icons.search_rounded, 'label': 'Pesquisar'},
-      {'icon': Icons.swap_horiz_rounded, 'label': 'Balcão'},
-    ];
-
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
+      height: 70,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        color: const Color(0xFFEDEDED),
+        borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(items.length, (index) {
-          final isSelected = _selectedIndex == index;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedIndex = index),
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    items[index]['icon'] as IconData,
-                    color: isSelected ? _roxo : Colors.grey,
-                    size: 26,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // HOME
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.home_outlined,
+                  color: _selectedIndex == 0 ? _roxo : Colors.black87,
+                ),
+                Text(
+                  "Home",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _selectedIndex == 0 ? _roxo : Colors.black87,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[index]['label'] as String,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isSelected ? _roxo : Colors.grey,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        }),
+          ),
+          // CATÁLOGO
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 1),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  color: _selectedIndex == 1 ? _roxo : Colors.black87,
+                ),
+                Text(
+                  "Catálogo",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _selectedIndex == 1 ? _roxo : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // BALCÃO
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.swap_horiz,
+                  color: _selectedIndex == 2 ? _roxo : Colors.black87,
+                ),
+                Text(
+                  "Balcão",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _selectedIndex == 2 ? _roxo : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
