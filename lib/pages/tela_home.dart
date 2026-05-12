@@ -98,7 +98,7 @@ class _TelaHomeState extends State<TelaHome> {
                       'Nao foi possivel carregar seus tokens.',
                     )
                   else if (tokens.isEmpty)
-                    _buildMensagemTokens('Você não possue tokens no momento')
+                    _buildMensagemTokens('Você não possui tokens no momento')
                   else
                     ...tokens.map(_buildTokenItem),
                 ],

@@ -105,6 +105,11 @@ class AuthService {
     }
   }
 
+  Future<void> logout() async {
+    await _auth.signOut();
+    AuthSession.clear();
+  }
+
   Future<void> _saveSession(User? user) async {
     if (user == null || user.email == null) {
       throw AuthException('Resposta de autenticacao invalida');

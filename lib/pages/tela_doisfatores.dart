@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_session.dart';
+import '../services/auth_service.dart';
+import 'tela_inicial.dart';
 
 class TelaDoisFatores extends StatefulWidget {
   final String nomeFallback;
@@ -58,6 +60,18 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
     }
   }
 
+  Future<void> _sairDaConta() async {
+    await AuthService().logout();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const TelaInicial()),
+      (route) => false,
+    );
+  }
+
   String _primeiroNome(String value) {
     final nome = value.trim();
     if (nome.isEmpty) return 'Usuario';
@@ -101,10 +115,7 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFFD8D1E0),
-                    width: 5,
-                  ),
+                  border: Border.all(color: const Color(0xFFD8D1E0), width: 5),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(19),
@@ -251,6 +262,23 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
                     style: const TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 ],
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('Sair da conta'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _roxo,
+                      side: const BorderSide(color: _roxo),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: _sairDaConta,
+                  ),
+                ),
               ],
             ),
           ),
@@ -362,4 +390,3 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
     );
   }
 }
-
