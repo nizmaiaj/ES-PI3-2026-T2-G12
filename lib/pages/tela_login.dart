@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'tela_cadastro.dart';
 import 'tela_esqueci_senha.dart';
 import 'tela_home.dart';
+import 'tela_inicial.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -78,7 +79,12 @@ class _TelaLoginState extends State<TelaLogin> {
                     Icons.arrow_back_ios,
                     color: Color(0xFF4C3BCF),
                   ),
-                  onPressed: () => Navigator.maybePop(context),
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TelaInicial()),
+                    );
+                  },
                 ),
               ),
               Expanded(

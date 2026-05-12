@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'tela_doisfatores.dart';
+
 class TelaHome extends StatefulWidget {
   final String nomeDigitado;
 
@@ -97,10 +99,21 @@ class _TelaHomeState extends State<TelaHome> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(
-          Icons.account_circle_outlined,
-          size: 38,
-          color: Colors.black87,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    TelaDoisFatores(nomeFallback: widget.nomeDigitado),
+              ),
+            );
+          },
+          child: const Icon(
+            Icons.account_circle_outlined,
+            size: 38,
+            color: Colors.black87,
+          ),
         ),
         const SizedBox(width: 8),
         Text(
