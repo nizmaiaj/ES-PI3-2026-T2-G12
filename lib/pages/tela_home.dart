@@ -222,7 +222,8 @@ class _TelaHomeState extends State<TelaHome> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: _roxo,
