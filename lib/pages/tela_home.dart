@@ -1,6 +1,9 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/auth_session.dart';
 import 'tela_doisfatores.dart';
 
 class TelaHome extends StatefulWidget {
@@ -16,31 +19,15 @@ class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
   int _selectedIndex = 0; // Variável para controlar a troca de telas
 
-  final String _patrimonioTotal = 'R\$ 58.430,00';
-  final String _valorInvestido = 'R\$ 14.000,00';
-
-  final List<Map<String, String>> _tokens = [
-    {
-      'nome': 'Nome',
-      'qtd': 'Qtd de tokens',
-      'valor': 'R\$ 480,00',
-      'variacao': '+6%',
-    },
-    {
-      'nome': 'Nome',
-      'qtd': 'Qtd de tokens',
-      'valor': 'R\$ 480,00',
-      'variacao': '+6%',
-    },
-    {
-      'nome': 'Nome',
-      'qtd': 'Qtd de tokens',
-      'valor': 'R\$ 480,00',
-      'variacao': '+6%',
-    },
-  ];
+  late final Future<List<_TokenResumo>> _tokensFuture;
 
   static const _roxo = Color(0xFF4C3BCF);
+
+  @override
+  void initState() {
+    super.initState();
+    _tokensFuture = _buscarTokensDoUsuario();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,18 +63,48 @@ class _TelaHomeState extends State<TelaHome> {
         children: [
           _buildHeader(),
           const SizedBox(height: 20),
-          _buildPatrimonioCard(),
-          const SizedBox(height: 24),
-          const Text(
-            'Meus Tokens',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+          FutureBuilder<List<_TokenResumo>>(
+            future: _tokensFuture,
+            builder: (context, snapshot) {
+              final tokens = snapshot.data ?? const <_TokenResumo>[];
+              final valorInvestido = tokens.fold<double>(
+                0,
+                (total, token) => total + token.valorTotal,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPatrimonioCard(valorInvestido),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Meus Tokens',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (snapshot.hasError)
+                    _buildMensagemTokens(
+                      'Nao foi possivel carregar seus tokens.',
+                    )
+                  else if (tokens.isEmpty)
+                    _buildMensagemTokens('Você não possue tokens no momento')
+                  else
+                    ...tokens.map(_buildTokenItem),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          ..._tokens.map(_buildTokenItem),
           const SizedBox(height: 8),
         ],
       ),
@@ -142,7 +159,9 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
-  Widget _buildPatrimonioCard() {
+  Widget _buildPatrimonioCard(double valorInvestido) {
+    final valorFormatado = _formatarMoeda(valorInvestido);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -183,7 +202,7 @@ class _TelaHomeState extends State<TelaHome> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    _patrimonioTotal,
+                    valorFormatado,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -223,7 +242,7 @@ class _TelaHomeState extends State<TelaHome> {
                       style: TextStyle(color: Colors.white60, fontSize: 11),
                     ),
                     Text(
-                      _valorInvestido,
+                      valorFormatado,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -235,8 +254,7 @@ class _TelaHomeState extends State<TelaHome> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {
-                },
+                onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: _roxo,
@@ -256,7 +274,23 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
-  Widget _buildTokenItem(Map<String, String> token) {
+  Widget _buildMensagemTokens(String mensagem) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEEEF5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        mensagem,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+      ),
+    );
+  }
+
+  Widget _buildTokenItem(_TokenResumo token) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -280,14 +314,14 @@ class _TelaHomeState extends State<TelaHome> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  token['nome']!,
+                  token.nome,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
                 Text(
-                  token['qtd']!,
+                  '${_formatarQuantidade(token.quantidade)} tokens',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                 ),
               ],
@@ -297,14 +331,14 @@ class _TelaHomeState extends State<TelaHome> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                token['valor']!,
+                _formatarMoeda(token.valorTotal),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
               Text(
-                token['variacao']!,
+                'PM ${_formatarMoeda(token.precoMedioCompra)}',
                 style: const TextStyle(color: Colors.green, fontSize: 12),
               ),
             ],
@@ -314,6 +348,97 @@ class _TelaHomeState extends State<TelaHome> {
         ],
       ),
     );
+  }
+
+  Future<List<_TokenResumo>> _buscarTokensDoUsuario() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+
+    if (uid == null) {
+      return const [];
+    }
+
+    final firestore = FirebaseFirestore.instance;
+    final holdingsSnapshot = await firestore
+        .collection('tokenHoldings')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    final tokens = await Future.wait(
+      holdingsSnapshot.docs.map((doc) async {
+        final data = doc.data();
+        final startupId = (data['startupId'] as String?) ?? '';
+        final quantidade = _lerNumero(data['quantidade']);
+        final precoMedioCompra = _lerNumero(data['precoMedioCompra']);
+        final nome = await _buscarNomeStartup(firestore, startupId);
+
+        return _TokenResumo(
+          nome: nome,
+          quantidade: quantidade,
+          precoMedioCompra: precoMedioCompra,
+        );
+      }),
+    );
+
+    final tokensComQuantidade = tokens
+        .where((token) => token.quantidade > 0)
+        .toList();
+    tokensComQuantidade.sort((a, b) => a.nome.compareTo(b.nome));
+
+    return tokensComQuantidade;
+  }
+
+  Future<String> _buscarNomeStartup(
+    FirebaseFirestore firestore,
+    String startupId,
+  ) async {
+    if (startupId.isEmpty) return 'Token sem startup';
+
+    final startupDoc = await firestore
+        .collection('startups')
+        .doc(startupId)
+        .get();
+    final data = startupDoc.data();
+    final nome = data?['nome'] ?? data?['nomeStartup'] ?? data?['razaoSocial'];
+
+    if (nome is String && nome.trim().isNotEmpty) {
+      return nome.trim();
+    }
+
+    return startupId;
+  }
+
+  double _lerNumero(dynamic valor) {
+    if (valor is int) return valor.toDouble();
+    if (valor is double) return valor;
+    if (valor is num) return valor.toDouble();
+    return 0;
+  }
+
+  String _formatarMoeda(double valor) {
+    final negativo = valor < 0;
+    final absoluto = valor.abs();
+    final partes = absoluto.toStringAsFixed(2).split('.');
+    final reais = partes.first;
+    final centavos = partes.last;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < reais.length; i++) {
+      final posicaoRestante = reais.length - i;
+      buffer.write(reais[i]);
+      if (posicaoRestante > 1 && posicaoRestante % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+
+    return '${negativo ? '-' : ''}R\$ ${buffer.toString()},$centavos';
+  }
+
+  String _formatarQuantidade(double quantidade) {
+    if (quantidade % 1 == 0) {
+      return quantidade.toInt().toString();
+    }
+
+    return quantidade.toStringAsFixed(2).replaceAll('.', ',');
   }
 
   // --- O SEU MENU INFERIOR COMO VOCÊ PASSOU ---
@@ -398,4 +523,18 @@ class _TelaHomeState extends State<TelaHome> {
       ),
     );
   }
+}
+
+class _TokenResumo {
+  const _TokenResumo({
+    required this.nome,
+    required this.quantidade,
+    required this.precoMedioCompra,
+  });
+
+  final String nome;
+  final double quantidade;
+  final double precoMedioCompra;
+
+  double get valorTotal => quantidade * precoMedioCompra;
 }
