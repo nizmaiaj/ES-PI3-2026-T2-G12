@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'tela_visao_geral.dart';
 
 class TelaCatalogo extends StatefulWidget {
-  const TelaCatalogo({super.key});
+  final bool mostrarMenuInferior;
+  final VoidCallback? onVoltar;
+
+  const TelaCatalogo({
+    super.key,
+    this.mostrarMenuInferior = true,
+    this.onVoltar,
+  });
 
   @override
   State<TelaCatalogo> createState() => _TelaCatalogoState();
@@ -86,7 +93,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                   padding: EdgeInsets.zero,
                   alignment: Alignment.centerLeft,
                   icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: widget.onVoltar ?? () => Navigator.pop(context),
                 ),
                 const SizedBox(height: 10),
                 const Text(
@@ -294,43 +301,48 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       ),
 
       // MENU INFERIOR
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-        height: 70,
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDEDED),
-          borderRadius: BorderRadius.circular(35),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.home_outlined),
-                Text("Home", style: TextStyle(fontSize: 10)),
-              ],
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.search, color: Color(0xFF3F51B5)),
-                Text(
-                  "Catálogo",
-                  style: TextStyle(fontSize: 10, color: Color(0xFF3F51B5)),
-                ),
-              ],
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.swap_horiz),
-                Text("Balcão", style: TextStyle(fontSize: 10)),
-              ],
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: widget.mostrarMenuInferior
+          ? Container(
+              margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
+              height: 70,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEDED),
+                borderRadius: BorderRadius.circular(35),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.home_outlined),
+                      Text("Home", style: TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.search, color: Color(0xFF3F51B5)),
+                      Text(
+                        "Catálogo",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF3F51B5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.swap_horiz),
+                      Text("Balcão", style: TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 

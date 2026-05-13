@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import 'tela_catalogo.dart';
 import 'tela_usuario.dart';
 
 class TelaHome extends StatefulWidget {
@@ -44,7 +45,10 @@ class _TelaHomeState extends State<TelaHome> {
                 index: _selectedIndex,
                 children: [
                   _buildConteudoHome(), // Tela 0
-                  const Center(child: Text("Tela Catálogo")), // Tela 1
+                  TelaCatalogo(
+                    mostrarMenuInferior: false,
+                    onVoltar: () => setState(() => _selectedIndex = 0),
+                  ), // Tela 1
                   const Center(child: Text("Tela Balcão")), // Tela 2
                 ],
               ),
