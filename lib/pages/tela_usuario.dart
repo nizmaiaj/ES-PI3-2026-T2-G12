@@ -72,6 +72,35 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     );
   }
 
+  Future<void> _confirmarSaida() async {
+    final deveSair = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Sair da conta?'),
+          content: const Text(
+            'Ao sair, voce será desconectado e precisará fazer login novamente para acessar sua conta.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(backgroundColor: _roxo),
+              child: const Text('Sair'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (deveSair == true) {
+      await _sairDaConta();
+    }
+  }
+
   String _formatarCpf(String value) {
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length != 11) return value.isEmpty ? '000.000.000-00' : value;
@@ -269,7 +298,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: _sairDaConta,
+                    onPressed: _confirmarSaida,
                   ),
                 ),
               ],
