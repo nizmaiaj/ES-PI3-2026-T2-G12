@@ -20,7 +20,7 @@ class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
   int _selectedIndex = 0; // Variável para controlar a troca de telas
 
-  late final Future<List<_TokenResumo>> _tokensFuture;
+  late Future<List<_TokenResumo>> _tokensFuture;
   late final Future<String> _nomeUsuarioFuture;
 
   static const _roxo = Color(0xFF4C3BCF);
@@ -30,6 +30,19 @@ class _TelaHomeState extends State<TelaHome> {
     super.initState();
     _tokensFuture = _buscarTokensDoUsuario();
     _nomeUsuarioFuture = _buscarNomeUsuario();
+  }
+
+  void _recarregarTokens() {
+    setState(() {
+      _tokensFuture = _buscarTokensDoUsuario();
+    });
+  }
+
+  void _mostrarHome() {
+    setState(() {
+      _selectedIndex = 0;
+      _tokensFuture = _buscarTokensDoUsuario();
+    });
   }
 
   @override
@@ -47,7 +60,7 @@ class _TelaHomeState extends State<TelaHome> {
                   _buildConteudoHome(), // Tela 0
                   TelaCatalogo(
                     mostrarMenuInferior: false,
-                    onVoltar: () => setState(() => _selectedIndex = 0),
+                    onVoltar: _mostrarHome,
                   ), // Tela 1
                   const Center(child: Text("Tela Balcão")), // Tela 2
                 ],
@@ -128,13 +141,16 @@ class _TelaHomeState extends State<TelaHome> {
         return Row(
           children: [
             GestureDetector(
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => TelaUsuario(nomeFallback: nomeUsuario),
                   ),
                 );
+                if (mounted) {
+                  _recarregarTokens();
+                }
               },
               child: const Icon(
                 Icons.account_circle_outlined,
@@ -524,7 +540,7 @@ class _TelaHomeState extends State<TelaHome> {
         children: [
           // HOME
           GestureDetector(
-            onTap: () => setState(() => _selectedIndex = 0),
+            onTap: _mostrarHome,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
