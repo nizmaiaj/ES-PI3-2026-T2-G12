@@ -31,11 +31,11 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     return FirebaseFirestore.instance.collection('users').doc(uid);
   }
 
-  // Atualiza no Firebase se a verificacao em duas etapas esta ativada.
+  // Atualiza no Firebase se a verificação em duas etapas está ativada.
   Future<void> _alterarMfa(bool habilitado) async {
     final ref = _userRef;
     if (ref == null) {
-      setState(() => _erro = 'Usuario nao autenticado.');
+      setState(() => _erro = 'Usuário não autenticado.');
       return;
     }
 
@@ -51,10 +51,10 @@ class _TelaUsuarioState extends State<TelaUsuario> {
       }, SetOptions(merge: true));
     } on FirebaseException catch (error) {
       if (!mounted) return;
-      setState(() => _erro = error.message ?? 'Nao foi possivel salvar.');
+      setState(() => _erro = error.message ?? 'Não foi possível salvar.');
     } catch (_) {
       if (!mounted) return;
-      setState(() => _erro = 'Nao foi possivel salvar.');
+      setState(() => _erro = 'Não foi possível salvar.');
     } finally {
       if (mounted) setState(() => _salvandoMfa = false);
     }
@@ -79,7 +79,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
         return AlertDialog(
           title: const Text('Sair da conta?'),
           content: const Text(
-            'Ao sair, voce será desconectado e precisará fazer login novamente para acessar sua conta.',
+            'Ao sair, você será desconectado e precisará fazer login novamente para acessar sua conta.',
           ),
           actions: [
             TextButton(
@@ -142,7 +142,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(19),
                   child: ref == null
-                      ? _buildEstadoMensagem('Usuario nao autenticado.')
+                      ? _buildEstadoMensagem('Usuário não autenticado.')
                       // Escuta os dados do usuario em tempo real no Firestore.
                       : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                           stream: ref.snapshots(),
@@ -157,7 +157,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
 
                             if (snapshot.hasError) {
                               return _buildEstadoMensagem(
-                                'Nao foi possivel carregar seus dados.',
+                                'Não foi possível carregar seus dados.',
                               );
                             }
 
@@ -213,7 +213,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     final telefone = (dados['telefone'] as String?) ?? '';
     final mfaHabilitado = dados['mfaHabilitado'] == true;
 
-    // Conteudo rolavel com dados pessoais e configuracao do 2FA.
+    // Conteúdo rolável com dados pessoais e configuração do 2FA.
     return Column(
       children: [
         _buildCabecalho(nomeFallback),
@@ -240,12 +240,12 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Adicione uma camada extra de seguranca a sua conta.',
+                  'Adicione uma camada extra de segurança à sua conta.',
                   style: TextStyle(fontSize: 12, color: Colors.black87),
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Ao ativar a verificacao em duas etapas (2FA), sera necessario confirmar sua identidade durante o login utilizando um codigo de verificacao.',
+                  'Ao ativar a verificação em duas etapas (2FA), será necessário confirmar sua identidade durante o login utilizando um código de verificação.',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.black87,
@@ -257,7 +257,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Ativar Verificacao em Duas Etapas',
+                        'Ativar Verificação em Duas Etapas',
                         style: TextStyle(fontSize: 12, color: Colors.black),
                       ),
                     ),

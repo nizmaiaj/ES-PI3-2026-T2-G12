@@ -6,7 +6,7 @@ class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
-        'Firebase ainda nao foi configurado para Web. Rode no Android ou adicione as opcoes Web do Firebase.',
+        'Firebase ainda não foi configurado para Web. Rode no Android ou adicione as opções Web do Firebase.',
       );
     }
 
@@ -19,7 +19,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.linux:
       case TargetPlatform.fuchsia:
         throw UnsupportedError(
-          'Firebase ainda nao foi configurado para esta plataforma. Rode no Android ou adicione o arquivo de configuracao correspondente.',
+          'Firebase ainda não foi configurado para esta plataforma. Rode no Android ou adicione o arquivo de configuração correspondente.',
         );
     }
   }

@@ -101,7 +101,7 @@ class _TelaHomeState extends State<TelaHome> {
                     )
                   else if (snapshot.hasError)
                     _buildMensagemTokens(
-                      'Nao foi possivel carregar seus tokens.',
+                      'Não foi possível carregar seus tokens.',
                     )
                   else if (tokens.isEmpty)
                     _buildMensagemTokens('Você não possui tokens no momento')
@@ -421,7 +421,7 @@ class _TelaHomeState extends State<TelaHome> {
           return nomeCompleto.trim();
         }
       } on FirebaseException {
-        // Usa os fallbacks locais abaixo se o Firestore nao responder.
+        // Usa os fallbacks locais abaixo se o Firestore não responder.
       }
     }
 
@@ -440,13 +440,13 @@ class _TelaHomeState extends State<TelaHome> {
       return _primeiroNome(nomeDigitado);
     }
 
-    return 'Usuario';
+    return 'Usuário';
   }
 
   String _primeiroNome(String value) {
     final nome = value.trim();
-    if (nome.isEmpty) return 'Usuario';
-    if (nome.contains('@')) return 'Usuario';
+    if (nome.isEmpty) return 'Usuário';
+    if (nome.contains('@')) return 'Usuário';
     return nome.split(RegExp(r'\s+')).first;
   }
 
