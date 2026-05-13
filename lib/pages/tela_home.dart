@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
-import 'tela_doisfatores.dart';
+import 'tela_usuario.dart';
 
 class TelaHome extends StatefulWidget {
   final String nomeDigitado;
@@ -128,7 +128,7 @@ class _TelaHomeState extends State<TelaHome> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => TelaDoisFatores(nomeFallback: nomeUsuario),
+                    builder: (_) => TelaUsuario(nomeFallback: nomeUsuario),
                   ),
                 );
               },
