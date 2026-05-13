@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
-import 'tela_doisfatores.dart';
+import 'tela_catalogo.dart';
+import 'tela_usuario.dart';
 
 class TelaHome extends StatefulWidget {
   final String nomeDigitado;
@@ -20,6 +21,7 @@ class _TelaHomeState extends State<TelaHome> {
   int _selectedIndex = 0; // Variável para controlar a troca de telas
 
   late final Future<List<_TokenResumo>> _tokensFuture;
+  late final Future<String> _nomeUsuarioFuture;
 
   static const _roxo = Color(0xFF4C3BCF);
 
@@ -27,6 +29,7 @@ class _TelaHomeState extends State<TelaHome> {
   void initState() {
     super.initState();
     _tokensFuture = _buscarTokensDoUsuario();
+    _nomeUsuarioFuture = _buscarNomeUsuario();
   }
 
   @override
@@ -42,7 +45,10 @@ class _TelaHomeState extends State<TelaHome> {
                 index: _selectedIndex,
                 children: [
                   _buildConteudoHome(), // Tela 0
-                  const Center(child: Text("Tela Catálogo")), // Tela 1
+                  TelaCatalogo(
+                    mostrarMenuInferior: false,
+                    onVoltar: () => setState(() => _selectedIndex = 0),
+                  ), // Tela 1
                   const Center(child: Text("Tela Balcão")), // Tela 2
                 ],
               ),
@@ -114,48 +120,60 @@ class _TelaHomeState extends State<TelaHome> {
   // --- MÉTODOS DE COMPONENTES ---
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    TelaDoisFatores(nomeFallback: widget.nomeDigitado),
+    return FutureBuilder<String>(
+      future: _nomeUsuarioFuture,
+      builder: (context, snapshot) {
+        final nomeUsuario = snapshot.data ?? _nomeFallback();
+
+        return Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TelaUsuario(nomeFallback: nomeUsuario),
+                  ),
+                );
+              },
+              child: const Icon(
+                Icons.account_circle_outlined,
+                size: 38,
+                color: Colors.black87,
               ),
-            );
-          },
-          child: const Icon(
-            Icons.account_circle_outlined,
-            size: 38,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Olá, ${widget.nomeDigitado}', // Usa o nome vindo do login
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const Spacer(),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            icon: const Icon(
-              Icons.notification_add_outlined,
-              color: _roxo,
-              size: 22,
             ),
-            onPressed: () {},
-          ),
-        ),
-      ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Olá, $nomeUsuario',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(
+                  Icons.notification_add_outlined,
+                  color: _roxo,
+                  size: 22,
+                ),
+                onPressed: () {},
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -385,6 +403,51 @@ class _TelaHomeState extends State<TelaHome> {
     tokensComQuantidade.sort((a, b) => a.nome.compareTo(b.nome));
 
     return tokensComQuantidade;
+  }
+
+  Future<String> _buscarNomeUsuario() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid ?? AuthSession.uid;
+
+    if (uid != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        final nomeCompleto = userDoc.data()?['nomeCompleto'];
+
+        if (nomeCompleto is String && nomeCompleto.trim().isNotEmpty) {
+          return nomeCompleto.trim();
+        }
+      } on FirebaseException {
+        // Usa os fallbacks locais abaixo se o Firestore nao responder.
+      }
+    }
+
+    final displayName = user?.displayName;
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      return _primeiroNome(displayName);
+    }
+
+    return _nomeFallback();
+  }
+
+  String _nomeFallback() {
+    final nomeDigitado = widget.nomeDigitado.trim();
+
+    if (nomeDigitado.isNotEmpty && !nomeDigitado.contains('@')) {
+      return _primeiroNome(nomeDigitado);
+    }
+
+    return 'Usuario';
+  }
+
+  String _primeiroNome(String value) {
+    final nome = value.trim();
+    if (nome.isEmpty) return 'Usuario';
+    if (nome.contains('@')) return 'Usuario';
+    return nome.split(RegExp(r'\s+')).first;
   }
 
   Future<String> _buscarNomeStartup(
