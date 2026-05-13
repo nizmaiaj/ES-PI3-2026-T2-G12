@@ -132,11 +132,11 @@ class AuthService {
   String _authErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'email-already-in-use':
-        return 'Este e-mail ja esta cadastrado';
+        return 'Este e-mail já esta cadastrado';
       case 'invalid-email':
-        return 'Formato de e-mail invalido';
+        return 'Formato de e-mail inválido';
       case 'operation-not-allowed':
-        return 'Login por e-mail e senha nao esta habilitado no Firebase';
+        return 'Login por e-mail e senha não está habilitado no Firebase';
       case 'weak-password':
         return 'A senha deve ter pelo menos 6 caracteres';
       case 'user-disabled':
@@ -144,11 +144,11 @@ class AuthService {
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'E-mail ou senha invalidos';
+        return 'E-mail ou senha inválidos';
       case 'network-request-failed':
         return 'Nao foi possivel conectar ao Firebase. Verifique sua internet.';
       default:
-        return error.message ?? 'Nao foi possivel concluir a operacao';
+        return error.message ?? 'Nao foi possível concluir a operação';
     }
   }
 
