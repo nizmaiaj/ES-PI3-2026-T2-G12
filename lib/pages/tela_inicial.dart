@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'tela_login.dart';
 
 class TelaInicial extends StatelessWidget {
@@ -79,4 +78,3 @@ class TelaInicial extends StatelessWidget {
     );
   }
 }
-

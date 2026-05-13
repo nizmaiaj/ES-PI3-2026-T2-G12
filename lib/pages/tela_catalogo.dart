@@ -10,6 +10,7 @@ class TelaCatalogo extends StatefulWidget {
 
 class _TelaCatalogoState extends State<TelaCatalogo> {
   String _filtroAtivo = "Todos";
+  String busca = "";
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +64,17 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
         "status": "Nova",
       },
     ];
+    final startupsFiltradas = startups.where((startup) {
+      final filtroStatus =
+          _filtroAtivo == "Todos" || startup['status'] == _filtroAtivo;
+
+      //verifica se a startup tem o nome pesquisado
+      final filtroBusca = startup['nome']!.toLowerCase().contains(
+        busca.toLowerCase(),
+      );
+      //a startup so é exibida se passar no filtro de status e busca
+      return filtroStatus && filtroBusca;
+    }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -103,6 +115,12 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  //executa sempre que algo for digitado
+                  onChanged: (value) {
+                    setState(() {
+                      busca = value; //salva o texto digitado
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Buscar por startup',
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -152,7 +170,8 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: startups.map((item) {
+              children: startupsFiltradas.map((item) {
+                //percoree cada startup filtrada
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(20),
