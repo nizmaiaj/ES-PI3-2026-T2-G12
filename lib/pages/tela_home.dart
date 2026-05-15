@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import 'tela_adicionar_credito.dart';
 import 'tela_catalogo.dart';
 import 'tela_usuario.dart';
 
@@ -288,7 +289,14 @@ class _TelaHomeState extends State<TelaHome> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TelaAdicionarCredito(),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: _roxo,
@@ -529,10 +537,7 @@ class _TelaHomeState extends State<TelaHome> {
         color: const Color(0xFFEDEDED),
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
       child: Row(
