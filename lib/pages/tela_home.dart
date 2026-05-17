@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import 'balcao_negociacao.dart';
 import 'tela_adicionar_credito.dart';
 import 'tela_catalogo.dart';
 import 'tela_usuario.dart';
@@ -63,7 +64,10 @@ class _TelaHomeState extends State<TelaHome> {
                     mostrarMenuInferior: false,
                     onVoltar: _mostrarHome,
                   ), // Tela 1
-                  const Center(child: Text("Tela Balcão")), // Tela 2
+                  BalcaoNegociacao(
+                    onNavigate: (index) =>
+                        setState(() => _selectedIndex = index),
+                  ), // Tela 2
                 ],
               ),
             ),

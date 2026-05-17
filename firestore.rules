@@ -20,6 +20,31 @@ service cloud.firestore {
       allow read, update, delete: if isOwner(userId);
     }
 
+    match /startups/{startupId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /tokenHoldings/{holdingId} {
+      allow read, write: if signedIn();
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if signedIn();
+    }
+
+    match /transactions/{transactionId} {
+      allow read, write: if signedIn();
+    }
+
+    match /tokenPrices/{priceId} {
+      allow read, write: if signedIn();
+    }
+
+    match /walletCredits/{creditId} {
+      allow read, write: if signedIn();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
