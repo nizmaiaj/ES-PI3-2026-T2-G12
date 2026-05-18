@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+import '../services/auth_session.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 
@@ -18,16 +21,12 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
   bool _ehInvestidor = false;
   bool _verTodosAberto = false;
-  final Set<int> _perguntasExpandidas = {0, 1};
+  final Set<String> _perguntasExpandidas = {};
   bool _investidorChatAberto = false;
+  final TextEditingController _controllerPublico = TextEditingController();
   final TextEditingController _controllerPrivado = TextEditingController();
-  final List<Map<String, dynamic>> _mensagensPrivadas = [
-    {'texto': 'Campo destinado a pergunta do investidor', 'ehInvestidor': true},
-    {
-      'texto': 'Campo destinado a pergunta do societário',
-      'ehInvestidor': false,
-    },
-  ];
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _roxoChat = Color(0xFF5B4FCF);
@@ -60,19 +59,27 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   static const _documentos = ['Plano de negócios', 'Eventos'];
 
-  static const _faqItems = [
-    {
-      'pergunta': 'Qual o mercado alvo da solução?',
-      'resposta': 'Campo destinado a a resposta do societários',
-    },
-    {
-      'pergunta': 'Qual o mercado alvo da solução?',
-      'resposta': 'Campo destinado a a resposta do societários',
-    },
-  ];
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+
+  String? get _startupId {
+    final id = widget.startup['id']?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
+
+  String get _nomeUsuario {
+    final user = FirebaseAuth.instance.currentUser;
+    final nome = user?.displayName?.trim();
+    if (nome != null && nome.isNotEmpty) return nome;
+
+    final email = user?.email?.trim() ?? AuthSession.email?.trim();
+    if (email != null && email.isNotEmpty) return email;
+
+    return 'Usuário';
+  }
 
   @override
   void dispose() {
+    _controllerPublico.dispose();
     _controllerPrivado.dispose();
     super.dispose();
   }
@@ -949,55 +956,95 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   Widget _buildPerguntasConteudo() {
     if (_investidorChatAberto) return _buildInvestidorChat();
+    final startupId = _startupId;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Perguntas e respostas públicas',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Confira dúvidas frequente da comunidade sobre a startup',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          ...List.generate(_faqItems.length, (i) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: i < _faqItems.length - 1 ? 10 : 0,
-              ),
-              child: _buildPerguntaItem(
-                i,
-                _faqItems[i]['pergunta']!,
-                _faqItems[i]['resposta']!,
+    if (startupId == null) {
+      return _buildEstadoPerguntas('Startup sem identificador para perguntas.');
+    }
+
+    return StreamBuilder<bool>(
+      stream: _usuarioTemTokensStream(startupId),
+      initialData: false,
+      builder: (context, investidorSnapshot) {
+        final temTokens = investidorSnapshot.data ?? false;
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _perguntasStream(startupId, isPrivada: false),
+          builder: (context, perguntasSnapshot) {
+            if (perguntasSnapshot.hasError) {
+              return _buildEstadoPerguntas(
+                'Não foi possível carregar as perguntas.',
+              );
+            }
+
+            final carregando = !perguntasSnapshot.hasData;
+            final perguntas = perguntasSnapshot.data == null
+                ? <_PerguntaStartup>[]
+                : _ordenarPerguntas(
+                    perguntasSnapshot.data!.docs
+                        .map(_PerguntaStartup.fromDoc)
+                        .toList(),
+                  );
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Perguntas e respostas públicas',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Confira dúvidas frequentes da comunidade sobre a startup',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  if (carregando)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: CircularProgressIndicator(color: _azulPrimario),
+                      ),
+                    )
+                  else if (perguntas.isEmpty)
+                    _buildMensagemPerguntas('Ainda não há perguntas públicas.')
+                  else
+                    ...List.generate(perguntas.length, (i) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: i < perguntas.length - 1 ? 10 : 0,
+                        ),
+                        child: _buildPerguntaItem(perguntas[i]),
+                      );
+                    }),
+                  const SizedBox(height: 16),
+                  _buildAreaInvestidorPerguntasCard(temTokens: temTokens),
+                  const SizedBox(height: 16),
+                  _buildInputPerguntaPublica(),
+                ],
               ),
             );
-          }),
-          const SizedBox(height: 16),
-          _buildAreaInvestidorPerguntasCard(),
-          const SizedBox(height: 16),
-          _buildInputPerguntaPublica(),
-        ],
-      ),
+          },
+        );
+      },
     );
   }
 
-  Widget _buildPerguntaItem(int index, String pergunta, String resposta) {
-    final expandido = _perguntasExpandidas.contains(index);
+  Widget _buildPerguntaItem(_PerguntaStartup pergunta) {
+    final expandido = _perguntasExpandidas.contains(pergunta.id);
+
     return GestureDetector(
       onTap: () => setState(() {
         if (expandido) {
-          _perguntasExpandidas.remove(index);
+          _perguntasExpandidas.remove(pergunta.id);
         } else {
-          _perguntasExpandidas.add(index);
+          _perguntasExpandidas.add(pergunta.id);
         }
       }),
       child: Container(
@@ -1027,8 +1074,15 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (pergunta.nomeUsuario.isNotEmpty) ...[
+                    Text(
+                      pergunta.nomeUsuario,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 3),
+                  ],
                   Text(
-                    pergunta,
+                    pergunta.texto,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -1037,13 +1091,35 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                   if (expandido) ...[
                     const SizedBox(height: 6),
                     Text(
-                      resposta,
-                      style: const TextStyle(
+                      pergunta.respostaExibida,
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: pergunta.foiRespondida
+                            ? Colors.grey
+                            : Colors.grey.shade500,
+                        fontStyle: pergunta.foiRespondida
+                            ? FontStyle.normal
+                            : FontStyle.italic,
                         height: 1.4,
                       ),
                     ),
+                    if (pergunta.isPrivada) ...[
+                      const SizedBox(height: 6),
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 13,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Pergunta privada',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -1064,7 +1140,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildAreaInvestidorPerguntasCard() {
+  Widget _buildAreaInvestidorPerguntasCard({required bool temTokens}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -1093,9 +1169,12 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => setState(() => _investidorChatAberto = true),
+              onPressed: temTokens
+                  ? () => setState(() => _investidorChatAberto = true)
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2C3680),
+                disabledBackgroundColor: Colors.grey.shade400,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1111,6 +1190,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               ),
             ),
           ),
+          if (!temTokens) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Perguntas privadas ficam disponíveis para usuários que possuem tokens desta startup.',
+              style: TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ],
         ],
       ),
     );
@@ -1135,21 +1221,48 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Digite sua pergunta...',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-              filled: true,
-              fillColor: const Color(0xFFF8F9FE),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controllerPublico,
+                  decoration: InputDecoration(
+                    hintText: 'Digite sua pergunta...',
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8F9FE),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _enviarPergunta(isPrivada: false),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: _azulPrimario,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.near_me,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1159,6 +1272,12 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   // ── CHAT PRIVADO DO INVESTIDOR ─────────────────────────────────────────────
 
   Widget _buildInvestidorChat() {
+    final startupId = _startupId;
+
+    if (startupId == null) {
+      return _buildEstadoPerguntas('Startup sem identificador para perguntas.');
+    }
+
     return Column(
       children: [
         Container(
@@ -1207,10 +1326,53 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            itemCount: _mensagensPrivadas.length,
-            itemBuilder: (_, i) => _buildMensagemBubble(_mensagensPrivadas[i]),
+          child: StreamBuilder<bool>(
+            stream: _usuarioTemTokensStream(startupId),
+            initialData: false,
+            builder: (context, investidorSnapshot) {
+              final temTokens = investidorSnapshot.data ?? false;
+
+              if (!temTokens) {
+                return _buildEstadoPerguntas(
+                  'Você precisa possuir tokens desta startup para acessar as perguntas privadas.',
+                );
+              }
+
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _perguntasStream(startupId, isPrivada: true),
+                builder: (context, perguntasSnapshot) {
+                  if (perguntasSnapshot.hasError) {
+                    return _buildEstadoPerguntas(
+                      'Não foi possível carregar as perguntas privadas.',
+                    );
+                  }
+
+                  if (!perguntasSnapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: _azulPrimario),
+                    );
+                  }
+
+                  final perguntas = _ordenarPerguntas(
+                    perguntasSnapshot.data!.docs
+                        .map(_PerguntaStartup.fromDoc)
+                        .toList(),
+                  );
+
+                  if (perguntas.isEmpty) {
+                    return _buildEstadoPerguntas(
+                      'Nenhuma pergunta privada enviada ainda.',
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                    itemCount: perguntas.length,
+                    itemBuilder: (_, i) => _buildPerguntaPrivada(perguntas[i]),
+                  );
+                },
+              );
+            },
           ),
         ),
         _buildChatInput(),
@@ -1218,10 +1380,33 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildMensagemBubble(Map<String, dynamic> msg) {
-    final ehInvestidor = msg['ehInvestidor'] as bool;
+  Widget _buildPerguntaPrivada(_PerguntaStartup pergunta) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildMensagemBubble(pergunta.texto, ehInvestidor: true),
+        if (pergunta.foiRespondida)
+          _buildMensagemBubble(pergunta.respostaExibida, ehInvestidor: false)
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Aguardando resposta do empreendedor',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMensagemBubble(String texto, {required bool ehInvestidor}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         mainAxisAlignment: ehInvestidor
             ? MainAxisAlignment.end
@@ -1257,7 +1442,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 ),
               ),
               child: Text(
-                msg['texto'] as String,
+                texto,
                 style: TextStyle(
                   fontSize: 12,
                   color: ehInvestidor ? Colors.white : const Color(0xFF1A1A2E),
@@ -1314,7 +1499,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: _enviarMensagemPrivada,
+            onTap: () => _enviarPergunta(isPrivada: true),
             child: Container(
               width: 42,
               height: 42,
@@ -1330,13 +1515,133 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  void _enviarMensagemPrivada() {
-    final texto = _controllerPrivado.text.trim();
+  Stream<QuerySnapshot<Map<String, dynamic>>> _perguntasStream(
+    String startupId, {
+    required bool isPrivada,
+  }) {
+    return _firestore
+        .collection('startups')
+        .doc(startupId)
+        .collection('questions')
+        .where('isPrivada', isEqualTo: isPrivada)
+        .snapshots();
+  }
+
+  Stream<bool> _usuarioTemTokensStream(String startupId) {
+    final uid = _uid;
+
+    if (uid == null) return Stream.value(false);
+
+    return _firestore
+        .collection('tokenHoldings')
+        .doc('${uid}_$startupId')
+        .snapshots()
+        .map((doc) => _numero(doc.data()?['quantidade']).toInt() > 0);
+  }
+
+  Future<void> _enviarPergunta({required bool isPrivada}) async {
+    final startupId = _startupId;
+    final uid = _uid;
+    final controller = isPrivada ? _controllerPrivado : _controllerPublico;
+    final texto = controller.text.trim();
+
     if (texto.isEmpty) return;
-    setState(() {
-      _mensagensPrivadas.add({'texto': texto, 'ehInvestidor': true});
-      _controllerPrivado.clear();
+    if (startupId == null) {
+      _mostrarMensagem('Startup sem identificador para perguntas.');
+      return;
+    }
+
+    if (isPrivada) {
+      if (uid == null) {
+        _mostrarMensagem('Entre na sua conta para enviar perguntas privadas.');
+        return;
+      }
+
+      final holding = await _firestore
+          .collection('tokenHoldings')
+          .doc('${uid}_$startupId')
+          .get();
+      final temTokens = _numero(holding.data()?['quantidade']).toInt() > 0;
+
+      if (!temTokens) {
+        _mostrarMensagem(
+          'Você precisa possuir tokens desta startup para enviar perguntas privadas.',
+        );
+        return;
+      }
+    }
+
+    try {
+      await _firestore
+          .collection('startups')
+          .doc(startupId)
+          .collection('questions')
+          .add({
+            'startupId': startupId,
+            'userId': uid ?? '',
+            'nomeUsuario': _nomeUsuario,
+            'texto': texto,
+            'resposta': null,
+            'respondidaEm': null,
+            'isPrivada': isPrivada,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      controller.clear();
+      _mostrarMensagem('Pergunta enviada com sucesso.');
+    } catch (_) {
+      _mostrarMensagem('Não foi possível enviar a pergunta.');
+    }
+  }
+
+  List<_PerguntaStartup> _ordenarPerguntas(List<_PerguntaStartup> perguntas) {
+    return perguntas..sort((a, b) {
+      final createdAtA = a.createdAt;
+      final createdAtB = b.createdAt;
+
+      if (createdAtA == null && createdAtB == null) return 0;
+      if (createdAtA == null) return 1;
+      if (createdAtB == null) return -1;
+
+      return createdAtB.compareTo(createdAtA);
     });
+  }
+
+  Widget _buildEstadoPerguntas(String mensagem) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          mensagem,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMensagemPerguntas(String mensagem) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        mensagem,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+    );
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
+    );
   }
 
   // ── BOTTOM NAV ─────────────────────────────────────────────────────────────
@@ -1370,6 +1675,75 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
       MaterialPageRoute(builder: (_) => const BalcaoNegociacao()),
     );
   }
+}
+
+class _PerguntaStartup {
+  const _PerguntaStartup({
+    required this.id,
+    required this.nomeUsuario,
+    required this.texto,
+    required this.resposta,
+    required this.isPrivada,
+    required this.createdAt,
+  });
+
+  factory _PerguntaStartup.fromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    return _PerguntaStartup(
+      id: doc.id,
+      nomeUsuario: _texto(data['nomeUsuario']),
+      texto: _texto(data['texto'], fallback: 'Pergunta sem texto'),
+      resposta: _texto(data['resposta']),
+      isPrivada: data['isPrivada'] == true,
+      createdAt: _dateTime(data['createdAt']),
+    );
+  }
+
+  final String id;
+  final String nomeUsuario;
+  final String texto;
+  final String resposta;
+  final bool isPrivada;
+  final DateTime? createdAt;
+
+  bool get foiRespondida => resposta.trim().isNotEmpty;
+
+  String get respostaExibida =>
+      foiRespondida ? resposta : 'Aguardando resposta do empreendedor.';
+}
+
+String _texto(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+
+  final texto = value.toString().trim();
+  return texto.isEmpty ? fallback : texto;
+}
+
+double _numero(dynamic value, {double fallback = 0}) {
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final normalizado = value
+        .replaceAll('R\$', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
+
+    return double.tryParse(normalizado) ?? fallback;
+  }
+
+  return fallback;
+}
+
+DateTime? _dateTime(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+
+  return null;
 }
 
 // ── GRÁFICO DONUT ────────────────────────────────────────────────────────────
