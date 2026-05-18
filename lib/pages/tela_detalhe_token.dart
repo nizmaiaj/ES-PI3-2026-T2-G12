@@ -303,6 +303,18 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
   Widget _buildResumoCarteira(double precoAtual) {
     final valorAtual = widget.quantidade * precoAtual;
+    final valorInvestido = widget.quantidade * widget.precoMedioCompra;
+    final resultado = valorAtual - valorInvestido;
+    final rentabilidade = widget.precoMedioCompra > 0
+        ? ((precoAtual - widget.precoMedioCompra) / widget.precoMedioCompra) *
+              100
+        : null;
+    final resultadoCor = resultado >= 0 ? _verde : _vermelho;
+    final resultadoLabel = resultado > 0
+        ? 'Lucro'
+        : resultado < 0
+        ? 'Prejuízo'
+        : 'Resultado';
 
     return Container(
       width: double.infinity,
@@ -311,26 +323,59 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         color: const Color(0xFFF1F1F6),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _ResumoCarteiraItem(
-              label: 'Tokens',
-              value: _formatarQuantidade(widget.quantidade),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: 'Tokens',
+                  value: _formatarQuantidade(widget.quantidade),
+                ),
+              ),
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: 'Preço médio',
+                  value: _formatarMoeda(widget.precoMedioCompra),
+                ),
+              ),
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: 'Valor atual',
+                  value: _formatarMoeda(valorAtual),
+                  alignRight: true,
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: _ResumoCarteiraItem(
-              label: 'Preço médio',
-              value: _formatarMoeda(widget.precoMedioCompra),
-            ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: Color(0xFFD8D8E2)),
           ),
-          Expanded(
-            child: _ResumoCarteiraItem(
-              label: 'Valor atual',
-              value: _formatarMoeda(valorAtual),
-              alignRight: true,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: 'Investido',
+                  value: _formatarMoeda(valorInvestido),
+                ),
+              ),
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: resultadoLabel,
+                  value: _formatarMoeda(resultado),
+                  valueColor: resultadoCor,
+                ),
+              ),
+              Expanded(
+                child: _ResumoCarteiraItem(
+                  label: 'Rentabilidade',
+                  value: _formatarPercentual(rentabilidade),
+                  valueColor: resultadoCor,
+                  alignRight: true,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -723,11 +768,13 @@ class _ResumoCarteiraItem extends StatelessWidget {
     required this.label,
     required this.value,
     this.alignRight = false,
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final bool alignRight;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -747,8 +794,8 @@ class _ResumoCarteiraItem extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.black87,
+          style: TextStyle(
+            color: valueColor ?? Colors.black87,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
@@ -893,6 +940,13 @@ String _formatarQuantidade(double quantidade) {
   }
 
   return quantidade.toStringAsFixed(2).replaceAll('.', ',');
+}
+
+String _formatarPercentual(double? percentual) {
+  if (percentual == null) return 'N/A';
+
+  final prefixo = percentual > 0 ? '+' : '';
+  return '$prefixo${percentual.toStringAsFixed(2).replaceAll('.', ',')}%';
 }
 
 String _formatarNumeroCurto(double value) {

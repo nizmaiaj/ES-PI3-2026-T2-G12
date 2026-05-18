@@ -19,7 +19,6 @@ class TelaVisaoGeral extends StatefulWidget {
 
 class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
-  bool _ehInvestidor = false;
   bool _verTodosAberto = false;
   final Set<String> _perguntasExpandidas = {};
   bool _investidorChatAberto = false;
@@ -340,6 +339,41 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   }
 
   Widget _buildAreaInvestidor() {
+    final startupId = _startupId;
+
+    if (startupId == null) {
+      return _buildAreaInvestidorCard(
+        temTokens: false,
+        mensagemBloqueio:
+            'Não foi possível verificar sua participação porque a startup não possui identificador.',
+      );
+    }
+
+    return StreamBuilder<bool>(
+      stream: _usuarioTemTokensStream(startupId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildAreaInvestidorCard(
+            temTokens: false,
+            mensagemBloqueio:
+                'Não foi possível verificar sua carteira neste momento.',
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return _buildAreaInvestidorCard(temTokens: false, carregando: true);
+        }
+
+        return _buildAreaInvestidorCard(temTokens: snapshot.data ?? false);
+      },
+    );
+  }
+
+  Widget _buildAreaInvestidorCard({
+    required bool temTokens,
+    bool carregando = false,
+    String? mensagemBloqueio,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -360,7 +394,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
           const SizedBox(height: 10),
           Text(
-            _ehInvestidor
+            carregando
+                ? 'Verificando sua carteira...'
+                : temTokens
                 ? 'Bem-vindo! Acesse o balcão completo para comprar e vender tokens desta startup.'
                 : 'Se você já é investidor, poderá acessar o balcão completo para comprar e vender tokens. '
                       'Caso ainda não tenha investido nesta startup, você poderá iniciar sua participação adquirindo '
@@ -371,7 +407,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               height: 1.55,
             ),
           ),
-          if (!_ehInvestidor) ...[
+          if (!carregando && !temTokens) ...[
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(12),
@@ -379,16 +415,21 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.error_outline, color: Colors.deepOrange, size: 18),
-                  SizedBox(width: 8),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.deepOrange,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'No momento, você ainda não possui participação nesta startup. '
-                      'Para desbloquear recursos de compra e venda avançados, é necessário '
-                      'realizar seu primeiro investimento.',
+                      mensagemBloqueio ??
+                          'No momento, você ainda não possui participação nesta startup. '
+                              'Para desbloquear recursos de compra e venda avançados, é necessário '
+                              'realizar seu primeiro investimento.',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.black54,
@@ -401,45 +442,27 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             ),
           ],
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => setState(() => _ehInvestidor = true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2C3680),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Já sou investidor',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: carregando ? null : () => _selecionarNav(2),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: temTokens
+                    ? const Color(0xFF2C3680)
+                    : _azulPrimario,
+                disabledBackgroundColor: _azulPrimario.withValues(alpha: 0.35),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _azulPrimario,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Quero me tornar\ninvestidor',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
+              child: Text(
+                temTokens ? 'Acessar balcão' : 'Quero me tornar investidor',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
-            ],
+            ),
           ),
         ],
       ),
