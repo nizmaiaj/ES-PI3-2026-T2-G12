@@ -7,6 +7,7 @@ import '../services/auth_session.dart';
 import 'balcao_negociacao.dart';
 import 'tela_adicionar_credito.dart';
 import 'tela_catalogo.dart';
+import 'tela_detalhe_token.dart';
 import 'tela_usuario.dart';
 
 class TelaHome extends StatefulWidget {
@@ -384,63 +385,87 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Widget _buildTokenItem(_TokenResumo token) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEEEF5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _abrirDetalheToken(token),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEEEF5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    token.nome,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    '${_formatarQuantidade(token.quantidade)} tokens',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  token.nome,
+                  _formatarMoeda(token.valorTotal),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
                 ),
                 Text(
-                  '${_formatarQuantidade(token.quantidade)} tokens',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  'PM ${_formatarMoeda(token.precoMedioCompra)}',
+                  style: const TextStyle(color: Colors.green, fontSize: 12),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatarMoeda(token.valorTotal),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                'PM ${_formatarMoeda(token.precoMedioCompra)}',
-                style: const TextStyle(color: Colors.green, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(width: 6),
-          const Icon(Icons.chevron_right, color: _roxo, size: 22),
-        ],
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, color: _roxo, size: 22),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _abrirDetalheToken(_TokenResumo token) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TelaDetalheToken(
+          startupId: token.startupId,
+          nome: token.nome,
+          quantidade: token.quantidade,
+          precoMedioCompra: token.precoMedioCompra,
+          precoAtualInicial: token.precoAtual,
+          onNavigate: (index) => setState(() => _selectedIndex = index),
+        ),
+      ),
+    );
+
+    if (mounted) {
+      _recarregarHome();
+    }
   }
 
   Future<_HomeResumo> _buscarResumoHome() async {
@@ -475,12 +500,17 @@ class _TelaHomeState extends State<TelaHome> {
         final startupId = (data['startupId'] as String?) ?? '';
         final quantidade = _lerNumero(data['quantidade']);
         final precoMedioCompra = _lerNumero(data['precoMedioCompra']);
-        final nome = await _buscarNomeStartup(firestore, startupId);
+        final startup = await _buscarDadosStartup(firestore, startupId);
+        final precoAtual = startup.precoAtual > 0
+            ? startup.precoAtual
+            : precoMedioCompra;
 
         return _TokenResumo(
-          nome: nome,
+          startupId: startupId,
+          nome: startup.nome,
           quantidade: quantidade,
           precoMedioCompra: precoMedioCompra,
+          precoAtual: precoAtual,
         );
       }),
     );
@@ -548,11 +578,13 @@ class _TelaHomeState extends State<TelaHome> {
     return nome.split(RegExp(r'\s+')).first;
   }
 
-  Future<String> _buscarNomeStartup(
+  Future<_StartupResumo> _buscarDadosStartup(
     FirebaseFirestore firestore,
     String startupId,
   ) async {
-    if (startupId.isEmpty) return 'Token sem startup';
+    if (startupId.isEmpty) {
+      return const _StartupResumo(nome: 'Token sem startup', precoAtual: 0);
+    }
 
     final startupDoc = await firestore
         .collection('startups')
@@ -560,18 +592,34 @@ class _TelaHomeState extends State<TelaHome> {
         .get();
     final data = startupDoc.data();
     final nome = data?['nome'] ?? data?['nomeStartup'] ?? data?['razaoSocial'];
+    final precoAtual = _lerNumero(
+      data?['valorToken'] ??
+          data?['precoToken'] ??
+          data?['preco'] ??
+          data?['tokenPrice'] ??
+          data?['tokenPrecoInicial'],
+    );
 
     if (nome is String && nome.trim().isNotEmpty) {
-      return nome.trim();
+      return _StartupResumo(nome: nome.trim(), precoAtual: precoAtual);
     }
 
-    return startupId;
+    return _StartupResumo(nome: startupId, precoAtual: precoAtual);
   }
 
   double _lerNumero(dynamic valor) {
     if (valor is int) return valor.toDouble();
     if (valor is double) return valor;
     if (valor is num) return valor.toDouble();
+    if (valor is String) {
+      final texto = valor.replaceAll('R\$', '').replaceAll(' ', '').trim();
+      final normalizado = texto.contains(',')
+          ? texto.replaceAll('.', '').replaceAll(',', '.')
+          : texto;
+
+      return double.tryParse(normalizado) ?? 0;
+    }
+
     return 0;
   }
 
@@ -702,14 +750,25 @@ class _HomeResumo {
 
 class _TokenResumo {
   const _TokenResumo({
+    required this.startupId,
     required this.nome,
     required this.quantidade,
     required this.precoMedioCompra,
+    required this.precoAtual,
   });
 
+  final String startupId;
   final String nome;
   final double quantidade;
   final double precoMedioCompra;
+  final double precoAtual;
 
-  double get valorTotal => quantidade * precoMedioCompra;
+  double get valorTotal => quantidade * precoAtual;
+}
+
+class _StartupResumo {
+  const _StartupResumo({required this.nome, required this.precoAtual});
+
+  final String nome;
+  final double precoAtual;
 }
