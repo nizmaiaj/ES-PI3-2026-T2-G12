@@ -208,11 +208,12 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
     setState(() => _salvandoCredito = true);
 
     try {
-      final walletRef = FirebaseFirestore.instance
-          .collection('wallets')
-          .doc(uid);
+      final firestore = FirebaseFirestore.instance;
+      final walletRef = firestore.collection('wallets').doc(uid);
 
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
+      await firestore.runTransaction((transaction) async {
+        final walletCreditRef = firestore.collection('walletCredits').doc();
+        final now = FieldValue.serverTimestamp();
         final snapshot = await transaction.get(walletRef);
         final dados = snapshot.data();
         final saldoAtual = _lerNumero(dados?['saldoReais']);
@@ -220,8 +221,16 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
         transaction.set(walletRef, {
           'userId': uid,
           'saldoReais': saldoAtual + valor,
-          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedAt': now,
         }, SetOptions(merge: true));
+
+        transaction.set(walletCreditRef, {
+          'userId': uid,
+          'valor': valor,
+          'tipo': 'depósito',
+          'descricao': 'Depósito em carteira',
+          'createdAt': now,
+        });
       });
 
       if (!mounted) return;
