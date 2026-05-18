@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+import '../widgets/app_bottom_nav.dart';
+import 'balcao_negociacao.dart';
+
 class TelaVisaoGeral extends StatefulWidget {
   final Map<String, String> startup;
-  const TelaVisaoGeral({super.key, required this.startup});
+  final ValueChanged<int>? onNavigate;
+
+  const TelaVisaoGeral({super.key, required this.startup, this.onNavigate});
 
   @override
   State<TelaVisaoGeral> createState() => _TelaVisaoGeralState();
@@ -1322,42 +1327,32 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   // ── BOTTOM NAV ─────────────────────────────────────────────────────────────
 
   Widget _buildBottomNav() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-      height: 70,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(35),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.home_outlined, color: _azulPrimario),
-              Text(
-                'Home',
-                style: TextStyle(fontSize: 10, color: _azulPrimario),
-              ),
-            ],
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.search),
-              Text('Pesquisar', style: TextStyle(fontSize: 10)),
-            ],
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.swap_horiz),
-              Text('Balcão', style: TextStyle(fontSize: 10)),
-            ],
-          ),
-        ],
-      ),
+    return AppBottomNav(
+      selectedIndex: 1,
+      onItemSelected: _selecionarNav,
+      backgroundColor: const Color(0xFFF8F9FE),
+    );
+  }
+
+  void _selecionarNav(int index) {
+    if (index == 1) {
+      return;
+    }
+
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(index);
+      Navigator.popUntil(context, (route) => route.isFirst);
+      return;
+    }
+
+    if (index == 0) {
+      Navigator.popUntil(context, (route) => route.isFirst);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const BalcaoNegociacao()),
     );
   }
 }

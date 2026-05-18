@@ -63,6 +63,8 @@ class _TelaHomeState extends State<TelaHome> {
                   TelaCatalogo(
                     mostrarMenuInferior: false,
                     onVoltar: _mostrarHome,
+                    onNavigate: (index) =>
+                        setState(() => _selectedIndex = index),
                   ), // Tela 1
                   BalcaoNegociacao(
                     onNavigate: (index) =>
@@ -541,7 +543,10 @@ class _TelaHomeState extends State<TelaHome> {
         color: const Color(0xFFEDEDED),
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Row(

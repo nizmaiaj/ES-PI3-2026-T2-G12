@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_bottom_nav.dart';
+import 'balcao_negociacao.dart';
 import 'tela_visao_geral.dart';
 
 class TelaCatalogo extends StatefulWidget {
   final bool mostrarMenuInferior;
   final VoidCallback? onVoltar;
+  final ValueChanged<int>? onNavigate;
 
   const TelaCatalogo({
     super.key,
     this.mostrarMenuInferior = true,
     this.onVoltar,
+    this.onNavigate,
   });
 
   @override
@@ -265,8 +269,10 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) =>
-                                          TelaVisaoGeral(startup: item),
+                                      builder: (_) => TelaVisaoGeral(
+                                        startup: item,
+                                        onNavigate: widget.onNavigate,
+                                      ),
                                     ),
                                   );
                                 },
@@ -321,47 +327,37 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
 
       // MENU INFERIOR
       bottomNavigationBar: widget.mostrarMenuInferior
-          ? Container(
-              margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDEDED),
-                borderRadius: BorderRadius.circular(35),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.home_outlined),
-                      Text("Home", style: TextStyle(fontSize: 10)),
-                    ],
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.search, color: Color(0xFF3F51B5)),
-                      Text(
-                        "Catálogo",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF3F51B5),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.swap_horiz),
-                      Text("Balcão", style: TextStyle(fontSize: 10)),
-                    ],
-                  ),
-                ],
-              ),
+          ? AppBottomNav(
+              selectedIndex: 1,
+              onItemSelected: _selecionarNav,
+              backgroundColor: const Color(0xFFF8F9FE),
             )
           : null,
+    );
+  }
+
+  void _selecionarNav(int index) {
+    if (index == 1) {
+      return;
+    }
+
+    if (widget.onNavigate != null) {
+      widget.onNavigate!(index);
+      return;
+    }
+
+    if (index == 0) {
+      if (widget.onVoltar != null) {
+        widget.onVoltar!();
+      } else if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const BalcaoNegociacao()),
     );
   }
 

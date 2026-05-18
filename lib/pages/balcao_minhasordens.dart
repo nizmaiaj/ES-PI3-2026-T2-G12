@@ -145,7 +145,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 32, 22, 18),
+      padding: const EdgeInsets.fromLTRB(30, 52, 30, 34),
       decoration: const BoxDecoration(color: _azulPrimario),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,14 +154,14 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
             'Balcão de Negociação',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 23,
+              fontSize: 25,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 7),
+          SizedBox(height: 8),
           Text(
             'Invista com estratégia, acompanhe oportunidades e\nparticipe da evolução das startups do ecossistema\nMescla',
-            style: TextStyle(color: Colors.white, fontSize: 11, height: 1.18),
+            style: TextStyle(color: Colors.white, fontSize: 13, height: 1.18),
           ),
         ],
       ),
@@ -173,7 +173,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
     final concluidas = ordens.where((ordem) => ordem.estaConcluida).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+      padding: const EdgeInsets.fromLTRB(30, 48, 30, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
