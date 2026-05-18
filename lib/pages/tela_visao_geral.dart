@@ -334,21 +334,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               height: 1.55,
             ),
           ),
-          const SizedBox(height: 22),
-          const Text(
-            'Destaques',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Este campo é destinado a apresentar um resumo prévio da startup, '
-            'destacando seus principais objetivos, propostas e a atuação da empresa no mercado.',
-            style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.55),
-          ),
         ],
       ),
     );
@@ -378,8 +363,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             _ehInvestidor
                 ? 'Bem-vindo! Acesse o balcão completo para comprar e vender tokens desta startup.'
                 : 'Se você já é investidor, poderá acessar o balcão completo para comprar e vender tokens. '
-                      'Caso ainda não investe nesta startup, você poderá iniciar sua participação adquirindo '
-                      'seus primeiros tokens e desbloqueando recursos exclusivos para investidores',
+                      'Caso ainda não tenha investido nesta startup, você poderá iniciar sua participação adquirindo '
+                      'seus primeiros tokens e desbloqueando recursos exclusivos para investidores.',
             style: const TextStyle(
               fontSize: 12,
               color: Colors.black54,
@@ -403,7 +388,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     child: Text(
                       'No momento, você ainda não possui participação nesta startup. '
                       'Para desbloquear recursos de compra e venda avançados, é necessário '
-                      'realizar seu primeiro investimento',
+                      'realizar seu primeiro investimento.',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.black54,
