@@ -278,10 +278,12 @@ class _TelaHomeState extends State<TelaHome> {
               _buildPatrimonioInfo(
                 label: 'Valor em tokens',
                 valor: valorInvestidoFormatado,
+                visivel: _patrimonioVisivel,
               ),
               _buildPatrimonioInfo(
                 label: 'Saldo em carteira',
                 valor: saldoReaisFormatado,
+                visivel: _patrimonioVisivel,
               ),
             ],
           ),
@@ -318,7 +320,11 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
-  Widget _buildPatrimonioInfo({required String label, required String valor}) {
+  Widget _buildPatrimonioInfo({
+    required String label,
+    required String valor,
+    required bool visivel,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -332,15 +338,31 @@ class _TelaHomeState extends State<TelaHome> {
             label,
             style: const TextStyle(color: Colors.white60, fontSize: 11),
           ),
-          Text(
-            valor,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
+          _buildValorPatrimonioInfo(valor: valor, visivel: visivel),
         ],
+      ),
+    );
+  }
+
+  Widget _buildValorPatrimonioInfo({
+    required String valor,
+    required bool visivel,
+  }) {
+    const textoValor = TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    );
+    final child = Text(valor, style: textoValor);
+
+    if (visivel) {
+      return child;
+    }
+
+    return ClipRect(
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: child,
       ),
     );
   }
