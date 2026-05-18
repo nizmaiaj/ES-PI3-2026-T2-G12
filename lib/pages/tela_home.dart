@@ -494,22 +494,43 @@ class _TelaHomeState extends State<TelaHome> {
         .where('userId', isEqualTo: uid)
         .get();
 
+    final holdingsAgrupados = <String, _HoldingAgregado>{};
+
+    for (final doc in holdingsSnapshot.docs) {
+      final data = doc.data();
+      final startupId = (data['startupId'] as String?) ?? '';
+      final quantidade = _lerNumero(data['quantidade']);
+      final precoMedioCompra = _lerNumero(data['precoMedioCompra']);
+
+      if (startupId.isEmpty || quantidade <= 0) {
+        continue;
+      }
+
+      final atual = holdingsAgrupados[startupId];
+      holdingsAgrupados[startupId] = atual == null
+          ? _HoldingAgregado(
+              startupId: startupId,
+              quantidade: quantidade,
+              custoTotal: quantidade * precoMedioCompra,
+            )
+          : atual.somar(
+              quantidade: quantidade,
+              custoTotal: quantidade * precoMedioCompra,
+            );
+    }
+
     final tokens = await Future.wait(
-      holdingsSnapshot.docs.map((doc) async {
-        final data = doc.data();
-        final startupId = (data['startupId'] as String?) ?? '';
-        final quantidade = _lerNumero(data['quantidade']);
-        final precoMedioCompra = _lerNumero(data['precoMedioCompra']);
-        final startup = await _buscarDadosStartup(firestore, startupId);
+      holdingsAgrupados.values.map((holding) async {
+        final startup = await _buscarDadosStartup(firestore, holding.startupId);
         final precoAtual = startup.precoAtual > 0
             ? startup.precoAtual
-            : precoMedioCompra;
+            : holding.precoMedioCompra;
 
         return _TokenResumo(
-          startupId: startupId,
+          startupId: holding.startupId,
           nome: startup.nome,
-          quantidade: quantidade,
-          precoMedioCompra: precoMedioCompra,
+          quantidade: holding.quantidade,
+          precoMedioCompra: holding.precoMedioCompra,
           precoAtual: precoAtual,
         );
       }),
@@ -771,4 +792,29 @@ class _StartupResumo {
 
   final String nome;
   final double precoAtual;
+}
+
+class _HoldingAgregado {
+  const _HoldingAgregado({
+    required this.startupId,
+    required this.quantidade,
+    required this.custoTotal,
+  });
+
+  final String startupId;
+  final double quantidade;
+  final double custoTotal;
+
+  double get precoMedioCompra => quantidade > 0 ? custoTotal / quantidade : 0;
+
+  _HoldingAgregado somar({
+    required double quantidade,
+    required double custoTotal,
+  }) {
+    return _HoldingAgregado(
+      startupId: startupId,
+      quantidade: this.quantidade + quantidade,
+      custoTotal: this.custoTotal + custoTotal,
+    );
+  }
 }

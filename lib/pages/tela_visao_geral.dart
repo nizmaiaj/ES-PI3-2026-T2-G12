@@ -1663,9 +1663,34 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
     return _firestore
         .collection('tokenHoldings')
-        .doc('${uid}_$startupId')
+        .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((doc) => _numero(doc.data()?['quantidade']).toInt() > 0);
+        .map((snapshot) {
+          return snapshot.docs.any((doc) {
+            final data = doc.data();
+
+            return _texto(data['startupId']) == startupId &&
+                _numero(data['quantidade']).toInt() > 0;
+          });
+        });
+  }
+
+  Future<bool> _usuarioTemTokens(String startupId) async {
+    final uid = _uid;
+
+    if (uid == null) return false;
+
+    final snapshot = await _firestore
+        .collection('tokenHoldings')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    return snapshot.docs.any((doc) {
+      final data = doc.data();
+
+      return _texto(data['startupId']) == startupId &&
+          _numero(data['quantidade']).toInt() > 0;
+    });
   }
 
   Future<void> _enviarPergunta({required bool isPrivada}) async {
@@ -1686,11 +1711,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         return;
       }
 
-      final holding = await _firestore
-          .collection('tokenHoldings')
-          .doc('${uid}_$startupId')
-          .get();
-      final temTokens = _numero(holding.data()?['quantidade']).toInt() > 0;
+      final temTokens = await _usuarioTemTokens(startupId);
 
       if (!temTokens) {
         _mostrarMensagem(

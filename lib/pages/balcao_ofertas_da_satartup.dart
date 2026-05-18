@@ -277,9 +277,20 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
 
     return _firestore
         .collection('tokenHoldings')
-        .doc('${uid}_$startupId')
+        .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((doc) => _numero(doc.data()?['quantidade']).toInt());
+        .map((snapshot) {
+          var total = 0;
+
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            if (_texto(data['startupId']) == startupId) {
+              total += _numero(data['quantidade']).toInt();
+            }
+          }
+
+          return total;
+        });
   }
 
   void _abrirVenda(int tokensDisponiveis) {
@@ -448,4 +459,11 @@ double _numero(dynamic value, {double fallback = 0}) {
   }
 
   return fallback;
+}
+
+String _texto(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+
+  final texto = value.toString().trim();
+  return texto.isEmpty ? fallback : texto;
 }

@@ -94,12 +94,9 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
                               );
                             }
 
-                            final holdings = {
-                              for (final doc in holdingsSnapshot.data!.docs)
-                                if (_numero(doc.data()['quantidade']) > 0)
-                                  _texto(doc.data()['startupId']):
-                                      _HoldingToken.fromDoc(doc),
-                            };
+                            final holdings = _agruparHoldings(
+                              holdingsSnapshot.data!.docs,
+                            );
 
                             return _buildConteudo(uid, startups, holdings);
                           },
@@ -334,15 +331,13 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     int quantidade,
   ) async {
     await _executarComFeedback(() async {
+      final holdingRef = await _normalizarHoldingRef(uid, startup.id);
       final total = quantidade * startup.valorToken;
       final now = FieldValue.serverTimestamp();
 
       await _firestore.runTransaction((transaction) async {
         final startupRef = _firestore.collection('startups').doc(startup.id);
         final walletRef = _firestore.collection('wallets').doc(uid);
-        final holdingRef = _firestore
-            .collection('tokenHoldings')
-            .doc('${uid}_${startup.id}');
 
         final startupDoc = await transaction.get(startupRef);
         final walletDoc = await transaction.get(walletRef);
@@ -453,15 +448,13 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     int quantidade,
   ) async {
     await _executarComFeedback(() async {
+      final holdingRef = await _normalizarHoldingRef(uid, startup.id);
       final total = quantidade * startup.valorToken;
       final now = FieldValue.serverTimestamp();
 
       await _firestore.runTransaction((transaction) async {
         final startupRef = _firestore.collection('startups').doc(startup.id);
         final walletRef = _firestore.collection('wallets').doc(uid);
-        final holdingRef = _firestore
-            .collection('tokenHoldings')
-            .doc('${uid}_${startup.id}');
 
         final startupDoc = await transaction.get(startupRef);
         final walletDoc = await transaction.get(walletRef);
@@ -555,6 +548,102 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
       _mostrarMensagem('Venda registrada com sucesso.');
     });
   }
+
+  Map<String, _HoldingToken> _agruparHoldings(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final holdings = <String, _HoldingToken>{};
+
+    for (final doc in docs) {
+      final holding = _HoldingToken.fromDoc(doc);
+
+      if (holding.startupId.isEmpty || holding.quantidade <= 0) {
+        continue;
+      }
+
+      final atual = holdings[holding.startupId];
+      holdings[holding.startupId] = atual == null
+          ? holding
+          : atual.somar(holding);
+    }
+
+    return holdings;
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _normalizarHoldingRef(
+    String uid,
+    String startupId,
+  ) async {
+    final canonicalRef = _firestore
+        .collection('tokenHoldings')
+        .doc(_holdingDocId(uid, startupId));
+    final docs = await _buscarHoldingDocs(uid, startupId);
+    final refs = <DocumentReference<Map<String, dynamic>>>[
+      canonicalRef,
+      for (final doc in docs)
+        if (doc.reference.path != canonicalRef.path) doc.reference,
+    ];
+
+    if (docs.length == 1 && docs.first.reference.path == canonicalRef.path) {
+      return canonicalRef;
+    }
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshots = <DocumentSnapshot<Map<String, dynamic>>>[];
+
+      for (final ref in refs) {
+        snapshots.add(await transaction.get(ref));
+      }
+
+      var quantidadeTotal = 0;
+      var custoTotal = 0.0;
+
+      for (final snapshot in snapshots) {
+        final data = snapshot.data();
+        if (data == null) continue;
+
+        final quantidade = _numero(data['quantidade']).toInt();
+        final precoMedioCompra = _numero(data['precoMedioCompra']);
+
+        quantidadeTotal += quantidade;
+        custoTotal += quantidade * precoMedioCompra;
+      }
+
+      if (quantidadeTotal > 0) {
+        transaction.set(canonicalRef, {
+          'userId': uid,
+          'startupId': startupId,
+          'quantidade': quantidadeTotal,
+          'precoMedioCompra': custoTotal / quantidadeTotal,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      for (final snapshot in snapshots) {
+        if (snapshot.reference.path != canonicalRef.path && snapshot.exists) {
+          transaction.delete(snapshot.reference);
+        }
+      }
+    });
+
+    return canonicalRef;
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _buscarHoldingDocs(
+    String uid,
+    String startupId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('tokenHoldings')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    return snapshot.docs
+        .where((doc) => _texto(doc.data()['startupId']) == startupId)
+        .toList();
+  }
+
+  String _holdingDocId(String uid, String startupId) => '${uid}_$startupId';
 
   Future<void> _executarComFeedback(Future<void> Function() acao) async {
     if (_processando) return;
@@ -885,6 +974,13 @@ class _HoldingToken {
 
   final String startupId;
   final int quantidade;
+
+  _HoldingToken somar(_HoldingToken other) {
+    return _HoldingToken(
+      startupId: startupId,
+      quantidade: quantidade + other.quantidade,
+    );
+  }
 }
 
 enum _TipoOperacao { compra, venda }
