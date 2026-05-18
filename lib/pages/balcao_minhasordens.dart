@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'no_animation_route.dart';
@@ -24,6 +25,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   static const _fundo = Colors.white;
   static const _textoEscuro = Color(0xFF111111);
 
+  final BalcaoService _balcaoService = BalcaoService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _cancelando = false;
 
@@ -286,13 +288,16 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   Future<void> _cancelarOrdem(_OrdemUsuario ordem) async {
     if (_cancelando) return;
 
+    final uid = _uid;
+    if (uid == null) {
+      _mostrarMensagem('Entre na sua conta para cancelar esta ordem.');
+      return;
+    }
+
     setState(() => _cancelando = true);
 
     try {
-      await _firestore.collection('orders').doc(ordem.id).update({
-        'status': 'cancelada',
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await _balcaoService.cancelarOrdem(usuarioId: uid, ordemId: ordem.id);
 
       _mostrarMensagem('Ordem cancelada com sucesso.');
     } on FirebaseException catch (error) {
@@ -380,9 +385,13 @@ class _OrdemCard extends StatelessWidget {
       return _buildCardConcluido(corTipo);
     }
 
+    return _buildCardAberto(corTipo);
+  }
+
+  Widget _buildCardAberto(Color corTipo) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 13),
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -394,103 +403,82 @@ class _OrdemCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 10,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ordem.nomeStartup,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  _capitalizar(ordem.tipo),
-                  style: TextStyle(
-                    color: corTipo,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${concluida ? 'Concluída' : 'Criada'} em ${_formatarData(ordem.dataOperacao)}',
-                  style: const TextStyle(fontSize: 7, color: Colors.black54),
-                ),
-              ],
+          Text(
+            ordem.nomeStartup,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
             ),
           ),
-          _SeparadorVertical(altura: concluida ? 58 : 68),
-          _InfoColuna(label: 'Qtd de tokens', valor: '${ordem.quantidade}'),
-          _SeparadorVertical(altura: concluida ? 58 : 68),
-          _InfoColuna(label: 'Preço', valor: _formatarMoeda(ordem.preco)),
-          _SeparadorVertical(altura: concluida ? 58 : 68),
-          Expanded(
-            flex: 9,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Total',
-                  style: TextStyle(fontSize: 7, color: Colors.black54),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  _formatarMoeda(ordem.total),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 8,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (concluida)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _StatusPill(
-                      texto: 'Concluído',
-                      cor: _BalcaoMinhasOrdensState._verdeConcluido,
-                      preenchido: false,
-                    ),
-                  )
-                else ...[
-                  _StatusLinha(status: ordem.status),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      height: 22,
-                      child: OutlinedButton(
-                        onPressed: cancelando ? null : onCancelar,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.symmetric(horizontal: 11),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancelar',
-                          style: TextStyle(fontSize: 7),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+          const SizedBox(height: 8),
+          Text(
+            _capitalizar(ordem.tipo),
+            style: TextStyle(
+              color: corTipo,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Criada em ${_formatarData(ordem.dataOperacao)}',
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Qtd de tokens',
+                  valor: '${ordem.quantidade}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Preço',
+                  valor: _formatarMoeda(ordem.preco),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Total',
+                  valor: _formatarMoeda(ordem.total),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _StatusLinha(status: ordem.status)),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 32,
+                child: OutlinedButton(
+                  onPressed: cancelando ? null : onCancelar,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -586,42 +574,6 @@ class _OrdemCard extends StatelessWidget {
   }
 }
 
-class _InfoColuna extends StatelessWidget {
-  const _InfoColuna({required this.label, required this.valor});
-
-  final String label;
-  final String valor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: 7,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 7, color: Colors.black54),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            valor,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 8,
-              color: Colors.black,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ResumoConcluido extends StatelessWidget {
   const _ResumoConcluido({required this.label, required this.valor});
 
@@ -666,10 +618,10 @@ class _StatusLinha extends StatelessWidget {
       children: [
         const Icon(
           Icons.hourglass_bottom,
-          size: 8,
+          size: 12,
           color: _BalcaoMinhasOrdensState._laranjaStatus,
         ),
-        const SizedBox(width: 3),
+        const SizedBox(width: 5),
         Expanded(
           child: Text(
             _descricaoStatus(status),
@@ -677,7 +629,7 @@ class _StatusLinha extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: _BalcaoMinhasOrdensState._laranjaStatus,
-              fontSize: 7,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -728,22 +680,6 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-class _SeparadorVertical extends StatelessWidget {
-  const _SeparadorVertical({required this.altura});
-
-  final double altura;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: altura,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      color: Colors.black.withValues(alpha: 0.28),
-    );
-  }
-}
-
 class _OrdemUsuario {
   const _OrdemUsuario({
     required this.id,
@@ -760,17 +696,18 @@ class _OrdemUsuario {
     String nomeStartup,
   ) {
     final data = doc.data() ?? {};
-    final quantidade = _numero(data['quantidade']).toInt();
+    final status = _texto(data['status'], fallback: 'aberta').toLowerCase();
+    final quantidade = _quantidadeExibida(data, status);
     final preco = _numero(data['preco'] ?? data['precoUnitario']);
 
     return _OrdemUsuario(
       id: doc.id,
       nomeStartup: nomeStartup,
       tipo: _texto(data['tipo'], fallback: 'compra').toLowerCase(),
-      status: _texto(data['status'], fallback: 'aberta').toLowerCase(),
+      status: status,
       quantidade: quantidade,
       preco: preco,
-      dataOperacao: _data(data['createdAt'] ?? data['executadaEm']),
+      dataOperacao: _data(data['executadaEm'] ?? data['createdAt']),
     );
   }
 
@@ -810,6 +747,22 @@ String _descricaoStatus(String status) {
   if (status.contains('comprador')) return 'Aguardando comprador';
   if (status.contains('vendedor')) return 'Aguardando vendedor';
   return 'Aguardando comprador';
+}
+
+int _quantidadeExibida(Map<String, dynamic> data, String status) {
+  final quantidade = _numero(data['quantidade']).toInt();
+  final restante = _numero(data['quantidadeRestante']).toInt();
+  final executada = _numero(data['quantidadeExecutada']).toInt();
+
+  final aberta =
+      status == 'aberta' ||
+      status == 'parcial' ||
+      status == 'pendente' ||
+      status.contains('aguardando');
+
+  if (aberta && restante > 0) return restante;
+  if (!aberta && executada > 0) return executada;
+  return quantidade;
 }
 
 String _capitalizar(String value) {

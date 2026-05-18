@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 import 'balcao_ofertas_da_satartup.dart';
 import 'balcao_minhasordens.dart';
+import 'balcao_venda.dart';
 import 'no_animation_route.dart';
 
 class BalcaoNegociacao extends StatefulWidget {
@@ -24,6 +26,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   static const _textoEscuro = Color(0xFF111111);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final BalcaoService _balcaoService = BalcaoService();
   bool _processando = false;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
@@ -37,6 +40,10 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
         .collection('tokenHoldings')
         .where('userId', isEqualTo: uid)
         .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream() {
+    return _firestore.collection('orders').snapshots();
   }
 
   @override
@@ -99,7 +106,39 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
                               holdingsSnapshot.data!.docs,
                             );
 
-                            return _buildConteudo(uid, startups, holdings);
+                            return StreamBuilder<
+                              QuerySnapshot<Map<String, dynamic>>
+                            >(
+                              stream: _ordersStream(),
+                              builder: (context, ordersSnapshot) {
+                                if (ordersSnapshot.hasError) {
+                                  return _buildEstadoCentral(
+                                    'Não foi possível carregar as ofertas.',
+                                  );
+                                }
+
+                                if (!ordersSnapshot.hasData) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      color: _azulPrimario,
+                                    ),
+                                  );
+                                }
+
+                                final ofertasVenda = _ordensVendaAbertas(
+                                  ordersSnapshot.data!.docs,
+                                  startups,
+                                  uid,
+                                );
+
+                                return _buildConteudo(
+                                  uid,
+                                  startups,
+                                  holdings,
+                                  ofertasVenda,
+                                );
+                              },
+                            );
                           },
                         );
                       },
@@ -141,8 +180,9 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     String uid,
     List<_StartupOferta> startups,
     Map<String, _HoldingToken> holdings,
+    List<_OrdemVendaAberta> ofertasVenda,
   ) {
-    final vendas = startups
+    final tokensParaVenda = startups
         .where((startup) => (holdings[startup.id]?.quantidade ?? 0) > 0)
         .toList();
 
@@ -175,12 +215,29 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
           const SizedBox(height: 50),
           _buildTituloSecao('Ofertas de Vendas Abertas'),
           const SizedBox(height: 26),
-          if (vendas.isEmpty)
+          if (ofertasVenda.isEmpty)
+            _buildMensagemLista('Nenhuma oferta de venda aberta no momento.')
+          else
+            ...ofertasVenda.map(
+              (ordem) => _OfertaCard(
+                nome: ordem.nomeStartup,
+                quantidade: ordem.quantidadeRestante,
+                valorToken: ordem.preco,
+                botaoTexto: 'Comprar',
+                botaoCor: _azulPrimario,
+                bloqueado: _processando,
+                onPressed: () => _confirmarCompraOrdemVenda(uid, ordem),
+              ),
+            ),
+          const SizedBox(height: 50),
+          _buildTituloSecao('Meus tokens disponíveis para venda'),
+          const SizedBox(height: 26),
+          if (tokensParaVenda.isEmpty)
             _buildMensagemLista(
-              'Compre tokens para liberar startups nesta seção.',
+              'Você não possui tokens disponíveis para venda.',
             )
           else
-            ...vendas.map((startup) {
+            ...tokensParaVenda.map((startup) {
               final holding = holdings[startup.id]!;
 
               return _OfertaCard(
@@ -190,12 +247,8 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
                 botaoTexto: 'Vender',
                 botaoCor: _rosaVenda,
                 bloqueado: _processando,
-                onPressed: () => _confirmarOperacao(
-                  tipo: _TipoOperacao.venda,
-                  uid: uid,
-                  startup: startup,
-                  quantidadeMaxima: holding.quantidade,
-                ),
+                onPressed: () =>
+                    _abrirVenda(startup, tokensDisponiveis: holding.quantidade),
               );
             }),
         ],
@@ -256,6 +309,26 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     );
   }
 
+  void _abrirVenda(_StartupOferta startup, {required int tokensDisponiveis}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BalcaoVenda(
+          startup: {
+            'id': startup.id,
+            'nome': startup.nome,
+            'tokens': startup.quantidadeDisponivel.toString(),
+            'tokensCarteira': tokensDisponiveis.toString(),
+            'valorToken': startup.valorToken.toStringAsFixed(2),
+          },
+          tokensDisponiveis: tokensDisponiveis,
+          precoAtual: startup.valorToken,
+          onNavigate: widget.onNavigate,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTituloSecao(String texto) {
     return Text(
       texto,
@@ -295,261 +368,63 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     );
   }
 
-  Future<void> _confirmarOperacao({
-    required _TipoOperacao tipo,
-    required String uid,
-    required _StartupOferta startup,
-    required int quantidadeMaxima,
-  }) async {
-    if (quantidadeMaxima <= 0) {
-      _mostrarMensagem('Não há tokens disponíveis para esta operação.');
+  Future<void> _confirmarCompraOrdemVenda(
+    String uid,
+    _OrdemVendaAberta ordem,
+  ) async {
+    if (ordem.quantidadeRestante <= 0) {
+      _mostrarMensagem('Esta oferta não possui tokens disponíveis.');
       return;
     }
 
     final quantidade = await showDialog<int>(
       context: context,
       builder: (context) => _QuantidadeDialog(
-        titulo: tipo == _TipoOperacao.compra
-            ? 'Comprar tokens'
-            : 'Vender tokens',
-        startup: startup.nome,
-        quantidadeMaxima: quantidadeMaxima,
+        titulo: 'Comprar tokens',
+        startup: ordem.nomeStartup,
+        quantidadeMaxima: ordem.quantidadeRestante,
       ),
     );
 
     if (quantidade == null || quantidade <= 0) return;
 
-    if (tipo == _TipoOperacao.compra) {
-      await _comprarTokens(uid, startup, quantidade);
-    } else {
-      await _venderTokens(uid, startup, quantidade);
-    }
-  }
-
-  Future<void> _comprarTokens(
-    String uid,
-    _StartupOferta startup,
-    int quantidade,
-  ) async {
     await _executarComFeedback(() async {
-      final holdingRef = await _normalizarHoldingRef(uid, startup.id);
-      final total = quantidade * startup.valorToken;
-      final now = FieldValue.serverTimestamp();
-
-      await _firestore.runTransaction((transaction) async {
-        final startupRef = _firestore.collection('startups').doc(startup.id);
-        final walletRef = _firestore.collection('wallets').doc(uid);
-
-        final startupDoc = await transaction.get(startupRef);
-        final walletDoc = await transaction.get(walletRef);
-        final holdingDoc = await transaction.get(holdingRef);
-
-        if (!startupDoc.exists) {
-          throw Exception('Startup não encontrada.');
-        }
-
-        if (!walletDoc.exists) {
-          throw Exception('Carteira não encontrada.');
-        }
-
-        final startupAtual = _StartupOferta.fromDoc(startupDoc);
-        final disponivel = startupAtual.quantidadeDisponivel;
-        final saldo = _numero(walletDoc.data()?['saldoReais']);
-
-        if (disponivel < quantidade) {
-          throw Exception('Quantidade indisponível para compra.');
-        }
-
-        if (saldo < total) {
-          throw Exception('Saldo insuficiente na carteira.');
-        }
-
-        final holding = holdingDoc.data();
-        final quantidadeAtual = _numero(holding?['quantidade']).toInt();
-        final precoMedioAtual = _numero(holding?['precoMedioCompra']);
-        final novaQuantidade = quantidadeAtual + quantidade;
-        final novoPrecoMedio =
-            ((quantidadeAtual * precoMedioAtual) + total) / novaQuantidade;
-
-        final orderRef = _firestore.collection('orders').doc();
-        final transactionRef = _firestore.collection('transactions').doc();
-        final tokenPriceRef = _firestore.collection('tokenPrices').doc();
-        final walletCreditRef = _firestore.collection('walletCredits').doc();
-
-        transaction.update(walletRef, {
-          'saldoReais': saldo - total,
-          'updatedAt': now,
-        });
-
-        transaction.set(holdingRef, {
-          'userId': uid,
-          'startupId': startup.id,
-          'quantidade': novaQuantidade,
-          'precoMedioCompra': novoPrecoMedio,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
-
-        _atualizarEstoqueStartup(
-          transaction,
-          startupRef,
-          startupAtual,
-          -quantidade,
-        );
-
-        transaction.set(orderRef, {
-          'id': orderRef.id,
-          'userId': uid,
-          'startupId': startup.id,
-          'tipo': 'compra',
-          'quantidade': quantidade,
-          'quantidadeExecutada': quantidade,
-          'preco': startup.valorToken,
-          'status': 'executada',
-          'createdAt': now,
-          'updatedAt': now,
-        });
-
-        transaction.set(transactionRef, {
-          'id': transactionRef.id,
-          'startupId': startup.id,
-          'buyerId': uid,
-          'sellerId': null,
-          'quantidade': quantidade,
-          'precoUnitario': startup.valorToken,
-          'valorTotal': total,
-          'orderCompraId': orderRef.id,
-          'orderVendaId': null,
-          'executadaEm': now,
-        });
-
-        transaction.set(tokenPriceRef, {
-          'id': tokenPriceRef.id,
-          'startupId': startup.id,
-          'preco': startup.valorToken,
-          'volume': quantidade,
-          'timestamp': now,
-        });
-
-        transaction.set(walletCreditRef, {
-          'userId': uid,
-          'valor': -total,
-          'tipo': 'compra',
-          'descricao': 'Compra de $quantidade tokens',
-          'createdAt': now,
-        });
-      });
+      await _balcaoService.comprarOrdemVenda(
+        compradorId: uid,
+        ordemId: ordem.id,
+        quantidade: quantidade,
+      );
 
       widget.onCarteiraAlterada?.call();
       _mostrarMensagem('Compra registrada com sucesso.');
     });
   }
 
-  Future<void> _venderTokens(
+  List<_OrdemVendaAberta> _ordensVendaAbertas(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    List<_StartupOferta> startups,
     String uid,
-    _StartupOferta startup,
-    int quantidade,
-  ) async {
-    await _executarComFeedback(() async {
-      final holdingRef = await _normalizarHoldingRef(uid, startup.id);
-      final total = quantidade * startup.valorToken;
-      final now = FieldValue.serverTimestamp();
+  ) {
+    final startupsPorId = {for (final startup in startups) startup.id: startup};
+    final ordens = <_OrdemVendaAberta>[];
 
-      await _firestore.runTransaction((transaction) async {
-        final startupRef = _firestore.collection('startups').doc(startup.id);
-        final walletRef = _firestore.collection('wallets').doc(uid);
+    for (final doc in docs) {
+      final ordem = _OrdemVendaAberta.fromDoc(doc, startupsPorId);
 
-        final startupDoc = await transaction.get(startupRef);
-        final walletDoc = await transaction.get(walletRef);
-        final holdingDoc = await transaction.get(holdingRef);
+      if (ordem == null || ordem.vendedorId == uid || !ordem.estaDisponivel) {
+        continue;
+      }
 
-        if (!startupDoc.exists || !holdingDoc.exists) {
-          throw Exception('Tokens não encontrados na carteira.');
-        }
+      ordens.add(ordem);
+    }
 
-        if (!walletDoc.exists) {
-          throw Exception('Carteira não encontrada.');
-        }
-
-        final startupAtual = _StartupOferta.fromDoc(startupDoc);
-        final saldo = _numero(walletDoc.data()?['saldoReais']);
-        final holding = holdingDoc.data();
-        final quantidadeAtual = _numero(holding?['quantidade']).toInt();
-
-        if (quantidadeAtual < quantidade) {
-          throw Exception('Tokens insuficientes para venda.');
-        }
-
-        final novaQuantidade = quantidadeAtual - quantidade;
-        final orderRef = _firestore.collection('orders').doc();
-        final transactionRef = _firestore.collection('transactions').doc();
-        final tokenPriceRef = _firestore.collection('tokenPrices').doc();
-        final walletCreditRef = _firestore.collection('walletCredits').doc();
-
-        transaction.update(walletRef, {
-          'saldoReais': saldo + total,
-          'updatedAt': now,
-        });
-
-        transaction.set(holdingRef, {
-          'userId': uid,
-          'startupId': startup.id,
-          'quantidade': novaQuantidade,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
-
-        _atualizarEstoqueStartup(
-          transaction,
-          startupRef,
-          startupAtual,
-          quantidade,
-        );
-
-        transaction.set(orderRef, {
-          'id': orderRef.id,
-          'userId': uid,
-          'startupId': startup.id,
-          'tipo': 'venda',
-          'quantidade': quantidade,
-          'quantidadeExecutada': quantidade,
-          'preco': startup.valorToken,
-          'status': 'executada',
-          'createdAt': now,
-          'updatedAt': now,
-        });
-
-        transaction.set(transactionRef, {
-          'id': transactionRef.id,
-          'startupId': startup.id,
-          'buyerId': null,
-          'sellerId': uid,
-          'quantidade': quantidade,
-          'precoUnitario': startup.valorToken,
-          'valorTotal': total,
-          'orderCompraId': null,
-          'orderVendaId': orderRef.id,
-          'executadaEm': now,
-        });
-
-        transaction.set(tokenPriceRef, {
-          'id': tokenPriceRef.id,
-          'startupId': startup.id,
-          'preco': startup.valorToken,
-          'volume': quantidade,
-          'timestamp': now,
-        });
-
-        transaction.set(walletCreditRef, {
-          'userId': uid,
-          'valor': total,
-          'tipo': 'venda',
-          'descricao': 'Venda de $quantidade tokens',
-          'createdAt': now,
-        });
-      });
-
-      widget.onCarteiraAlterada?.call();
-      _mostrarMensagem('Venda registrada com sucesso.');
+    ordens.sort((a, b) {
+      final precoCompare = a.preco.compareTo(b.preco);
+      if (precoCompare != 0) return precoCompare;
+      return a.nomeStartup.compareTo(b.nomeStartup);
     });
+
+    return ordens;
   }
 
   Map<String, _HoldingToken> _agruparHoldings(
@@ -573,81 +448,6 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     return holdings;
   }
 
-  Future<DocumentReference<Map<String, dynamic>>> _normalizarHoldingRef(
-    String uid,
-    String startupId,
-  ) async {
-    final canonicalRef = _firestore
-        .collection('tokenHoldings')
-        .doc(_holdingDocId(uid, startupId));
-    final docs = await _buscarHoldingDocs(uid, startupId);
-    final refs = <DocumentReference<Map<String, dynamic>>>[
-      canonicalRef,
-      for (final doc in docs)
-        if (doc.reference.path != canonicalRef.path) doc.reference,
-    ];
-
-    if (docs.length == 1 && docs.first.reference.path == canonicalRef.path) {
-      return canonicalRef;
-    }
-
-    await _firestore.runTransaction((transaction) async {
-      final snapshots = <DocumentSnapshot<Map<String, dynamic>>>[];
-
-      for (final ref in refs) {
-        snapshots.add(await transaction.get(ref));
-      }
-
-      var quantidadeTotal = 0;
-      var custoTotal = 0.0;
-
-      for (final snapshot in snapshots) {
-        final data = snapshot.data();
-        if (data == null) continue;
-
-        final quantidade = _numero(data['quantidade']).toInt();
-        final precoMedioCompra = _numero(data['precoMedioCompra']);
-
-        quantidadeTotal += quantidade;
-        custoTotal += quantidade * precoMedioCompra;
-      }
-
-      if (quantidadeTotal > 0) {
-        transaction.set(canonicalRef, {
-          'userId': uid,
-          'startupId': startupId,
-          'quantidade': quantidadeTotal,
-          'precoMedioCompra': custoTotal / quantidadeTotal,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      for (final snapshot in snapshots) {
-        if (snapshot.reference.path != canonicalRef.path && snapshot.exists) {
-          transaction.delete(snapshot.reference);
-        }
-      }
-    });
-
-    return canonicalRef;
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _buscarHoldingDocs(
-    String uid,
-    String startupId,
-  ) async {
-    final snapshot = await _firestore
-        .collection('tokenHoldings')
-        .where('userId', isEqualTo: uid)
-        .get();
-
-    return snapshot.docs
-        .where((doc) => _texto(doc.data()['startupId']) == startupId)
-        .toList();
-  }
-
-  String _holdingDocId(String uid, String startupId) => '${uid}_$startupId';
-
   Future<void> _executarComFeedback(Future<void> Function() acao) async {
     if (_processando) return;
 
@@ -664,21 +464,6 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
         setState(() => _processando = false);
       }
     }
-  }
-
-  void _atualizarEstoqueStartup(
-    Transaction transaction,
-    DocumentReference<Map<String, dynamic>> startupRef,
-    _StartupOferta startup,
-    int delta,
-  ) {
-    if (startup.campoQuantidade == null) return;
-
-    final novaQuantidade = startup.quantidadeDisponivel + delta;
-    transaction.update(startupRef, {
-      startup.campoQuantidade!: novaQuantidade < 0 ? 0 : novaQuantidade,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
   }
 
   void _mostrarMensagem(String mensagem) {
@@ -917,13 +702,60 @@ class _QuantidadeDialogState extends State<_QuantidadeDialog> {
   }
 }
 
+class _OrdemVendaAberta {
+  const _OrdemVendaAberta({
+    required this.id,
+    required this.vendedorId,
+    required this.nomeStartup,
+    required this.quantidadeRestante,
+    required this.preco,
+    required this.status,
+  });
+
+  static _OrdemVendaAberta? fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+    Map<String, _StartupOferta> startupsPorId,
+  ) {
+    final data = doc.data() ?? {};
+    final tipo = _texto(data['tipo']).toLowerCase();
+    final startupId = _texto(data['startupId']);
+    final startup = startupsPorId[startupId];
+    final preco = _numero(data['preco'] ?? data['precoUnitario']);
+    final quantidadeRestante = _quantidadeRestante(data);
+
+    if (tipo != 'venda' ||
+        startupId.isEmpty ||
+        preco <= 0 ||
+        quantidadeRestante <= 0) {
+      return null;
+    }
+
+    return _OrdemVendaAberta(
+      id: doc.id,
+      vendedorId: _texto(data['sellerId'] ?? data['userId']),
+      nomeStartup: startup?.nome ?? 'Nome da Startup',
+      quantidadeRestante: quantidadeRestante,
+      preco: preco,
+      status: _texto(data['status']).toLowerCase(),
+    );
+  }
+
+  final String id;
+  final String vendedorId;
+  final String nomeStartup;
+  final int quantidadeRestante;
+  final double preco;
+  final String status;
+
+  bool get estaDisponivel => _statusAberto(status) && quantidadeRestante > 0;
+}
+
 class _StartupOferta {
   const _StartupOferta({
     required this.id,
     required this.nome,
     required this.quantidadeDisponivel,
     required this.valorToken,
-    required this.campoQuantidade,
   });
 
   factory _StartupOferta.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -952,7 +784,6 @@ class _StartupOferta {
             data['tokenPrice'],
         fallback: 480,
       ),
-      campoQuantidade: quantidadeCampo,
     );
   }
 
@@ -960,7 +791,6 @@ class _StartupOferta {
   final String nome;
   final int quantidadeDisponivel;
   final double valorToken;
-  final String? campoQuantidade;
 }
 
 class _HoldingToken {
@@ -986,14 +816,29 @@ class _HoldingToken {
   }
 }
 
-enum _TipoOperacao { compra, venda }
-
 String? _primeiroCampoNumerico(Map<String, dynamic> data, List<String> campos) {
   for (final campo in campos) {
     if (data.containsKey(campo)) return campo;
   }
 
   return null;
+}
+
+bool _statusAberto(String status) {
+  return status == 'aberta' ||
+      status == 'parcial' ||
+      status == 'pendente' ||
+      status.contains('aguardando');
+}
+
+int _quantidadeRestante(Map<String, dynamic> order) {
+  final restante = _numero(order['quantidadeRestante']).toInt();
+  if (restante > 0) return restante;
+
+  final quantidade = _numero(order['quantidade']).toInt();
+  final executada = _numero(order['quantidadeExecutada']).toInt();
+  final calculada = quantidade - executada;
+  return calculada < 0 ? 0 : calculada;
 }
 
 String _texto(dynamic value, {String fallback = ''}) {

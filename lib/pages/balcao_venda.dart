@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 import '../widgets/app_bottom_nav.dart';
 
 class BalcaoVenda extends StatefulWidget {
@@ -27,8 +30,10 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   static const _cardCinza = Color(0xFFD9D9D9);
   static const _erro = Color(0xFFFF3B30);
 
+  final BalcaoService _balcaoService = BalcaoService();
   final TextEditingController _precoController = TextEditingController();
   final TextEditingController _quantidadeController = TextEditingController();
+  bool _processando = false;
 
   @override
   void dispose() {
@@ -38,6 +43,13 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   String get _nomeStartup => widget.startup['nome'] ?? 'Nome';
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+
+  String? get _startupId {
+    final id = widget.startup['id']?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
 
   double get _precoInformado => _numero(_precoController.text);
 
@@ -55,6 +67,9 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
 
   bool get _podeVender =>
       _temTokens &&
+      _uid != null &&
+      _startupId != null &&
+      !_processando &&
       _precoValido &&
       _quantidadeValida &&
       _quantidadeDentroDaCarteira;
@@ -74,23 +89,23 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
             _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 26),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildResumoStartup(),
-                    const SizedBox(height: 20),
-                    _buildCampoPreco(),
-                    const SizedBox(height: 20),
-                    _buildCampoQuantidade(),
                     const SizedBox(height: 22),
+                    _buildCampoPreco(),
+                    const SizedBox(height: 22),
+                    _buildCampoQuantidade(),
+                    const SizedBox(height: 24),
                     _buildTotalEstimado(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _buildTokensDisponiveis(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     if (!_temTokens || !_quantidadeDentroDaCarteira)
                       _buildAvisoSaldoInsuficiente(),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 24),
                     _buildBotaoVender(),
                   ],
                 ),
@@ -140,7 +155,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   Widget _buildResumoStartup() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 14, 22, 12),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
         color: _cardCinza,
         borderRadius: BorderRadius.circular(6),
@@ -162,7 +177,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -170,24 +185,24 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
               Text(
                 _formatarMoeda(widget.precoAtual),
                 style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Row(
             children: const [
               Expanded(
                 child: Text(
                   'Qtd de tokens:',
-                  style: TextStyle(fontSize: 8, color: Colors.black54),
+                  style: TextStyle(fontSize: 11, color: Colors.black54),
                 ),
               ),
               Text(
                 '/Token',
-                style: TextStyle(fontSize: 8, color: Colors.black54),
+                style: TextStyle(fontSize: 11, color: Colors.black54),
               ),
             ],
           ),
@@ -202,15 +217,15 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
       children: [
         const Text(
           'Preço (R\$)',
-          style: TextStyle(fontSize: 10, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _EntradaNegociacao(
           controller: _precoController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if (!_precoValido)
           const _MensagemErro('Informe um valor válido para negociação.'),
       ],
@@ -225,7 +240,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
           children: const [
             Text(
               'Quantidade (tokens)',
-              style: TextStyle(fontSize: 10, color: Colors.black54),
+              style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
             SizedBox(width: 4),
             Text(
@@ -233,16 +248,17 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
               style: TextStyle(
                 color: _azulPrimario,
                 fontWeight: FontWeight.w800,
+                fontSize: 14,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 112,
+              width: 132,
               child: _EntradaNegociacao(
                 controller: _quantidadeController,
                 keyboardType: TextInputType.number,
@@ -265,14 +281,14 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
       children: [
         const Text(
           'Total estimado',
-          style: TextStyle(fontSize: 10, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const Spacer(),
         Text(
           _formatarMoeda(_totalEstimado),
           style: const TextStyle(
             color: _rosaVenda,
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -283,7 +299,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   Widget _buildTokensDisponiveis() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
         color: _cardCinza,
         borderRadius: BorderRadius.circular(6),
@@ -292,12 +308,12 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
         children: [
           const Text(
             'Tokens Disponíveis',
-            style: TextStyle(fontSize: 10, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
           const Spacer(),
           Text(
             '${widget.tokensDisponiveis}',
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -313,8 +329,8 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   Widget _buildBotaoVender() {
     return Center(
       child: SizedBox(
-        width: 214,
-        height: 44,
+        width: 230,
+        height: 48,
         child: ElevatedButton(
           onPressed: _podeVender ? _registrarVenda : null,
           style: ElevatedButton.styleFrom(
@@ -326,22 +342,48 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
               borderRadius: BorderRadius.circular(5),
             ),
           ),
-          child: const Text(
-            'Vender',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          child: Text(
+            _processando ? 'Publicando...' : 'Vender',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
         ),
       ),
     );
   }
 
-  void _registrarVenda() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Venda pronta para registro.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _registrarVenda() async {
+    final uid = _uid;
+    final startupId = _startupId;
+
+    if (uid == null || startupId == null) {
+      _mostrarMensagem('Entre na sua conta para publicar uma venda.');
+      return;
+    }
+
+    setState(() => _processando = true);
+
+    try {
+      await _balcaoService.criarOrdemVenda(
+        vendedorId: uid,
+        startupId: startupId,
+        quantidade: _quantidadeInformada,
+        preco: _precoInformado,
+      );
+
+      _mostrarMensagem('Ordem de venda publicada com sucesso.');
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } on FirebaseException catch (error) {
+      _mostrarMensagem(_mensagemFirebase(error));
+    } catch (error) {
+      _mostrarMensagem(error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _processando = false);
+      }
+    }
   }
 
   void _selecionarNav(int index) {
@@ -354,6 +396,22 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
     if (index != 1) {
       Navigator.pop(context);
     }
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  String _mensagemFirebase(FirebaseException error) {
+    if (error.code == 'permission-denied') {
+      return 'Sem permissão para registrar a venda no Firebase.';
+    }
+
+    return error.message ?? 'Não foi possível registrar a venda.';
   }
 }
 
@@ -371,15 +429,16 @@ class _EntradaNegociacao extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: 44,
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         onChanged: onChanged,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         decoration: InputDecoration(
           filled: true,
           fillColor: _BalcaoVendaState._cardCinza,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
             borderSide: BorderSide.none,
@@ -403,13 +462,13 @@ class _MensagemErro extends StatelessWidget {
         const Icon(
           Icons.error_outline,
           color: _BalcaoVendaState._erro,
-          size: 15,
+          size: 18,
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             texto,
-            style: const TextStyle(fontSize: 10, color: Colors.black87),
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
           ),
         ),
       ],

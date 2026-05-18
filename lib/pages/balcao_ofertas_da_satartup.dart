@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_venda.dart';
 
@@ -28,6 +29,8 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   static const _textoEscuro = Color(0xFF111111);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final BalcaoService _balcaoService = BalcaoService();
+  bool _processandoCompra = false;
 
   List<OfertaStartup> get _ofertasCompra {
     final preco = _precoAtual;
@@ -48,19 +51,6 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
         preco: _precoComPiso(preco - (variacao * 4)),
         quantidade: 100,
       ),
-    ];
-  }
-
-  List<OfertaStartup> get _ofertasVenda {
-    final preco = _precoAtual;
-    final variacao = _variacaoPreco;
-
-    return [
-      OfertaStartup(preco: preco + variacao, quantidade: 40),
-      OfertaStartup(preco: preco + (variacao * 2), quantidade: 80),
-      OfertaStartup(preco: preco + (variacao * 3), quantidade: 150),
-      OfertaStartup(preco: preco + (variacao * 4), quantidade: 120),
-      OfertaStartup(preco: preco + (variacao * 5), quantidade: 200),
     ];
   }
 
@@ -85,6 +75,10 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
 
   double get _variacaoPreco => _precoAtual >= 10 ? 1 : 0.01;
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream() {
+    return _firestore.collection('orders').snapshots();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,11 +102,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
                       precoColor: _azulPrimario,
                     ),
                     const SizedBox(height: 28),
-                    _buildSecaoOfertas(
-                      titulo: 'Ofertas de Vendas',
-                      ofertas: _ordenadas(_ofertasVenda),
-                      precoColor: _rosaVenda,
-                    ),
+                    _buildSecaoOfertasVendaReais(),
                     const SizedBox(height: 34),
                     _buildAcoesCarteira(),
                   ],
@@ -229,6 +219,135 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     );
   }
 
+  Widget _buildSecaoOfertasVendaReais() {
+    final uid = _uid;
+    final startupId = _startupId;
+
+    if (uid == null || startupId == null) {
+      return _buildSecaoOfertasVazia(
+        'Ofertas de Vendas',
+        'Entre na sua conta para ver ofertas de venda.',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _ordersStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildSecaoOfertasVazia(
+            'Ofertas de Vendas',
+            'Não foi possível carregar as ofertas de venda.',
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: _azulPrimario),
+          );
+        }
+
+        final ofertas =
+            snapshot.data!.docs
+                .map(_OrdemVendaAberta.fromDoc)
+                .whereType<_OrdemVendaAberta>()
+                .where(
+                  (ordem) =>
+                      ordem.startupId == startupId &&
+                      ordem.vendedorId != uid &&
+                      ordem.estaDisponivel,
+                )
+                .toList()
+              ..sort((a, b) => a.preco.compareTo(b.preco));
+
+        return _buildSecaoVendas(titulo: 'Ofertas de Vendas', ofertas: ofertas);
+      },
+    );
+  }
+
+  Widget _buildSecaoVendas({
+    required String titulo,
+    required List<_OrdemVendaAberta> ofertas,
+  }) {
+    if (ofertas.isEmpty) {
+      return _buildSecaoOfertasVazia(
+        titulo,
+        'Nenhuma oferta de venda aberta para esta startup.',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: const TextStyle(
+            color: _textoEscuro,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const _TabelaHeader(comAcao: true),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: _cardTabela,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.16),
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: ofertas
+                .map(
+                  (oferta) => _OfertaVendaLinha(
+                    oferta: oferta,
+                    bloqueado: _processandoCompra,
+                    onComprar: () => _confirmarCompraOrdemVenda(oferta),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecaoOfertasVazia(String titulo, String mensagem) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: const TextStyle(
+            color: _textoEscuro,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          decoration: BoxDecoration(
+            color: _cardTabela,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            mensagem,
+            style: const TextStyle(color: Colors.black54, fontSize: 10),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAcoesCarteira() {
     final stream = _tokensDisponiveisStream();
 
@@ -307,6 +426,47 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     );
   }
 
+  Future<void> _confirmarCompraOrdemVenda(_OrdemVendaAberta ordem) async {
+    final uid = _uid;
+
+    if (uid == null) {
+      _mostrarMensagem('Entre na sua conta para comprar esta oferta.');
+      return;
+    }
+
+    final quantidade = await showDialog<int>(
+      context: context,
+      builder: (context) => _QuantidadeDialog(
+        startup: _nomeStartup,
+        quantidadeMaxima: ordem.quantidadeRestante,
+      ),
+    );
+
+    if (quantidade == null || quantidade <= 0) return;
+
+    if (_processandoCompra) return;
+
+    setState(() => _processandoCompra = true);
+
+    try {
+      await _balcaoService.comprarOrdemVenda(
+        compradorId: uid,
+        ordemId: ordem.id,
+        quantidade: quantidade,
+      );
+
+      _mostrarMensagem('Compra registrada com sucesso.');
+    } on FirebaseException catch (error) {
+      _mostrarMensagem(_mensagemFirebase(error));
+    } catch (error) {
+      _mostrarMensagem(error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _processandoCompra = false);
+      }
+    }
+  }
+
   void _selecionarNav(int index) {
     if (widget.onNavigate != null) {
       widget.onNavigate!(index);
@@ -317,6 +477,22 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     if (index != 1) {
       Navigator.pop(context);
     }
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  String _mensagemFirebase(FirebaseException error) {
+    if (error.code == 'permission-denied') {
+      return 'Sem permissão para acessar estes dados no Firebase.';
+    }
+
+    return error.message ?? 'Não foi possível concluir a operação.';
   }
 }
 
@@ -329,18 +505,62 @@ class OfertaStartup {
   double get total => preco * quantidade;
 }
 
+class _OrdemVendaAberta {
+  const _OrdemVendaAberta({
+    required this.id,
+    required this.tipo,
+    required this.vendedorId,
+    required this.startupId,
+    required this.quantidadeRestante,
+    required this.preco,
+    required this.status,
+  });
+
+  factory _OrdemVendaAberta.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? {};
+
+    return _OrdemVendaAberta(
+      id: doc.id,
+      tipo: _texto(data['tipo']).toLowerCase(),
+      vendedorId: _texto(data['sellerId'] ?? data['userId']),
+      startupId: _texto(data['startupId']),
+      quantidadeRestante: _quantidadeRestante(data),
+      preco: _numero(data['preco'] ?? data['precoUnitario']),
+      status: _texto(data['status']).toLowerCase(),
+    );
+  }
+
+  final String id;
+  final String tipo;
+  final String vendedorId;
+  final String startupId;
+  final int quantidadeRestante;
+  final double preco;
+  final String status;
+
+  double get total => preco * quantidadeRestante;
+
+  bool get estaDisponivel =>
+      tipo == 'venda' && _statusAberto(status) && quantidadeRestante > 0;
+}
+
 class _TabelaHeader extends StatelessWidget {
-  const _TabelaHeader();
+  const _TabelaHeader({this.comAcao = false});
+
+  final bool comAcao;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 18),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
         children: [
-          _TabelaCelula('Preço (R\$)'),
-          _TabelaCelula('Quantidade'),
-          _TabelaCelula('Total (R\$)'),
+          const _TabelaCelula('Preço (R\$)'),
+          const _TabelaCelula('Quantidade'),
+          const _TabelaCelula('Total (R\$)'),
+          if (comAcao) const SizedBox(width: 84),
         ],
       ),
     );
@@ -368,6 +588,63 @@ class _OfertaLinha extends StatelessWidget {
           _TabelaCelula(
             _formatarNumero(oferta.total),
             fontWeight: FontWeight.w700,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfertaVendaLinha extends StatelessWidget {
+  const _OfertaVendaLinha({
+    required this.oferta,
+    required this.bloqueado,
+    required this.onComprar,
+  });
+
+  final _OrdemVendaAberta oferta;
+  final bool bloqueado;
+  final VoidCallback onComprar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      child: Row(
+        children: [
+          _TabelaCelula(
+            _formatarNumero(oferta.preco),
+            color: _BalcaoOfertasDaStartupState._rosaVenda,
+            fontWeight: FontWeight.w700,
+          ),
+          _TabelaCelula(
+            '${oferta.quantidadeRestante}',
+            fontWeight: FontWeight.w700,
+          ),
+          _TabelaCelula(
+            _formatarNumero(oferta.total),
+            fontWeight: FontWeight.w700,
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 76,
+            height: 30,
+            child: ElevatedButton(
+              onPressed: bloqueado ? null : onComprar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _BalcaoOfertasDaStartupState._azulPrimario,
+                disabledBackgroundColor: _BalcaoOfertasDaStartupState
+                    ._azulPrimario
+                    .withValues(alpha: 0.4),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text('Comprar', style: TextStyle(fontSize: 11)),
+            ),
           ),
         ],
       ),
@@ -429,6 +706,93 @@ class _AcaoButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuantidadeDialog extends StatefulWidget {
+  const _QuantidadeDialog({
+    required this.startup,
+    required this.quantidadeMaxima,
+  });
+
+  final String startup;
+  final int quantidadeMaxima;
+
+  @override
+  State<_QuantidadeDialog> createState() => _QuantidadeDialogState();
+}
+
+class _QuantidadeDialogState extends State<_QuantidadeDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '1');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Comprar tokens'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.startup),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Quantidade',
+              helperText: 'Máximo: ${widget.quantidadeMaxima}',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final quantidade = int.tryParse(_controller.text.trim()) ?? 0;
+            if (quantidade <= 0 || quantidade > widget.quantidadeMaxima) {
+              return;
+            }
+
+            Navigator.pop(context, quantidade);
+          },
+          child: const Text('Confirmar'),
+        ),
+      ],
+    );
+  }
+}
+
+bool _statusAberto(String status) {
+  return status == 'aberta' ||
+      status == 'parcial' ||
+      status == 'pendente' ||
+      status.contains('aguardando');
+}
+
+int _quantidadeRestante(Map<String, dynamic> order) {
+  final restante = _numero(order['quantidadeRestante']).toInt();
+  if (restante > 0) return restante;
+
+  final quantidade = _numero(order['quantidade']).toInt();
+  final executada = _numero(order['quantidadeExecutada']).toInt();
+  final calculada = quantidade - executada;
+  return calculada < 0 ? 0 : calculada;
 }
 
 String _formatarMoeda(double value, {bool comEspaco = false}) {
