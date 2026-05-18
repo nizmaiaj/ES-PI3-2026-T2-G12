@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import '../services/auth_session.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
+import 'balcao_ofertas_da_satartup.dart';
 
 class TelaVisaoGeral extends StatefulWidget {
   final Map<String, String> startup;
@@ -445,7 +446,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: carregando ? null : () => _selecionarNav(2),
+              onPressed: carregando
+                  ? null
+                  : temTokens
+                  ? () => _selecionarNav(2)
+                  : _abrirOfertasDaStartup,
               style: ElevatedButton.styleFrom(
                 backgroundColor: temTokens
                     ? const Color(0xFF2C3680)
@@ -1823,6 +1828,18 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const BalcaoNegociacao()),
+    );
+  }
+
+  void _abrirOfertasDaStartup() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BalcaoOfertasDaStartup(
+          startup: {...widget.startup, 'tokensCarteira': '0'},
+          onNavigate: widget.onNavigate,
+        ),
+      ),
     );
   }
 }

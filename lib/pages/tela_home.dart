@@ -41,11 +41,17 @@ class _TelaHomeState extends State<TelaHome> {
     });
   }
 
-  void _mostrarHome() {
+  void _selecionarAba(int index) {
     setState(() {
-      _selectedIndex = 0;
-      _homeResumoFuture = _buscarResumoHome();
+      _selectedIndex = index;
+      if (index == 0) {
+        _homeResumoFuture = _buscarResumoHome();
+      }
     });
+  }
+
+  void _mostrarHome() {
+    _selecionarAba(0);
   }
 
   @override
@@ -64,12 +70,11 @@ class _TelaHomeState extends State<TelaHome> {
                   TelaCatalogo(
                     mostrarMenuInferior: false,
                     onVoltar: _mostrarHome,
-                    onNavigate: (index) =>
-                        setState(() => _selectedIndex = index),
+                    onNavigate: _selecionarAba,
                   ), // Tela 1
                   BalcaoNegociacao(
-                    onNavigate: (index) =>
-                        setState(() => _selectedIndex = index),
+                    onNavigate: _selecionarAba,
+                    onCarteiraAlterada: _recarregarHome,
                   ), // Tela 2
                 ],
               ),
@@ -458,7 +463,7 @@ class _TelaHomeState extends State<TelaHome> {
           quantidade: token.quantidade,
           precoMedioCompra: token.precoMedioCompra,
           precoAtualInicial: token.precoAtual,
-          onNavigate: (index) => setState(() => _selectedIndex = index),
+          onNavigate: _selecionarAba,
         ),
       ),
     );
@@ -711,7 +716,7 @@ class _TelaHomeState extends State<TelaHome> {
           ),
           // CATÁLOGO
           GestureDetector(
-            onTap: () => setState(() => _selectedIndex = 1),
+            onTap: () => _selecionarAba(1),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -731,7 +736,7 @@ class _TelaHomeState extends State<TelaHome> {
           ),
           // BALCÃO
           GestureDetector(
-            onTap: () => setState(() => _selectedIndex = 2),
+            onTap: () => _selecionarAba(2),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

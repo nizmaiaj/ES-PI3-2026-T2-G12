@@ -9,8 +9,9 @@ import 'no_animation_route.dart';
 
 class BalcaoNegociacao extends StatefulWidget {
   final Function(int)? onNavigate;
+  final VoidCallback? onCarteiraAlterada;
 
-  const BalcaoNegociacao({super.key, this.onNavigate});
+  const BalcaoNegociacao({super.key, this.onNavigate, this.onCarteiraAlterada});
 
   @override
   State<BalcaoNegociacao> createState() => _BalcaoNegociacaoState();
@@ -438,6 +439,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
         });
       });
 
+      widget.onCarteiraAlterada?.call();
       _mostrarMensagem('Compra registrada com sucesso.');
     });
   }
@@ -545,6 +547,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
         });
       });
 
+      widget.onCarteiraAlterada?.call();
       _mostrarMensagem('Venda registrada com sucesso.');
     });
   }
