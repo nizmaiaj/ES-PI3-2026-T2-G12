@@ -30,26 +30,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _roxoChat = Color(0xFF5B4FCF);
-
-  static const _socios = [
-    {
-      'nome': 'Maria Fernanda Silva',
-      'cargo': 'CEO',
-      'percentual': '40%',
-      'descricao': 'Campo destinado a descrição breve do sócio',
-    },
-    {
-      'nome': 'Lucas Fernando Martins',
-      'cargo': 'CTO',
-      'percentual': '35%',
-      'descricao': 'Campo destinado a descrição breve do sócio',
-    },
-    {
-      'nome': 'João Pedro Rocha',
-      'cargo': 'COO',
-      'percentual': '25%',
-      'descricao': 'Campo destinado a descrição breve do sócio',
-    },
+  static const _coresSocios = [
+    Color(0xFF3F51B5),
+    Color(0xFF7C52D4),
+    Color(0xFFEC4899),
+    Color(0xFF14B8A6),
+    Color(0xFFF59E0B),
+    Color(0xFF0EA5E9),
   ];
 
   static const _videos = [
@@ -103,9 +90,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   }
 
   Widget _buildConteudoAtivo() {
-    if (_tabAtiva == 'Sociedade' && _verTodosAberto) {
-      return _buildVerTodosView();
-    }
     switch (_tabAtiva) {
       case 'Visão Geral':
         return SingleChildScrollView(
@@ -119,16 +103,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
         );
       case 'Sociedade':
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            children: [
-              _buildEstruturaCard(),
-              const SizedBox(height: 16),
-              _buildApresentacaoSocios(),
-            ],
-          ),
-        );
+        return _buildSociedadeConteudo();
       case 'Conteúdo':
         return _buildConteudoConteudo();
       case 'Perguntas':
@@ -488,12 +463,81 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   // ── ABA: SOCIEDADE ─────────────────────────────────────────────────────────
 
-  Widget _buildEstruturaCard() {
-    const coresSocios = [
-      Color(0xFF3F51B5),
-      Color(0xFF7C52D4),
-      Color(0xFFEC4899),
-    ];
+  Widget _buildSociedadeConteudo() {
+    final startupId = _startupId;
+
+    if (startupId == null) {
+      return _buildEstadoSociedade(
+        'Startup sem identificador para carregar os sócios.',
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: _startupStream(startupId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildEstadoSociedade(
+            'Não foi possível carregar os dados da sociedade.',
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: _azulPrimario),
+          );
+        }
+
+        final data = snapshot.data!.data();
+        final socios = _sociosFromStartupData(data);
+
+        if (socios.isEmpty) {
+          return _buildEstadoSociedade(
+            'Nenhum sócio cadastrado para esta startup.',
+          );
+        }
+
+        if (_verTodosAberto) return _buildVerTodosView(socios);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            children: [
+              _buildEstruturaCard(socios),
+              const SizedBox(height: 16),
+              _buildApresentacaoSocios(socios),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _startupStream(
+    String startupId,
+  ) {
+    return _firestore.collection('startups').doc(startupId).snapshots();
+  }
+
+  Widget _buildEstadoSociedade(String mensagem) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          mensagem,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEstruturaCard(List<_SocioStartup> socios) {
+    final segmentos = _segmentosDonut(socios);
+    final totalPercentual = socios.fold<double>(
+      0,
+      (total, socio) => total + (socio.percentual ?? 0),
+    );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -520,14 +564,14 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 width: 130,
                 height: 130,
                 child: CustomPaint(
-                  painter: _GraficoDonutPainter(),
-                  child: const Center(
+                  painter: _GraficoDonutPainter(segmentos),
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '100%',
-                          style: TextStyle(
+                          _formatarPercentual(totalPercentual),
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A2E),
@@ -546,16 +590,16 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: List.generate(_socios.length, (i) {
-                    final s = _socios[i];
+                  children: List.generate(socios.length, (i) {
+                    final s = socios[i];
                     return Padding(
                       padding: EdgeInsets.only(
-                        bottom: i < _socios.length - 1 ? 12 : 0,
+                        bottom: i < socios.length - 1 ? 12 : 0,
                       ),
                       child: _buildLegendaItem(
-                        coresSocios[i],
-                        '${s['nome']} (${s['cargo']})',
-                        s['percentual']!,
+                        _corSocio(i),
+                        s.cargo.isEmpty ? s.nome : '${s.nome} (${s.cargo})',
+                        s.percentualExibido,
                       ),
                     );
                   }),
@@ -595,7 +639,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildApresentacaoSocios() {
+  Widget _buildApresentacaoSocios(List<_SocioStartup> socios) {
+    final sociosExibidos = socios.take(3).toList();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -633,13 +679,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(_socios.length, (i) {
+            children: List.generate(sociosExibidos.length, (i) {
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(
-                    right: i < _socios.length - 1 ? 8 : 0,
+                    right: i < sociosExibidos.length - 1 ? 8 : 0,
                   ),
-                  child: _buildSocioCardCompacto(_socios[i]),
+                  child: _buildSocioCardCompacto(sociosExibidos[i]),
                 ),
               );
             }),
@@ -649,7 +695,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildSocioCardCompacto(Map<String, String> socio) {
+  Widget _buildSocioCardCompacto(_SocioStartup socio) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -674,18 +720,18 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
           const SizedBox(height: 8),
           Text(
-            socio['nome']!,
+            socio.nome,
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
-            socio['cargo']!,
+            socio.cargo.isEmpty ? 'Sócio' : socio.cargo,
             style: const TextStyle(fontSize: 9, color: Colors.grey),
           ),
           const SizedBox(height: 6),
           Text(
-            socio['descricao']!,
+            socio.descricao,
             style: const TextStyle(fontSize: 9, color: Colors.grey),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
@@ -695,7 +741,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildVerTodosView() {
+  Widget _buildVerTodosView(List<_SocioStartup> socios) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Container(
@@ -732,15 +778,15 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                 ],
               ),
             ),
-            ...List.generate(_socios.length, (i) {
+            ...List.generate(socios.length, (i) {
               return Padding(
                 padding: EdgeInsets.fromLTRB(
                   16,
                   4,
                   16,
-                  i == _socios.length - 1 ? 20 : 4,
+                  i == socios.length - 1 ? 20 : 4,
                 ),
-                child: _buildSocioCardExpandido(_socios[i]),
+                child: _buildSocioCardExpandido(socios[i]),
               );
             }),
           ],
@@ -749,7 +795,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildSocioCardExpandido(Map<String, String> socio) {
+  Widget _buildSocioCardExpandido(_SocioStartup socio) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -778,19 +824,19 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  socio['nome']!,
+                  socio.nome,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  socio['cargo']!,
+                  socio.cargo.isEmpty ? 'Sócio' : socio.cargo,
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  socio['descricao']!,
+                  socio.descricao,
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
@@ -799,6 +845,81 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         ],
       ),
     );
+  }
+
+  Color _corSocio(int index) => _coresSocios[index % _coresSocios.length];
+
+  List<_SegmentoDonut> _segmentosDonut(List<_SocioStartup> socios) {
+    return [
+      for (var i = 0; i < socios.length; i++)
+        _SegmentoDonut(
+          percentual: socios[i].percentual ?? 0,
+          cor: _corSocio(i),
+          label: socios[i].percentualExibido,
+        ),
+    ];
+  }
+
+  List<_SocioStartup> _sociosFromStartupData(Map<String, dynamic>? data) {
+    if (data == null) return const [];
+
+    final sociosRaw =
+        data['socios'] ??
+        data['sócios'] ??
+        data['sociedade'] ??
+        data['sociosFundadores'] ??
+        data['fundadores'];
+
+    return _sociosFromDynamic(sociosRaw);
+  }
+
+  List<_SocioStartup> _sociosFromDynamic(dynamic value) {
+    if (value is Iterable) {
+      return value
+          .map(_SocioStartup.fromValue)
+          .where((socio) => socio.nome.isNotEmpty)
+          .toList();
+    }
+
+    if (value is Map) {
+      if (_pareceSocio(value)) {
+        final socio = _SocioStartup.fromValue(value);
+        return socio.nome.isEmpty ? const [] : [socio];
+      }
+
+      return value.entries
+          .map((entry) => _SocioStartup.fromMapEntry(entry.key, entry.value))
+          .where((socio) => socio.nome.isNotEmpty)
+          .toList();
+    }
+
+    return const [];
+  }
+
+  bool _pareceSocio(Map<dynamic, dynamic> value) {
+    const camposSocio = {
+      'nome',
+      'name',
+      'nomeCompleto',
+      'fullName',
+      'cargo',
+      'funcao',
+      'função',
+      'role',
+      'position',
+      'percentual',
+      'participacao',
+      'participação',
+      'participacaoPercentual',
+      'equity',
+      'descricao',
+      'descrição',
+      'description',
+      'bio',
+      'biografia',
+    };
+
+    return value.keys.any((key) => camposSocio.contains(key.toString()));
   }
 
   // ── ABA: CONTEÚDO ──────────────────────────────────────────────────────────
@@ -1677,6 +1798,103 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   }
 }
 
+class _SocioStartup {
+  const _SocioStartup({
+    required this.nome,
+    required this.cargo,
+    required this.descricao,
+    required this.percentual,
+  });
+
+  factory _SocioStartup.fromValue(dynamic value) {
+    if (value is Map) {
+      return _SocioStartup.fromMap(value);
+    }
+
+    return _SocioStartup(
+      nome: _texto(value),
+      cargo: '',
+      descricao: 'Sem descrição cadastrada.',
+      percentual: null,
+    );
+  }
+
+  factory _SocioStartup.fromMapEntry(dynamic key, dynamic value) {
+    if (value is Map) {
+      final data = Map<dynamic, dynamic>.from(value);
+      data.putIfAbsent('nome', () => key);
+      return _SocioStartup.fromMap(data);
+    }
+
+    final percentual = _percentualSocio(value);
+
+    return _SocioStartup(
+      nome: _texto(key),
+      cargo: percentual == null ? _texto(value) : '',
+      descricao: 'Sem descrição cadastrada.',
+      percentual: percentual,
+    );
+  }
+
+  factory _SocioStartup.fromMap(Map<dynamic, dynamic> data) {
+    return _SocioStartup(
+      nome: _texto(
+        data['nome'] ??
+            data['name'] ??
+            data['nomeCompleto'] ??
+            data['fullName'],
+      ),
+      cargo: _texto(
+        data['cargo'] ??
+            data['funcao'] ??
+            data['função'] ??
+            data['role'] ??
+            data['position'],
+      ),
+      descricao: _texto(
+        data['descricao'] ??
+            data['descrição'] ??
+            data['description'] ??
+            data['bio'] ??
+            data['biografia'] ??
+            data['resumo'],
+        fallback: 'Sem descrição cadastrada.',
+      ),
+      percentual: _percentualSocio(
+        data['percentual'] ??
+            data['participacao'] ??
+            data['participação'] ??
+            data['participacaoPercentual'] ??
+            data['participaçãoPercentual'] ??
+            data['equity'],
+      ),
+    );
+  }
+
+  final String nome;
+  final String cargo;
+  final String descricao;
+  final double? percentual;
+
+  String get percentualExibido {
+    final value = percentual;
+    if (value == null || value <= 0) return 'Não informado';
+    return _formatarPercentual(value);
+  }
+}
+
+class _SegmentoDonut {
+  const _SegmentoDonut({
+    required this.percentual,
+    required this.cor,
+    required this.label,
+  });
+
+  final double percentual;
+  final Color cor;
+  final String label;
+}
+
 class _PerguntaStartup {
   const _PerguntaStartup({
     required this.id,
@@ -1739,6 +1957,26 @@ double _numero(dynamic value, {double fallback = 0}) {
   return fallback;
 }
 
+double? _percentualSocio(dynamic value) {
+  if (value == null) return null;
+
+  final numero = value is String
+      ? _numero(value.replaceAll('%', ''), fallback: double.nan)
+      : _numero(value, fallback: double.nan);
+
+  if (numero.isNaN || numero <= 0) return null;
+  return numero <= 1 ? numero * 100 : numero;
+}
+
+String _formatarPercentual(double value) {
+  final arredondado = value.roundToDouble();
+  if ((value - arredondado).abs() < 0.05) {
+    return '${arredondado.toInt()}%';
+  }
+
+  return '${value.toStringAsFixed(1).replaceAll('.', ',')}%';
+}
+
 DateTime? _dateTime(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
@@ -1749,11 +1987,9 @@ DateTime? _dateTime(dynamic value) {
 // ── GRÁFICO DONUT ────────────────────────────────────────────────────────────
 
 class _GraficoDonutPainter extends CustomPainter {
-  static const _segmentos = [
-    (percentual: 0.40, cor: Color(0xFF3F51B5), label: '40%'),
-    (percentual: 0.35, cor: Color(0xFF7C52D4), label: '35%'),
-    (percentual: 0.25, cor: Color(0xFFEC4899), label: '25%'),
-  ];
+  const _GraficoDonutPainter(this.segmentos);
+
+  final List<_SegmentoDonut> segmentos;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1761,11 +1997,34 @@ class _GraficoDonutPainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
     const strokeWidth = 26.0;
     const gap = 0.04;
+    final segmentosComPercentual = segmentos
+        .where((segmento) => segmento.percentual > 0)
+        .toList();
+    final total = segmentosComPercentual.fold<double>(
+      0,
+      (totalParcial, segmento) => totalParcial + segmento.percentual,
+    );
+
+    if (total <= 0) {
+      canvas.drawCircle(
+        center,
+        radius - strokeWidth / 2,
+        Paint()
+          ..color = const Color(0xFFE5E7EB)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth,
+      );
+      return;
+    }
 
     double startAngle = -math.pi / 2;
 
-    for (final seg in _segmentos) {
-      final sweepAngle = 2 * math.pi * seg.percentual - gap;
+    for (final seg in segmentosComPercentual) {
+      final percentualNormalizado = seg.percentual / total;
+      final sweepAngle = math.max(
+        0.0,
+        2 * math.pi * percentualNormalizado - gap,
+      );
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
@@ -1798,10 +2057,12 @@ class _GraficoDonutPainter extends CustomPainter {
 
       tp.paint(canvas, Offset(lx - tp.width / 2, ly - tp.height / 2));
 
-      startAngle += 2 * math.pi * seg.percentual;
+      startAngle += 2 * math.pi * percentualNormalizado;
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter _) => false;
+  bool shouldRepaint(covariant _GraficoDonutPainter oldDelegate) {
+    return oldDelegate.segmentos != segmentos;
+  }
 }
