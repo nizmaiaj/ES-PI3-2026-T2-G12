@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'tela_visao_geral.dart';
@@ -23,70 +25,14 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   String _filtroAtivo = "Todos";
   String busca = "";
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _startupsStream() {
+    return _firestore.collection('startups').snapshots();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. DADOS VINDOS DA SUA PLANILHA
-    final List<Map<String, String>> startups = [
-      {
-        "nome": "EcoTech",
-        "imagem": "asstes/logo_EcoTech.png",
-        "desc": "Plataforma de monitoramento ambiental para empresas",
-        "capital": "300.000",
-        "tokens": "100.000",
-        "socios": "2",
-        "status": "Em operação",
-      },
-      {
-        "nome": "FinFast",
-        "imagem": "assets/logo_FinFast.png",
-        "desc":
-            "Aplicativo de pagamentos instantâneos e gestão para freelancer",
-        "capital": "500.000",
-        "tokens": "200.000",
-        "socios": "2",
-        "status": "Nova",
-      },
-      {
-        "nome": "QueroJa",
-        "imagem": "assets/logo_QueroJa.png",
-        "desc":
-            "Pequenos restaurantes locais com logística de entrega integrada",
-        "capital": "150.000.000",
-        "tokens": "500.000",
-        "socios": "2",
-        "status": "Em expanção",
-      },
-      {
-        "nome": "EduPlay",
-        "imagem": "assets/logo_EduPlay.png",
-        "desc": "Plataforma de gamificação para ensino de matemática básica",
-        "capital": "150.000",
-        "tokens": "50.000",
-        "socios": "2",
-        "status": "Em operação",
-      },
-      {
-        "nome": "HealthSync",
-        "imagem": "asstes/logo_HealthSync.png",
-        "desc": "Integração de prontuários médicos seguros via rede blockchain",
-        "capital": "1.200.000",
-        "tokens": "500.000",
-        "socios": "3",
-        "status": "Nova",
-      },
-    ];
-    final startupsFiltradas = startups.where((startup) {
-      final filtroStatus =
-          _filtroAtivo == "Todos" || startup['status'] == _filtroAtivo;
-
-      //verifica se a startup tem o nome pesquisado
-      final filtroBusca = startup['nome']!.toLowerCase().contains(
-        busca.toLowerCase(),
-      );
-      //a startup so é exibida se passar no filtro de status e busca
-      return filtroStatus && filtroBusca;
-    }).toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       body: Column(
@@ -177,149 +123,58 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
             ),
           ),
 
-          // LISTA DE STARTUPS (MAP DA PLANILHA)
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: startupsFiltradas.map((item) {
-                //percoree cada startup filtrada
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F1F1),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: Image.asset(
-                              item['imagem']!, // O '!' garante ao Dart que o caminho existe
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              // Se a imagem não for encontrada, ele mostra o ícone de fallback
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: Colors.white,
-                                  child: const Icon(
-                                    Icons.business,
-                                    color: Color(0xFF3F51B5),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item['nome']!,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                                Text(
-                                  item['desc']!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: const Color.fromARGB(
-                                      115,
-                                      14,
-                                      13,
-                                      13,
-                                    ),
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  item['status']!,
-                                  style: const TextStyle(fontSize: 9),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => TelaVisaoGeral(
-                                        startup: item,
-                                        onNavigate: widget.onNavigate,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF3F51B5),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Conhecer",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildInfoCol(
-                            Icons.bar_chart,
-                            "Capital",
-                            "R\$ ${item['capital']}",
-                          ),
-                          _buildInfoCol(
-                            Icons.layers,
-                            "Tokens",
-                            item['tokens']!,
-                          ),
-                          _buildInfoCol(
-                            Icons.people,
-                            "Sócios",
-                            item['socios']!,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _startupsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return _buildEstadoLista(
+                    'Não foi possível carregar as startups.',
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF3F51B5)),
+                  );
+                }
+
+                final startups =
+                    snapshot.data!.docs.map(_startupCatalogoFromDoc).toList()
+                      ..sort(
+                        (a, b) => (a['nome'] ?? '').compareTo(b['nome'] ?? ''),
+                      );
+
+                final startupsFiltradas = startups.where((startup) {
+                  final status = startup['status'] ?? '';
+                  final nome = startup['nome'] ?? '';
+                  final filtroStatus =
+                      _filtroAtivo == "Todos" || status == _filtroAtivo;
+                  final filtroBusca = nome.toLowerCase().contains(
+                    busca.toLowerCase(),
+                  );
+
+                  return filtroStatus && filtroBusca;
+                }).toList();
+
+                if (startups.isEmpty) {
+                  return _buildEstadoLista('Nenhuma startup cadastrada.');
+                }
+
+                if (startupsFiltradas.isEmpty) {
+                  return _buildEstadoLista(
+                    'Nenhuma startup encontrada para esse filtro.',
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: startupsFiltradas.length,
+                  itemBuilder: (context, index) {
+                    return _buildStartupCard(startupsFiltradas[index]);
+                  },
                 );
-              }).toList(),
+              },
             ),
           ),
         ],
@@ -333,6 +188,190 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
               backgroundColor: const Color(0xFFF8F9FE),
             )
           : null,
+    );
+  }
+
+  Map<String, String> _startupCatalogoFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final socios = data['socios'];
+
+    return {
+      'id': doc.id,
+      'nome': _texto(data['nome'] ?? data['name'] ?? data['startupName']),
+      'imagem': _texto(data['logoUrl'] ?? data['imagem'] ?? data['imageUrl']),
+      'desc': _texto(
+        data['descricao'] ?? data['sumarioExecutivo'] ?? data['description'],
+      ),
+      'capital': _formatarNumeroBr(
+        _numero(data['capitalAportado'] ?? data['capital']),
+      ),
+      'tokens': _formatarNumeroBr(
+        _numero(
+          data['totalTokens'] ??
+              data['tokensDisponiveis'] ??
+              data['quantidadeTokens'] ??
+              data['tokens'],
+        ),
+      ),
+      'socios': _quantidadeSocios(socios),
+      'status': _texto(data['estagio'] ?? data['status']),
+      'valorToken': _numero(
+        data['tokenPrecoInicial'] ??
+            data['valorToken'] ??
+            data['precoToken'] ??
+            data['preco'],
+      ).toString(),
+    };
+  }
+
+  Widget _buildStartupCard(Map<String, String> item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F1F1),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: _buildStartupLogo(item['imagem'] ?? ''),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['nome']!.isEmpty
+                          ? 'Startup sem nome'
+                          : item['nome']!,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      item['desc']!.isEmpty
+                          ? 'Descrição não informada'
+                          : item['desc']!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color.fromARGB(115, 14, 13, 13),
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      item['status']!.isEmpty ? 'Sem estágio' : item['status']!,
+                      style: const TextStyle(fontSize: 9),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TelaVisaoGeral(
+                            startup: item,
+                            onNavigate: widget.onNavigate,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3F51B5),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      "Conhecer",
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildInfoCol(
+                Icons.bar_chart,
+                "Capital",
+                "R\$ ${item['capital']}",
+              ),
+              _buildInfoCol(Icons.layers, "Tokens", item['tokens']!),
+              _buildInfoCol(Icons.people, "Sócios", item['socios']!),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStartupLogo(String imagem) {
+    final fallback = Container(
+      width: 60,
+      height: 60,
+      color: Colors.white,
+      child: const Icon(Icons.business, color: Color(0xFF3F51B5)),
+    );
+
+    if (imagem.isEmpty) return fallback;
+
+    if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
+      return Image.network(
+        imagem,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      );
+    }
+
+    return Image.asset(
+      imagem,
+      width: 60,
+      height: 60,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => fallback,
+    );
+  }
+
+  Widget _buildEstadoLista(String mensagem) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          mensagem,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54, fontSize: 14),
+        ),
+      ),
     );
   }
 
@@ -373,4 +412,50 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       ],
     );
   }
+}
+
+String _texto(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+
+  final texto = value.toString().trim();
+  return texto.isEmpty ? fallback : texto;
+}
+
+double _numero(dynamic value, {double fallback = 0}) {
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final normalizado = value
+        .replaceAll('R\$', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
+
+    return double.tryParse(normalizado) ?? fallback;
+  }
+
+  return fallback;
+}
+
+String _formatarNumeroBr(double value) {
+  final inteiro = value.round().toString();
+  final buffer = StringBuffer();
+
+  for (var i = 0; i < inteiro.length; i++) {
+    final remaining = inteiro.length - i;
+    buffer.write(inteiro[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+
+  return buffer.toString();
+}
+
+String _quantidadeSocios(dynamic socios) {
+  if (socios is Iterable) return socios.length.toString();
+  if (socios is Map) return socios.length.toString();
+
+  return _formatarNumeroBr(_numero(socios));
 }

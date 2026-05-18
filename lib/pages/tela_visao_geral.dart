@@ -168,12 +168,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                widget.startup['imagem'] ?? '',
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    const Icon(Icons.business, color: _azulPrimario, size: 36),
-              ),
+              child: _buildStartupLogo(widget.startup['imagem'] ?? ''),
             ),
           ),
           const SizedBox(width: 16),
@@ -226,6 +221,26 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStartupLogo(String imagem) {
+    const fallback = Icon(Icons.business, color: _azulPrimario, size: 36);
+
+    if (imagem.isEmpty) return fallback;
+
+    if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
+      return Image.network(
+        imagem,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+
+    return Image.asset(
+      imagem,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
     );
   }
 
