@@ -22,7 +22,7 @@ class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
   int _selectedIndex = 0; // Variável para controlar a troca de telas
 
-  late Future<List<_TokenResumo>> _tokensFuture;
+  Future<_HomeResumo>? _homeResumoFuture;
   late final Future<String> _nomeUsuarioFuture;
 
   static const _roxo = Color(0xFF4C3BCF);
@@ -30,20 +30,20 @@ class _TelaHomeState extends State<TelaHome> {
   @override
   void initState() {
     super.initState();
-    _tokensFuture = _buscarTokensDoUsuario();
+    _homeResumoFuture = _buscarResumoHome();
     _nomeUsuarioFuture = _buscarNomeUsuario();
   }
 
-  void _recarregarTokens() {
+  void _recarregarHome() {
     setState(() {
-      _tokensFuture = _buscarTokensDoUsuario();
+      _homeResumoFuture = _buscarResumoHome();
     });
   }
 
   void _mostrarHome() {
     setState(() {
       _selectedIndex = 0;
-      _tokensFuture = _buscarTokensDoUsuario();
+      _homeResumoFuture = _buscarResumoHome();
     });
   }
 
@@ -89,19 +89,20 @@ class _TelaHomeState extends State<TelaHome> {
         children: [
           _buildHeader(),
           const SizedBox(height: 20),
-          FutureBuilder<List<_TokenResumo>>(
-            future: _tokensFuture,
+          FutureBuilder<_HomeResumo>(
+            future: _homeResumoFuture ??= _buscarResumoHome(),
             builder: (context, snapshot) {
-              final tokens = snapshot.data ?? const <_TokenResumo>[];
-              final valorInvestido = tokens.fold<double>(
-                0,
-                (total, token) => total + token.valorTotal,
-              );
+              final resumo = snapshot.data ?? const _HomeResumo.vazio();
+              final tokens = resumo.tokens;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildPatrimonioCard(valorInvestido),
+                  _buildPatrimonioCard(
+                    patrimonioTotal: resumo.patrimonioTotal,
+                    valorInvestido: resumo.valorInvestido,
+                    saldoReais: resumo.saldoReais,
+                  ),
                   const SizedBox(height: 24),
                   const Text(
                     'Meus Tokens',
@@ -156,7 +157,7 @@ class _TelaHomeState extends State<TelaHome> {
                   ),
                 );
                 if (mounted) {
-                  _recarregarTokens();
+                  _recarregarHome();
                 }
               },
               child: const Icon(
@@ -200,8 +201,14 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
-  Widget _buildPatrimonioCard(double valorInvestido) {
-    final valorFormatado = _formatarMoeda(valorInvestido);
+  Widget _buildPatrimonioCard({
+    required double patrimonioTotal,
+    required double valorInvestido,
+    required double saldoReais,
+  }) {
+    final patrimonioFormatado = _formatarMoeda(patrimonioTotal);
+    final valorInvestidoFormatado = _formatarMoeda(valorInvestido);
+    final saldoReaisFormatado = _formatarMoeda(saldoReais);
 
     return Container(
       width: double.infinity,
@@ -243,7 +250,7 @@ class _TelaHomeState extends State<TelaHome> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    valorFormatado,
+                    patrimonioFormatado,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -264,58 +271,74 @@ class _TelaHomeState extends State<TelaHome> {
             ),
           ),
           const SizedBox(height: 20),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Valor total investido',
-                      style: TextStyle(color: Colors.white60, fontSize: 11),
-                    ),
-                    Text(
-                      valorFormatado,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
+              _buildPatrimonioInfo(
+                label: 'Valor em tokens',
+                valor: valorInvestidoFormatado,
               ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TelaAdicionarCredito(),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: _roxo,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                child: const Text(
-                  'Adicionar Crédito',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
+              _buildPatrimonioInfo(
+                label: 'Saldo em carteira',
+                valor: saldoReaisFormatado,
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TelaAdicionarCredito(),
+                  ),
+                );
+                if (mounted) {
+                  _recarregarHome();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: _roxo,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text(
+                'Adicionar Crédito',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPatrimonioInfo({required String label, required String valor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white60, fontSize: 11),
+          ),
+          Text(
+            valor,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -398,14 +421,27 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
-  Future<List<_TokenResumo>> _buscarTokensDoUsuario() async {
+  Future<_HomeResumo> _buscarResumoHome() async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
     if (uid == null) {
-      return const [];
+      return const _HomeResumo.vazio();
     }
 
     final firestore = FirebaseFirestore.instance;
+    final tokensFuture = _buscarTokensDoUsuario(firestore, uid);
+    final saldoReaisFuture = _buscarSaldoCarteira(firestore, uid);
+
+    return _HomeResumo(
+      tokens: await tokensFuture,
+      saldoReais: await saldoReaisFuture,
+    );
+  }
+
+  Future<List<_TokenResumo>> _buscarTokensDoUsuario(
+    FirebaseFirestore firestore,
+    String uid,
+  ) async {
     final holdingsSnapshot = await firestore
         .collection('tokenHoldings')
         .where('userId', isEqualTo: uid)
@@ -433,6 +469,16 @@ class _TelaHomeState extends State<TelaHome> {
     tokensComQuantidade.sort((a, b) => a.nome.compareTo(b.nome));
 
     return tokensComQuantidade;
+  }
+
+  Future<double> _buscarSaldoCarteira(
+    FirebaseFirestore firestore,
+    String uid,
+  ) async {
+    final walletDoc = await firestore.collection('wallets').doc(uid).get();
+    final data = walletDoc.data();
+
+    return _lerNumero(data?['saldoReais']);
   }
 
   Future<String> _buscarNomeUsuario() async {
@@ -616,6 +662,20 @@ class _TelaHomeState extends State<TelaHome> {
       ),
     );
   }
+}
+
+class _HomeResumo {
+  const _HomeResumo({required this.tokens, required this.saldoReais});
+
+  const _HomeResumo.vazio() : tokens = const <_TokenResumo>[], saldoReais = 0;
+
+  final List<_TokenResumo> tokens;
+  final double saldoReais;
+
+  double get valorInvestido =>
+      tokens.fold<double>(0, (total, token) => total + token.valorTotal);
+
+  double get patrimonioTotal => valorInvestido + saldoReais;
 }
 
 class _TokenResumo {

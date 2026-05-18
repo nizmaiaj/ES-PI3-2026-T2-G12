@@ -75,7 +75,7 @@ class AuthService {
 
       batch.set(walletRef, {
         'userId': createdUser.uid,
-        'saldoReais': 1000.0,
+        'saldoReais': 0.0,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
