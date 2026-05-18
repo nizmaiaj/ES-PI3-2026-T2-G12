@@ -376,6 +376,10 @@ class _OrdemCard extends StatelessWidget {
         ? _BalcaoMinhasOrdensState._rosaVenda
         : _BalcaoMinhasOrdensState._azulPrimario;
 
+    if (concluida) {
+      return _buildCardConcluido(corTipo);
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 13),
       padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
@@ -492,6 +496,94 @@ class _OrdemCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildCardConcluido(Color corTipo) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.20),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  ordem.nomeStartup,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              _StatusPill(
+                texto: 'Concluído',
+                cor: _BalcaoMinhasOrdensState._verdeConcluido,
+                preenchido: false,
+                fontSize: 10,
+                horizontalPadding: 11,
+                verticalPadding: 6,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _capitalizar(ordem.tipo),
+            style: TextStyle(
+              color: corTipo,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Concluída em ${_formatarData(ordem.dataOperacao)}',
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Qtd de tokens',
+                  valor: '${ordem.quantidade}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Preço',
+                  valor: _formatarMoeda(ordem.preco),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ResumoConcluido(
+                  label: 'Total',
+                  valor: _formatarMoeda(ordem.total),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _InfoColuna extends StatelessWidget {
@@ -526,6 +618,39 @@ class _InfoColuna extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ResumoConcluido extends StatelessWidget {
+  const _ResumoConcluido({required this.label, required this.valor});
+
+  final String label;
+  final String valor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 10, color: Colors.black54),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          valor,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -567,16 +692,25 @@ class _StatusPill extends StatelessWidget {
     required this.texto,
     required this.cor,
     required this.preenchido,
+    this.fontSize = 7,
+    this.horizontalPadding = 9,
+    this.verticalPadding = 5,
   });
 
   final String texto;
   final Color cor;
   final bool preenchido;
+  final double fontSize;
+  final double horizontalPadding;
+  final double verticalPadding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
       decoration: BoxDecoration(
         color: preenchido ? cor : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
@@ -586,7 +720,7 @@ class _StatusPill extends StatelessWidget {
         texto,
         style: TextStyle(
           color: preenchido ? Colors.white : cor,
-          fontSize: 7,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
         ),
       ),
