@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_session.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
+import 'no_animation_route.dart';
 
 class BalcaoMinhasOrdens extends StatefulWidget {
   final Function(int)? onNavigate;
@@ -234,7 +235,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
 
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const BalcaoNegociacao()),
+                noAnimationRoute(builder: (_) => const BalcaoNegociacao()),
               );
             },
           ),

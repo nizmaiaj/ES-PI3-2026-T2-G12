@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_session.dart';
 import 'balcao_ofertas_da_satartup.dart';
 import 'balcao_minhasordens.dart';
+import 'no_animation_route.dart';
 
 class BalcaoNegociacao extends StatefulWidget {
   final Function(int)? onNavigate;
@@ -213,7 +214,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
             texto: 'Minhas Ordens',
             ativo: false,
             onTap: () {
-              final route = MaterialPageRoute(
+              final route = noAnimationRoute(
                 builder: (_) =>
                     BalcaoMinhasOrdens(onNavigate: widget.onNavigate),
               );
