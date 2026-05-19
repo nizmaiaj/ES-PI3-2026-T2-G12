@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'pages/tela_inicial.dart';
 
+// import 'pages/tela_balcaoCompra.dart';
+// import 'pages/tela_home.dart';
 // import 'pages/tela_cadastro.dart';
 // import 'pages/tela_login.dart';
 // import 'package:es_pi3_2026_t2_g12/pages/tela_visao_geral.dart';
@@ -11,9 +13,7 @@ import 'pages/tela_inicial.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const MeuApp());
 }

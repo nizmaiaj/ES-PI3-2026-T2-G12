@@ -21,7 +21,7 @@ class TelaHome extends StatefulWidget {
 
 class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
-  int _selectedIndex = 0; // Variável para controlar a troca de telas
+  int _selectedIndex = 0;
 
   Future<_HomeResumo>? _homeResumoFuture;
   late final Future<String> _nomeUsuarioFuture;
@@ -61,397 +61,602 @@ class _TelaHomeState extends State<TelaHome> {
       body: SafeArea(
         child: Column(
           children: [
-            // O conteúdo troca aqui dependendo do clique no menu
+            // ----------------------------------------------------
+            // CONTEÚDO PRINCIPAL (INDEXED STACK)
+            // ----------------------------------------------------
             Expanded(
               child: IndexedStack(
                 index: _selectedIndex,
                 children: [
-                  _buildConteudoHome(), // Tela 0
+                  // --- ABA 0: CONTEÚDO DA HOME INTEGRADO DIRETO AQUI ---
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // HEADER DO USUÁRIO
+                        FutureBuilder<String>(
+                          future: _nomeUsuarioFuture,
+                          builder: (context, snapshot) {
+                            final nomeUsuario =
+                                snapshot.data ?? _nomeFallback();
+
+                            return Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => TelaUsuario(
+                                          nomeFallback: nomeUsuario,
+                                        ),
+                                      ),
+                                    );
+                                    if (mounted) {
+                                      _recarregarHome();
+                                    }
+                                  },
+                                  child: const Icon(
+                                    Icons.account_circle_outlined,
+                                    size: 38,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Olá, $nomeUsuario',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    icon: const Icon(
+                                      Icons.notification_add_outlined,
+                                      color: _roxo,
+                                      size: 22,
+                                    ),
+                                    onPressed: () {},
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // CARD DE PATRIMÔNIO E MEUS TOKENS (FUTURE BUILDER)
+                        FutureBuilder<_HomeResumo>(
+                          future: _homeResumoFuture ??= _buscarResumoHome(),
+                          builder: (context, snapshot) {
+                            final resumo =
+                                snapshot.data ?? const _HomeResumo.vazio();
+                            final tokens = resumo.tokens;
+
+                            final patrimonioFormatado = _formatarMoeda(
+                              resumo.patrimonioTotal,
+                            );
+                            final valorInvestidoFormatado = _formatarMoeda(
+                              resumo.valorInvestido,
+                            );
+                            final saldoReaisFormatado = _formatarMoeda(
+                              resumo.saldoReais,
+                            );
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // CARD PATRIMÔNIO
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFF6070F0),
+                                        Color(0xFF3A4DD6),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Text(
+                                            'Patrimônio Total',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          GestureDetector(
+                                            onTap: () => setState(
+                                              () => _patrimonioVisivel =
+                                                  !_patrimonioVisivel,
+                                            ),
+                                            child: Icon(
+                                              _patrimonioVisivel
+                                                  ? Icons.visibility
+                                                  : Icons.visibility_off,
+                                              color: Colors.white70,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        height: 40,
+                                        child: Stack(
+                                          children: [
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                patrimonioFormatado,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 26,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            if (!_patrimonioVisivel)
+                                              Positioned.fill(
+                                                child: ClipRect(
+                                                  child: BackdropFilter(
+                                                    filter: ImageFilter.blur(
+                                                      sigmaX: 10,
+                                                      sigmaY: 10,
+                                                    ),
+                                                    child: Container(
+                                                      color: Colors.transparent,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        children: [
+                                          // Bloco Valor em Tokens inline
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black26,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Valor em tokens',
+                                                  style: TextStyle(
+                                                    color: Colors.white60,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                _patrimonioVisivel
+                                                    ? Text(
+                                                        valorInvestidoFormatado,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                      )
+                                                    : ClipRect(
+                                                        child: ImageFiltered(
+                                                          imageFilter:
+                                                              ImageFilter.blur(
+                                                                sigmaX: 10,
+                                                                sigmaY: 10,
+                                                              ),
+                                                          child: Text(
+                                                            valorInvestidoFormatado,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 14,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Bloco Saldo em Carteira inline
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black26,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Saldo em carteira',
+                                                  style: TextStyle(
+                                                    color: Colors.white60,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                _patrimonioVisivel
+                                                    ? Text(
+                                                        saldoReaisFormatado,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                      )
+                                                    : ClipRect(
+                                                        child: ImageFiltered(
+                                                          imageFilter:
+                                                              ImageFilter.blur(
+                                                                sigmaX: 10,
+                                                                sigmaY: 10,
+                                                              ),
+                                                          child: Text(
+                                                            saldoReaisFormatado,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 14,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: ElevatedButton(
+                                          onPressed: () async {
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const TelaAdicionarCredito(),
+                                              ),
+                                            );
+                                            if (mounted) {
+                                              _recarregarHome();
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: _roxo,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Adicionar Crédito',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'Meus Tokens',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                // LISTAGEM DE TOKENS INLINE
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting)
+                                  const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 24,
+                                      ),
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                else if (snapshot.hasError)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 18,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEEEEF5),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Text(
+                                      'Não foi possível carregar seus tokens.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  )
+                                else if (tokens.isEmpty)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 18,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEEEEF5),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Text(
+                                      'Você não possui tokens no momento',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ...tokens.map((token) {
+                                    return GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _abrirDetalheToken(token),
+                                      child: Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEEEEF5),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade300,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    token.nome,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    '${_formatarQuantidade(token.quantidade)} tokens',
+                                                    style: TextStyle(
+                                                      color:
+                                                          Colors.grey.shade500,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  _formatarMoeda(
+                                                    token.valorTotal,
+                                                  ),
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'PM ${_formatarMoeda(token.precoMedioCompra)}',
+                                                  style: const TextStyle(
+                                                    color: Colors.green,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(width: 6),
+                                            const Icon(
+                                              Icons.chevron_right,
+                                              color: _roxo,
+                                              size: 22,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+
+                  // --- ABA 1: CATÁLOGO ---
                   TelaCatalogo(
                     mostrarMenuInferior: false,
                     onVoltar: _mostrarHome,
                     onNavigate: _selecionarAba,
-                  ), // Tela 1
+                  ),
+
+                  // --- ABA 2: BALCÃO ---
                   BalcaoNegociacao(
                     onNavigate: _selecionarAba,
                     onCarteiraAlterada: _recarregarHome,
-                  ), // Tela 2
+                  ),
                 ],
               ),
             ),
-            _buildBottomNav(),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // Função que isola o conteúdo da sua Home (Header, Card, Lista)
-  Widget _buildConteudoHome() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 20),
-          FutureBuilder<_HomeResumo>(
-            future: _homeResumoFuture ??= _buscarResumoHome(),
-            builder: (context, snapshot) {
-              final resumo = snapshot.data ?? const _HomeResumo.vazio();
-              final tokens = resumo.tokens;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPatrimonioCard(
-                    patrimonioTotal: resumo.patrimonioTotal,
-                    valorInvestido: resumo.valorInvestido,
-                    saldoReais: resumo.saldoReais,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Meus Tokens',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (snapshot.hasError)
-                    _buildMensagemTokens(
-                      'Não foi possível carregar seus tokens.',
-                    )
-                  else if (tokens.isEmpty)
-                    _buildMensagemTokens('Você não possui tokens no momento')
-                  else
-                    ...tokens.map(_buildTokenItem),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  // --- MÉTODOS DE COMPONENTES ---
-
-  Widget _buildHeader() {
-    return FutureBuilder<String>(
-      future: _nomeUsuarioFuture,
-      builder: (context, snapshot) {
-        final nomeUsuario = snapshot.data ?? _nomeFallback();
-
-        return Row(
-          children: [
-            GestureDetector(
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TelaUsuario(nomeFallback: nomeUsuario),
-                  ),
-                );
-                if (mounted) {
-                  _recarregarHome();
-                }
-              },
-              child: const Icon(
-                Icons.account_circle_outlined,
-                size: 38,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Olá, $nomeUsuario',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
+            // ----------------------------------------------------
+            // MENU INFERIOR PERSONALIZADO (INTEGRADO NO BUILD)
+            // ----------------------------------------------------
             Container(
-              width: 42,
-              height: 42,
+              margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
+              height: 70,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.notification_add_outlined,
-                  color: _roxo,
-                  size: 22,
-                ),
-                onPressed: () {},
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPatrimonioCard({
-    required double patrimonioTotal,
-    required double valorInvestido,
-    required double saldoReais,
-  }) {
-    final patrimonioFormatado = _formatarMoeda(patrimonioTotal);
-    final valorInvestidoFormatado = _formatarMoeda(valorInvestido);
-    final saldoReaisFormatado = _formatarMoeda(saldoReais);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF6070F0), Color(0xFF3A4DD6)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Patrimônio Total',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () =>
-                    setState(() => _patrimonioVisivel = !_patrimonioVisivel),
-                child: Icon(
-                  _patrimonioVisivel ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white70,
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 40,
-            child: Stack(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    patrimonioFormatado,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
+                color: const Color(0xFFEDEDED),
+                borderRadius: BorderRadius.circular(35),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
                   ),
-                ),
-                if (!_patrimonioVisivel)
-                  Positioned.fill(
-                    child: ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildPatrimonioInfo(
-                label: 'Valor em tokens',
-                valor: valorInvestidoFormatado,
-                visivel: _patrimonioVisivel,
+                ],
               ),
-              _buildPatrimonioInfo(
-                label: 'Saldo em carteira',
-                valor: saldoReaisFormatado,
-                visivel: _patrimonioVisivel,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TelaAdicionarCredito(),
-                  ),
-                );
-                if (mounted) {
-                  _recarregarHome();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: _roxo,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: const Text(
-                'Adicionar Crédito',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatrimonioInfo({
-    required String label,
-    required String valor,
-    required bool visivel,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white60, fontSize: 11),
-          ),
-          _buildValorPatrimonioInfo(valor: valor, visivel: visivel),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildValorPatrimonioInfo({
-    required String valor,
-    required bool visivel,
-  }) {
-    const textoValor = TextStyle(
-      color: Colors.white,
-      fontWeight: FontWeight.bold,
-      fontSize: 14,
-    );
-    final child = Text(valor, style: textoValor);
-
-    if (visivel) {
-      return child;
-    }
-
-    return ClipRect(
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: child,
-      ),
-    );
-  }
-
-  Widget _buildMensagemTokens(String mensagem) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEEEF5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        mensagem,
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-      ),
-    );
-  }
-
-  Widget _buildTokenItem(_TokenResumo token) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _abrirDetalheToken(token),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEEEEF5),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Text(
-                    token.nome,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                  // BOTÃO HOME
+                  GestureDetector(
+                    onTap: _mostrarHome,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.home_outlined,
+                          color: _selectedIndex == 0 ? _roxo : Colors.black87,
+                        ),
+                        Text(
+                          "Home",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: _selectedIndex == 0 ? _roxo : Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '${_formatarQuantidade(token.quantidade)} tokens',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  // BOTÃO CATÁLOGO
+                  GestureDetector(
+                    onTap: () => _selecionarAba(1),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.menu_book_outlined,
+                          color: _selectedIndex == 1 ? _roxo : Colors.black87,
+                        ),
+                        Text(
+                          "Catálogo",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: _selectedIndex == 1 ? _roxo : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // BOTÃO BALCÃO
+                  GestureDetector(
+                    onTap: () => _selecionarAba(2),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.swap_horiz,
+                          color: _selectedIndex == 2 ? _roxo : Colors.black87,
+                        ),
+                        Text(
+                          "Balcão",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: _selectedIndex == 2 ? _roxo : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _formatarMoeda(token.valorTotal),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  'PM ${_formatarMoeda(token.precoMedioCompra)}',
-                  style: const TextStyle(color: Colors.green, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(width: 6),
-            const Icon(Icons.chevron_right, color: _roxo, size: 22),
           ],
         ),
       ),
     );
   }
+
+  // --- MÉTODOS DE SUPORTE LÓGICO E DE DADOS ---
 
   Future<void> _abrirDetalheToken(_TokenResumo token) async {
     await Navigator.push(
@@ -498,7 +703,6 @@ class _TelaHomeState extends State<TelaHome> {
         .collection('tokenHoldings')
         .where('userId', isEqualTo: uid)
         .get();
-
     final holdingsAgrupados = <String, _HoldingAgregado>{};
 
     for (final doc in holdingsSnapshot.docs) {
@@ -554,9 +758,7 @@ class _TelaHomeState extends State<TelaHome> {
     String uid,
   ) async {
     final walletDoc = await firestore.collection('wallets').doc(uid).get();
-    final data = walletDoc.data();
-
-    return _lerNumero(data?['saldoReais']);
+    return _lerNumero(walletDoc.data()?['saldoReais']);
   }
 
   Future<String> _buscarNomeUsuario() async {
@@ -574,9 +776,7 @@ class _TelaHomeState extends State<TelaHome> {
         if (nomeCompleto is String && nomeCompleto.trim().isNotEmpty) {
           return nomeCompleto.trim();
         }
-      } on FirebaseException {
-        // Usa os fallbacks locais abaixo se o Firestore não responder.
-      }
+      } on FirebaseException {}
     }
 
     final displayName = user?.displayName;
@@ -589,11 +789,9 @@ class _TelaHomeState extends State<TelaHome> {
 
   String _nomeFallback() {
     final nomeDigitado = widget.nomeDigitado.trim();
-
     if (nomeDigitado.isNotEmpty && !nomeDigitado.contains('@')) {
       return _primeiroNome(nomeDigitado);
     }
-
     return 'Usuário';
   }
 
@@ -642,10 +840,8 @@ class _TelaHomeState extends State<TelaHome> {
       final normalizado = texto.contains(',')
           ? texto.replaceAll('.', '').replaceAll(',', '.')
           : texto;
-
       return double.tryParse(normalizado) ?? 0;
     }
-
     return 0;
   }
 
@@ -672,97 +868,23 @@ class _TelaHomeState extends State<TelaHome> {
     if (quantidade % 1 == 0) {
       return quantidade.toInt().toString();
     }
-
-    return quantidade.toStringAsFixed(2).replaceAll('.', ',');
-  }
-
-  // --- O SEU MENU INFERIOR COMO VOCÊ PASSOU ---
-  Widget _buildBottomNav() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-      height: 70,
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
-        borderRadius: BorderRadius.circular(35),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // HOME
-          GestureDetector(
-            onTap: _mostrarHome,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.home_outlined,
-                  color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                ),
-                Text(
-                  "Home",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // CATÁLOGO
-          GestureDetector(
-            onTap: () => _selecionarAba(1),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.menu_book_outlined,
-                  color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                ),
-                Text(
-                  "Catálogo",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // BALCÃO
-          GestureDetector(
-            onTap: () => _selecionarAba(2),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.swap_horiz,
-                  color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                ),
-                Text(
-                  "Balcão",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return Math.transformQuantidade(
+      quantidade,
+    ); // Fallback adaptado para consistência
   }
 }
 
+// Pequeno helper de fallback local adicionado para compilar a quantidade sem pacotes extras externos
+class Math {
+  static String transformQuantidade(double q) =>
+      q.toStringAsFixed(2).replaceAll('.', ',');
+}
+
+// ----------------------------------------------------
+// MODELOS DE DADOS COMPLEMENTARES
+// ----------------------------------------------------
 class _HomeResumo {
   const _HomeResumo({required this.tokens, required this.saldoReais});
-
   const _HomeResumo.vazio() : tokens = const <_TokenResumo>[], saldoReais = 0;
 
   final List<_TokenResumo> tokens;
@@ -770,7 +892,6 @@ class _HomeResumo {
 
   double get valorInvestido =>
       tokens.fold<double>(0, (total, token) => total + token.valorTotal);
-
   double get patrimonioTotal => valorInvestido + saldoReais;
 }
 
@@ -794,7 +915,6 @@ class _TokenResumo {
 
 class _StartupResumo {
   const _StartupResumo({required this.nome, required this.precoAtual});
-
   final String nome;
   final double precoAtual;
 }
