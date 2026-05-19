@@ -27,11 +27,25 @@ class MeuApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Tira a faixa de "DEBUG" da tela
       title: 'Mescla invest',
+      scrollBehavior: const _SemOverscrollElastic(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true, // Usa o design mais recente do Google
       ),
       home: const TelaInicial(),
     );
+  }
+}
+
+class _SemOverscrollElastic extends MaterialScrollBehavior {
+  const _SemOverscrollElastic();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }
