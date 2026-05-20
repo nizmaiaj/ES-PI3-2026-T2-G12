@@ -239,6 +239,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         return _buildSociedadeConteudo();
       case 'Conteúdo':
         return _buildConteudoConteudo();
+      case 'Atualizações':
+        return _buildAtualizacoesConteudo();
       case 'Perguntas':
         return _buildPerguntasConteudo();
       default:
@@ -392,7 +394,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   // ── TABS ───────────────────────────────────────────────────────────────────
 
   Widget _buildTabs() {
-    const tabs = ['Visão Geral', 'Sociedade', 'Conteúdo', 'Perguntas'];
+    const tabs = [
+      'Visão Geral',
+      'Sociedade',
+      'Conteúdo',
+      'Atualizações',
+      'Perguntas',
+    ];
     return Container(
       margin: const EdgeInsets.only(top: 14),
       decoration: const BoxDecoration(
@@ -418,13 +426,16 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     ),
                   ),
                 ),
-                child: Text(
-                  tab,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
-                    color: ativo ? _azulPrimario : Colors.grey,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    tab,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
+                      color: ativo ? _azulPrimario : Colors.grey,
+                    ),
                   ),
                 ),
               ),
@@ -1254,6 +1265,242 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         ),
       ],
     );
+  }
+
+  // ── ABA: ATUALIZAÇÕES ─────────────────────────────────────────────────────
+
+  Widget _buildAtualizacoesConteudo() {
+    final startupId = _startupId;
+
+    if (startupId == null) {
+      return _buildEstadoAtualizacoes(
+        'Startup sem identificador para carregar as atualizações.',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _updatesStream(startupId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildEstadoAtualizacoes(
+            'Não foi possível carregar as atualizações.',
+          );
+        }
+
+        final carregando = !snapshot.hasData;
+        final atualizacoes = snapshot.data == null
+            ? <_AtualizacaoStartup>[]
+            : _ordenarAtualizacoes(
+                snapshot.data!.docs.map(_AtualizacaoStartup.fromDoc).toList(),
+              );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Atualizações da empresa',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Acompanhe comunicados, notícias e marcos recentes da startup',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              if (carregando)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(color: _azulPrimario),
+                  ),
+                )
+              else if (atualizacoes.isEmpty)
+                _buildMensagemAtualizacoes(
+                  'Ainda não há atualizações cadastradas para esta startup.',
+                )
+              else
+                ...List.generate(atualizacoes.length, (i) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: i < atualizacoes.length - 1 ? 12 : 0,
+                    ),
+                    child: _buildAtualizacaoItem(atualizacoes[i]),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _updatesStream(String startupId) {
+    return _firestore
+        .collection('startups')
+        .doc(startupId)
+        .collection('updates')
+        .snapshots();
+  }
+
+  Widget _buildAtualizacaoItem(_AtualizacaoStartup atualizacao) {
+    final cor = _corTipoAtualizacao(atualizacao.tipo);
+    final dataExibida = atualizacao.createdAt == null
+        ? 'Data não informada'
+        : _formatarDataAtualizacao(atualizacao.createdAt!);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: cor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _iconeTipoAtualizacao(atualizacao.tipo),
+              color: cor,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        atualizacao.tipoExibido,
+                        style: TextStyle(
+                          color: cor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      dataExibida,
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  atualizacao.titulo,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  atualizacao.conteudo,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_AtualizacaoStartup> _ordenarAtualizacoes(
+    List<_AtualizacaoStartup> atualizacoes,
+  ) {
+    return atualizacoes..sort((a, b) {
+      final createdAtA = a.createdAt;
+      final createdAtB = b.createdAt;
+
+      if (createdAtA == null && createdAtB == null) return 0;
+      if (createdAtA == null) return 1;
+      if (createdAtB == null) return -1;
+
+      return createdAtB.compareTo(createdAtA);
+    });
+  }
+
+  Widget _buildEstadoAtualizacoes(String mensagem) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          mensagem,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMensagemAtualizacoes(String mensagem) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        mensagem,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.black54, fontSize: 12),
+      ),
+    );
+  }
+
+  IconData _iconeTipoAtualizacao(String tipo) {
+    final normalizado = tipo.toLowerCase();
+
+    if (normalizado.contains('evento')) return Icons.event_note_outlined;
+    if (normalizado.contains('financ')) return Icons.trending_up_outlined;
+    if (normalizado.contains('produto')) return Icons.inventory_2_outlined;
+    if (normalizado.contains('not')) return Icons.article_outlined;
+
+    return Icons.campaign_outlined;
+  }
+
+  Color _corTipoAtualizacao(String tipo) {
+    final normalizado = tipo.toLowerCase();
+
+    if (normalizado.contains('evento')) return const Color(0xFF7C52D4);
+    if (normalizado.contains('financ')) return const Color(0xFF059669);
+    if (normalizado.contains('produto')) return const Color(0xFF0EA5E9);
+    if (normalizado.contains('not')) return _azulPrimario;
+
+    return const Color(0xFFF59E0B);
   }
 
   // ── ABA: PERGUNTAS ─────────────────────────────────────────────────────────
@@ -2149,6 +2396,46 @@ class _PerguntaStartup {
       foiRespondida ? resposta : 'Aguardando resposta do empreendedor.';
 }
 
+class _AtualizacaoStartup {
+  const _AtualizacaoStartup({
+    required this.tipo,
+    required this.titulo,
+    required this.conteudo,
+    required this.createdAt,
+  });
+
+  factory _AtualizacaoStartup.fromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+
+    return _AtualizacaoStartup(
+      tipo: _texto(data['tipo'] ?? data['type'], fallback: 'atualização'),
+      titulo: _texto(
+        data['titulo'] ?? data['title'] ?? data['assunto'],
+        fallback: 'Atualização sem título',
+      ),
+      conteudo: _texto(
+        data['conteudo'] ??
+            data['conteúdo'] ??
+            data['content'] ??
+            data['descricao'] ??
+            data['descrição'] ??
+            data['texto'],
+        fallback: 'Conteúdo não informado.',
+      ),
+      createdAt: _dateTime(data['createdAt'] ?? data['data'] ?? data['date']),
+    );
+  }
+
+  final String tipo;
+  final String titulo;
+  final String conteudo;
+  final DateTime? createdAt;
+
+  String get tipoExibido => _tipoAtualizacaoExibido(tipo);
+}
+
 String _texto(dynamic value, {String fallback = ''}) {
   if (value == null) return fallback;
 
@@ -2196,8 +2483,37 @@ String _formatarPercentual(double value) {
 DateTime? _dateTime(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value);
 
   return null;
+}
+
+String _formatarDataAtualizacao(DateTime data) {
+  final dia = data.day.toString().padLeft(2, '0');
+  final mes = data.month.toString().padLeft(2, '0');
+  final ano = data.year.toString();
+  final hora = data.hour.toString().padLeft(2, '0');
+  final minuto = data.minute.toString().padLeft(2, '0');
+
+  return '$dia/$mes/$ano às $hora:$minuto';
+}
+
+String _capitalizar(String value) {
+  final texto = _texto(value, fallback: 'Atualização');
+  if (texto.isEmpty) return 'Atualização';
+
+  return '${texto[0].toUpperCase()}${texto.substring(1)}';
+}
+
+String _tipoAtualizacaoExibido(String value) {
+  final normalizado = value.toLowerCase().trim();
+
+  if (normalizado.contains('not')) return 'Notícia';
+  if (normalizado.contains('evento')) return 'Evento';
+  if (normalizado.contains('financ')) return 'Financeiro';
+  if (normalizado.contains('produto')) return 'Produto';
+
+  return _capitalizar(value);
 }
 
 // ── GRÁFICO DONUT ────────────────────────────────────────────────────────────
