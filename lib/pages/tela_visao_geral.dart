@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
 import '../services/auth_session.dart';
 import '../widgets/app_bottom_nav.dart';
@@ -28,6 +30,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
+  bool _isVideoLoading = false;
+  bool _isPlayingVideo = false;
+
+  List<Map<String, String>> _videosDaStartup = [];
+
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _roxoChat = Color(0xFF5B4FCF);
   static const _coresSocios = [
@@ -37,11 +46,6 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     Color(0xFF14B8A6),
     Color(0xFFF59E0B),
     Color(0xFF0EA5E9),
-  ];
-
-  static const _videos = [
-    {'titulo': 'Título vídeo 1', 'descricao': 'Descrição breve'},
-    {'titulo': 'Título vídeo 2', 'descricao': 'Descrição breve'},
   ];
 
   static const _documentos = ['Plano de negócios', 'Eventos'];
@@ -65,8 +69,137 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _ouvirVideosDaStartup();
+  }
+
+  void _ouvirVideosDaStartup() {
+    final startupId = _startupId;
+    if (startupId == null) return;
+
+    _firestore.collection('startups').doc(startupId).snapshots().listen((
+      snapshot,
+    ) {
+      if (!snapshot.exists || snapshot.data() == null) return;
+
+      final data = snapshot.data()!;
+      // Recupera a lista contendo mapas de título, descrição e url do banco
+      final videosDoBanco = data['videos'] as List<dynamic>?;
+
+      if (videosDoBanco != null) {
+        if (mounted) {
+          setState(() {
+            _videosDaStartup = videosDoBanco.map((v) {
+              return {
+                'titulo': _texto(
+                  v['titulo'],
+                  fallback: 'Vídeo de Apresentação',
+                ),
+                'descricao': _texto(
+                  v['descricao'],
+                  fallback: 'Conheça a startup',
+                ),
+                'url': _texto(v['url']),
+              };
+            }).toList();
+          });
+        }
+      }
+    });
+  }
+
+  //dar play no video
+  Future<void> _playVideo(String videoUrl) async {
+    if (videoUrl.isEmpty) return;
+
+    // Interrompe e desaloca fluxos anteriores para poupar memória do dispositivo
+    await _disposeVideoController();
+
+    setState(() {
+      _isVideoLoading = true;
+      _isPlayingVideo =
+          false; // Garante reset do estado antes de iniciar o novo fluxo
+    });
+
+    try {
+      final Uri uri = Uri.parse(videoUrl);
+      _videoPlayerController = VideoPlayerController.networkUrl(uri);
+
+      await _videoPlayerController!.initialize();
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: true,
+        looping: false,
+        aspectRatio: _videoPlayerController!.value.aspectRatio,
+        errorBuilder: (context, errorMessage) {
+          return Center(
+            child: Text(
+              'Erro ao reproduzir: $errorMessage',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        },
+      );
+
+      setState(() {
+        _isVideoLoading = false;
+        _isPlayingVideo =
+            true; // Modifica para true após inicialização bem sucedida
+      });
+
+      if (mounted) {
+        _showVideoDialog();
+      }
+      _videoPlayerController!.addListener(() {
+        if (_videoPlayerController!.value.position >=
+            _videoPlayerController!.value.duration) {
+          if (mounted && _isPlayingVideo) {
+            setState(() => _isPlayingVideo = false);
+          }
+        }
+      });
+    } catch (e) {
+      setState(() => _isVideoLoading = false);
+      print("ERRO DETALHADO DO PLAYER: $e");
+      _mostrarMensagem('Não foi possível carregar o vídeo.');
+    }
+  }
+
+  Future<void> _disposeVideoController() async {
+    _chewieController?.dispose();
+    await _videoPlayerController?.dispose();
+    _chewieController = null;
+    _videoPlayerController = null;
+  }
+
+  // caixa de diálogo flutuante contendo o player de vídeo
+  void _showVideoDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible:
+          true, // Fecha o modal se o usuário clicar fora do vídeo
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          contentPadding: EdgeInsets.zero,
+          content: AspectRatio(
+            aspectRatio: _videoPlayerController!.value.aspectRatio,
+            child: Chewie(controller: _chewieController!),
+          ),
+        );
+      },
+    ).then((_) {
+      // Quando o diálogo fecha por clique externo, dispara o encerramento do controller
+      _disposeVideoController();
+    });
+  }
+
+  @override
   void dispose() {
     _controllerPublico.dispose();
+    _disposeVideoController();
     _controllerPrivado.dispose();
     super.dispose();
   }
@@ -975,12 +1108,49 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             style: TextStyle(fontSize: 11, color: Colors.grey),
           ),
           const SizedBox(height: 16),
-          ...List.generate(_videos.length, (i) {
+          if (_isVideoLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(
+                backgroundColor: Color(0xFFE0E0E0),
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+
+          //se nao encontrar video no firestore
+          if (_videosDaStartup.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'Nenhum vídeo disponível para esta startup.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ...List.generate(_videosDaStartup.length, (i) {
             return Padding(
-              padding: EdgeInsets.only(bottom: i < _videos.length - 1 ? 14 : 0),
-              child: _buildVideoItem(
-                _videos[i]['titulo']!,
-                _videos[i]['descricao']!,
+              padding: EdgeInsets.only(bottom: i < -1 ? 14 : 0),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  // Resgata e executa o link de vídeo do Firebase Storage
+                  final url = _videosDaStartup[i]['url'] ?? '';
+                  if (url.isNotEmpty) {
+                    _playVideo(url);
+                  } else {
+                    _mostrarMensagem('Vídeo indisponível.');
+                  }
+                },
+                child: _buildVideoItem(
+                  _videosDaStartup[i]['titulo'] ?? 'Vídeo de Apresentação',
+                  _videosDaStartup[i]['descricao'] ?? 'Conheça a startup',
+                ),
               ),
             );
           }),
