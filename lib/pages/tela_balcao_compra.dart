@@ -11,7 +11,6 @@ class TelaBalcaoCompra extends StatefulWidget {
 
 class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   int _selectedIndex = 2; // Começa na aba Balcão (índice 2)
-  bool _patrimonioVisivel = false; // Mantido para consistência se precisar usar
 
   static const _roxo = Color(
     0xFF4C3BCF,

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'pages/tela_inicial.dart';
 
-// import 'pages/tela_balcaoCompra.dart';
+// import 'pages/tela_balcao_compra.dart';
 // import 'pages/tela_home.dart';
 // import 'pages/tela_cadastro.dart';
 // import 'pages/tela_login.dart';

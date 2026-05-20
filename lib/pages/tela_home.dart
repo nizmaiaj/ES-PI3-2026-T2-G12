@@ -776,7 +776,9 @@ class _TelaHomeState extends State<TelaHome> {
         if (nomeCompleto is String && nomeCompleto.trim().isNotEmpty) {
           return nomeCompleto.trim();
         }
-      } on FirebaseException {}
+      } on FirebaseException catch (error) {
+        debugPrint('Não foi possível buscar o nome do usuário: ${error.code}');
+      }
     }
 
     final displayName = user?.displayName;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/sms_code_dialog.dart';
 import 'tela_cadastro.dart';
 import 'tela_esqueci_senha.dart';
 import 'tela_home.dart';
@@ -37,25 +38,51 @@ class _TelaLoginState extends State<TelaLogin> {
     setState(() => _carregando = true);
 
     try {
-      await AuthService().login(
+      final authService = AuthService();
+
+      await authService.login(
         email: _emailController.text.trim(),
         password: _senhaController.text,
       );
 
-      if (!mounted) return;
+      _abrirHome();
+    } on AuthMfaRequiredException catch (error) {
+      try {
+        await AuthService().resolveSmsMfaSignIn(
+          challenge: error.challenge,
+          smsCodeResolver: (_, _) {
+            if (!mounted) return Future.value(null);
+            return showSmsCodeDialog(
+              context,
+              phoneNumber: error.challenge.phoneNumber,
+              title: 'Verificação em duas etapas',
+              message: 'Digite o código enviado por SMS para concluir o login.',
+            );
+          },
+        );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => TelaHome(nomeDigitado: _emailController.text.trim()),
-        ),
-      );
+        _abrirHome();
+      } on AuthException catch (mfaError) {
+        if (!mounted) return;
+        setState(() => _erroLogin = mfaError.message);
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() => _erroLogin = error.message);
     } finally {
       if (mounted) setState(() => _carregando = false);
     }
+  }
+
+  void _abrirHome() {
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TelaHome(nomeDigitado: _emailController.text.trim()),
+      ),
+    );
   }
 
   @override

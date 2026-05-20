@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_session.dart';
 import '../services/auth_service.dart';
+import '../widgets/sms_code_dialog.dart';
 import 'tela_inicial.dart';
 
 class TelaUsuario extends StatefulWidget {
@@ -31,8 +32,8 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     return FirebaseFirestore.instance.collection('users').doc(uid);
   }
 
-  // Atualiza no Firebase se a verificação em duas etapas está ativada.
-  Future<void> _alterarMfa(bool habilitado) async {
+  // Atualiza no Firebase Auth e no Firestore se o 2FA por SMS está ativado.
+  Future<void> _alterarMfa(bool habilitado, String telefone) async {
     final ref = _userRef;
     if (ref == null) {
       setState(() => _erro = 'Usuário não autenticado.');
@@ -45,10 +46,51 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     });
 
     try {
+      final authService = AuthService();
+      String? phoneNumber;
+
+      if (habilitado) {
+        final mfaPhoneNumber = AuthService.normalizePhoneNumberForSmsMfa(
+          telefone,
+        );
+        phoneNumber = mfaPhoneNumber;
+
+        await authService.enrollSmsMfa(
+          phoneNumber: mfaPhoneNumber,
+          smsCodeResolver: (_, _) {
+            if (!mounted) return Future.value(null);
+            return showSmsCodeDialog(
+              context,
+              phoneNumber: mfaPhoneNumber,
+              title: 'Ativar verificação em duas etapas',
+              message:
+                  'Digite o código enviado por SMS para cadastrar este telefone.',
+            );
+          },
+        );
+      } else {
+        await authService.unenrollSmsMfa();
+      }
+
       await ref.set({
         'mfaHabilitado': habilitado,
+        'mfaTelefone': habilitado ? phoneNumber : FieldValue.delete(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            habilitado
+                ? 'Verificação em duas etapas ativada.'
+                : 'Verificação em duas etapas desativada.',
+          ),
+        ),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _erro = error.message);
     } on FirebaseException catch (error) {
       if (!mounted) return;
       setState(() => _erro = error.message ?? 'Não foi possível salvar.');
@@ -273,7 +315,9 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                         return Colors.grey.shade400;
                       }),
                       // Ao clicar, grava o novo valor do 2FA no Firestore.
-                      onChanged: _salvandoMfa ? null : _alterarMfa,
+                      onChanged: _salvandoMfa
+                          ? null
+                          : (value) => _alterarMfa(value, telefone),
                     ),
                   ],
                 ),

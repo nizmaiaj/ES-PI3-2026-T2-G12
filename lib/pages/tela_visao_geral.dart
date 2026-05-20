@@ -162,7 +162,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
       });
     } catch (e) {
       setState(() => _isVideoLoading = false);
-      print("ERRO DETALHADO DO PLAYER: $e");
+      debugPrint('ERRO DETALHADO DO PLAYER: $e');
       _mostrarMensagem('Não foi possível carregar o vídeo.');
     }
   }
