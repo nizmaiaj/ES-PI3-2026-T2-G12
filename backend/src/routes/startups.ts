@@ -5,6 +5,163 @@ import { AppError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
+type PricePeriod = 'diario' | 'semanal' | 'mensal' | 'seis_meses' | 'ytd';
+
+interface TransactionPricePoint {
+  id: string;
+  startupId: string;
+  preco: number;
+  volume: number;
+  timestamp: Date;
+}
+
+function parseDate(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toDate' in value &&
+    typeof value.toDate === 'function'
+  ) {
+    return value.toDate();
+  }
+
+  if (typeof value === 'string') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  return null;
+}
+
+function parseNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const text = value.replace('R$', '').replace(/\s/g, '');
+    const normalized = text.includes(',')
+      ? text.replace(/\./g, '').replace(',', '.')
+      : text;
+
+    return Number(normalized);
+  }
+
+  return Number.NaN;
+}
+
+function normalizePricePeriod(periodo: unknown): PricePeriod {
+  const normalized = typeof periodo === 'string' ? periodo.toLowerCase() : 'mensal';
+
+  if (normalized === 'diario') return 'diario';
+  if (normalized === 'semanal') return 'semanal';
+  if (normalized === 'mensal') return 'mensal';
+  if (
+    normalized === '6m' ||
+    normalized === 'seis_meses' ||
+    normalized === 'ultimos_6_meses' ||
+    normalized === 'últimos_6_meses'
+  ) {
+    return 'seis_meses';
+  }
+  if (normalized === 'ytd') return 'ytd';
+
+  throw new AppError(
+    400,
+    'O parametro periodo deve ser um dos valores: diario, semanal, mensal, seis_meses ou ytd'
+  );
+}
+
+function getPeriodStart(period: PricePeriod, now = new Date()): Date {
+  const start = new Date(now);
+
+  if (period === 'diario') {
+    start.setDate(start.getDate() - 1);
+    return start;
+  }
+
+  if (period === 'semanal') {
+    start.setDate(start.getDate() - 7);
+    return start;
+  }
+
+  if (period === 'mensal') {
+    start.setDate(start.getDate() - 30);
+    return start;
+  }
+
+  if (period === 'seis_meses') {
+    start.setMonth(start.getMonth() - 6);
+    return start;
+  }
+
+  return new Date(now.getFullYear(), 0, 1);
+}
+
+async function getTransactionPricePoints(
+  firebaseDb: FirebaseFirestore.Firestore,
+  startupId: string
+): Promise<TransactionPricePoint[]> {
+  const snapshot = await firebaseDb
+    .collection('transactions')
+    .where('startupId', '==', startupId)
+    .get();
+
+  return snapshot.docs
+    .map((doc: any) => {
+      const data = doc.data();
+      const timestamp = parseDate(
+        data.executadaEm ?? data.timestamp ?? data.createdAt ?? data.data
+      );
+      const preco = parseNumber(
+        data.precoUnitario ?? data.preco ?? data.valorToken ?? data.tokenPrice
+      );
+      const volume = parseNumber(data.quantidade ?? data.volume);
+
+      if (!timestamp || !Number.isFinite(preco) || preco <= 0) {
+        return null;
+      }
+
+      return {
+        id: doc.id,
+        startupId,
+        preco,
+        volume: Number.isFinite(volume) && volume > 0 ? volume : 0,
+        timestamp,
+      };
+    })
+    .filter((point): point is TransactionPricePoint => point !== null)
+    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+}
+
+function filterPricePointsByPeriod(
+  points: TransactionPricePoint[],
+  period: PricePeriod
+): TransactionPricePoint[] {
+  if (points.length === 0) return points;
+
+  const start = getPeriodStart(period);
+
+  if (points.length === 1) {
+    return points[0].timestamp < start ? [] : points;
+  }
+
+  const filtered = points.filter((point) => point.timestamp >= start);
+  const previousPoints = points.filter((point) => point.timestamp < start);
+  const previous = previousPoints[previousPoints.length - 1];
+
+  if (!previous || filtered.length === 0) return filtered;
+
+  return [
+    {
+      ...previous,
+      id: `${previous.id}_abertura_${period}`,
+      timestamp: start,
+      volume: 0,
+    },
+    ...filtered,
+  ];
+}
+
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const { estagio } = req.query;
@@ -170,57 +327,54 @@ router.get('/:id/orders', async (req: Request, res: Response, next: any) => {
   }
 });
 
-router.get('/:id/prices/current', async (req: Request, res: Response, next: any) => {
-  try {
-    const { id } = req.params;
-    const firebaseDb = db();
+router.get(
+  '/:id/prices/current',
+  async (req: Request, res: Response, next: any) => {
+    try {
+      const { id } = req.params;
+      const firebaseDb = db();
+      const prices = await getTransactionPricePoints(firebaseDb, id);
+      const latestPrice = prices[prices.length - 1];
 
-    const latestPriceSnapshot = await firebaseDb
-      .collection('tokenPrices')
-      .where('startupId', '==', id)
-      .orderBy('timestamp', 'desc')
-      .limit(1)
-      .get();
+      if (!latestPrice) {
+        throw new AppError(404, 'Nao ha transacoes de preco disponiveis');
+      }
 
-    if (latestPriceSnapshot.empty) {
-      throw new AppError(404, 'Nao ha dados de preco disponiveis');
+      res.json({
+        preco: latestPrice.preco,
+        timestamp: latestPrice.timestamp,
+        volume: latestPrice.volume,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const priceData = latestPriceSnapshot.docs[0].data();
-
-    res.json({
-      preco: priceData.preco,
-      timestamp: priceData.timestamp,
-      volume: priceData.volume,
-    });
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 router.get('/:id/prices', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
     const { periodo } = req.query;
-
-    if (periodo !== 'diario') {
-      throw new AppError(400, 'O parametro periodo deve ser "diario"');
-    }
+    const pricePeriod = normalizePricePeriod(periodo);
 
     const firebaseDb = db();
+    const prices = filterPricePointsByPeriod(
+      await getTransactionPricePoints(firebaseDb, id),
+      pricePeriod
+    );
 
-    const pricesSnapshot = await firebaseDb
-      .collection('tokenPrices')
-      .where('startupId', '==', id)
-      .orderBy('timestamp', 'asc')
-      .get();
-
-    const prices = pricesSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    res.json(prices);
+    res.json(
+      prices.map((price) => ({
+        id: price.id,
+        startupId: price.startupId,
+        preco: price.preco,
+        precoUnitario: price.preco,
+        volume: price.volume,
+        quantidade: price.volume,
+        timestamp: price.timestamp,
+        executadaEm: price.timestamp,
+      }))
+    );
   } catch (error) {
     next(error);
   }

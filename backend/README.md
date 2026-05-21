@@ -100,7 +100,7 @@ npm run lint
 - **POST** `/startups/:id/questions` - Enviar pergunta
 - **GET** `/startups/:id/updates` - Atualizações da startup
 - **GET** `/startups/:id/orders` - Livro de ofertas abertas
-- **GET** `/startups/:id/prices` - Histórico de preços
+- **GET** `/startups/:id/prices?periodo=mensal` - Histórico de preços calculado pelas transações (`diario`, `semanal`, `mensal`, `seis_meses`, `ytd`)
 - **GET** `/startups/:id/prices/current` - Preço atual
 
 ### Portfólio (Requer autenticação)

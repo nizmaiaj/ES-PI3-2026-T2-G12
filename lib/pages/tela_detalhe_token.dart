@@ -296,7 +296,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
   Widget _buildResumoSemHistorico() {
     return Text(
-      'Ainda não há negociações suficientes para calcular a variação.',
+      'Ainda não há transações suficientes para calcular a variação.',
       style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
     );
   }
@@ -402,31 +402,24 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         : await _firestore.collection('startups').doc(startupId).get();
     final historico = startupId.isEmpty
         ? <_PontoPreco>[]
-        : await _buscarHistoricoPrecos(startupId);
+        : await _buscarHistoricoTransacoes(startupId);
 
     final precoStartup = _lerPrecoStartup(startupDoc?.data());
     final precoHistorico = historico.isNotEmpty ? historico.last.preco : 0.0;
     final precoAtual = _primeiroPrecoValido([
-      precoStartup,
       precoHistorico,
+      precoStartup,
       widget.precoAtualInicial,
       widget.precoMedioCompra,
     ]);
 
-    final historicoComAtual = _incluirPrecoAtual(historico, precoAtual);
-
-    return _TokenDetalheDados(
-      precoAtual: precoAtual,
-      historico: historicoComAtual,
-    );
+    return _TokenDetalheDados(precoAtual: precoAtual, historico: historico);
   }
 
-  Future<List<_PontoPreco>> _buscarHistoricoPrecos(String startupId) async {
+  Future<List<_PontoPreco>> _buscarHistoricoTransacoes(String startupId) async {
     final snapshot = await _firestore
-        .collection('tokenPrices')
+        .collection('transactions')
         .where('startupId', isEqualTo: startupId)
-        .orderBy('timestamp')
-        .limitToLast(180)
         .get();
 
     final pontos =
@@ -439,39 +432,32 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     return pontos;
   }
 
-  List<_PontoPreco> _incluirPrecoAtual(
-    List<_PontoPreco> historico,
-    double precoAtual,
-  ) {
-    if (precoAtual <= 0) return historico;
-
-    final agora = DateTime.now();
-    if (historico.isEmpty) {
-      return [_PontoPreco(data: agora, preco: precoAtual)];
-    }
-
-    final ultimo = historico.last;
-    final mesmoPreco = (ultimo.preco - precoAtual).abs() < 0.01;
-    final recente = agora.difference(ultimo.data).inHours < 12;
-
-    if (mesmoPreco && recente) return historico;
-
-    return [...historico, _PontoPreco(data: agora, preco: precoAtual)];
-  }
-
   List<_PontoPreco> _filtrarHistorico(List<_PontoPreco> historico) {
-    if (_periodo == _PeriodoGrafico.tudo || historico.length <= 1) {
+    if (historico.isEmpty) {
       return historico;
     }
 
-    final inicio = DateTime.now().subtract(_periodo.duracao!);
+    final inicio = _periodo.inicio(DateTime.now());
+
+    if (historico.length == 1) {
+      return historico.first.data.isBefore(inicio) ? [] : historico;
+    }
+
     final filtrado = historico
         .where((ponto) => !ponto.data.isBefore(inicio))
         .toList();
 
-    if (filtrado.length >= 2) return filtrado;
+    final pontosAntes = historico.where((ponto) => ponto.data.isBefore(inicio));
+    final pontoAbertura = pontosAntes.isEmpty ? null : pontosAntes.last;
 
-    return historico;
+    if (pontoAbertura != null && filtrado.isNotEmpty) {
+      return [
+        _PontoPreco(data: inicio, preco: pontoAbertura.preco),
+        ...filtrado,
+      ];
+    }
+
+    return filtrado;
   }
 
   double? _calcularVariacao(List<_PontoPreco> historico) {
@@ -880,16 +866,35 @@ class _ChartBounds {
 }
 
 enum _PeriodoGrafico {
-  semanal('Semanal', 'Dias', Duration(days: 7)),
-  mensal('Mensal', 'Dias', Duration(days: 30)),
-  anual('Anual', 'Meses', Duration(days: 365)),
-  tudo('Tudo', 'Período', null);
+  diario('Diário', 'Horas'),
+  semanal('Semanal', 'Dias'),
+  mensal('Mensal', 'Dias'),
+  ultimosSeisMeses('Últimos 6 meses', 'Meses'),
+  ytd('YTD', 'Meses');
 
-  const _PeriodoGrafico(this.label, this.eixoX, this.duracao);
+  const _PeriodoGrafico(this.label, this.eixoX);
 
   final String label;
   final String eixoX;
-  final Duration? duracao;
+
+  DateTime inicio(DateTime agora) {
+    return switch (this) {
+      _PeriodoGrafico.diario => agora.subtract(const Duration(days: 1)),
+      _PeriodoGrafico.semanal => agora.subtract(const Duration(days: 7)),
+      _PeriodoGrafico.mensal => agora.subtract(const Duration(days: 30)),
+      _PeriodoGrafico.ultimosSeisMeses => DateTime(
+        agora.year,
+        agora.month - 6,
+        agora.day,
+        agora.hour,
+        agora.minute,
+        agora.second,
+        agora.millisecond,
+        agora.microsecond,
+      ),
+      _PeriodoGrafico.ytd => DateTime(agora.year),
+    };
+  }
 }
 
 DateTime? _data(dynamic value) {
@@ -960,10 +965,17 @@ String _formatarData(DateTime data, _PeriodoGrafico periodo) {
   final dia = data.day.toString().padLeft(2, '0');
   final mes = data.month.toString().padLeft(2, '0');
   final ano = (data.year % 100).toString().padLeft(2, '0');
+  final hora = data.hour.toString().padLeft(2, '0');
+  final minuto = data.minute.toString().padLeft(2, '0');
 
-  if (periodo == _PeriodoGrafico.anual || periodo == _PeriodoGrafico.tudo) {
+  if (periodo == _PeriodoGrafico.diario) {
+    return '$hora:$minuto';
+  }
+
+  if (periodo == _PeriodoGrafico.ultimosSeisMeses ||
+      periodo == _PeriodoGrafico.ytd) {
     return '$mes/$ano';
   }
 
-  return dia;
+  return '$dia/$mes';
 }
