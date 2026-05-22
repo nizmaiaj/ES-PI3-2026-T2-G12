@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'tela_home.dart';
 import '../services/auth_session.dart';
 
 class TelaAdicionarCredito extends StatefulWidget {
@@ -240,6 +240,15 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
         titulo: 'Créditos adicionados',
         mensagem:
             '${_formatarMoeda(valor)} foram adicionados à sua carteira com sucesso.',
+      );
+      if (!mounted) return;
+      //volta para home apos adicionar o credito
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const TelaHome(nomeDigitado: 'tela_home'),
+        ),
+        (route) => false,
       );
     } on FirebaseException catch (error) {
       if (!mounted) return;
