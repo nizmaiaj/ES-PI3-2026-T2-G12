@@ -1,11 +1,11 @@
 # MesclaInvest Backend API
 
-Backend API para o MesclaInvest - plataforma acadêmica de simulação de investimentos em startups.
+Backend API para o MesclaInvest - plataforma acadêmica de simulação de investimentos em startups. A API Express é publicada como uma Firebase Cloud Function HTTP.
 
 ## Tecnologias
 
-- Node.js com TypeScript
-- Express.js
+- Firebase Cloud Functions com Node.js 20 e TypeScript
+- Express.js dentro da Function HTTP `api`
 - Firebase Admin SDK (Firestore + Authentication)
 - Helmet para segurança
 - CORS configurado
@@ -14,9 +14,9 @@ Backend API para o MesclaInvest - plataforma acadêmica de simulação de invest
 
 ### Pré-requisitos
 
-- Node.js 18+
+- Node.js 20
 - npm ou yarn
-- Credenciais do Firebase
+- Firebase CLI autenticado para emular ou publicar Functions
 
 ### Instalação
 
@@ -37,6 +37,13 @@ cp .env.example .env
 PORT=3000
 NODE_ENV=development
 
+# Necessária para os endpoints /auth/login, /auth/register e
+# /auth/forgot-password que usam a REST API do Firebase Auth.
+FIREBASE_API_KEY=your-web-api-key
+
+# O ambiente das Cloud Functions fornece credenciais automaticamente.
+# Use estas variáveis apenas para rodar o servidor Express local com
+# credenciais de service account.
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_PRIVATE_KEY=your-private-key
 FIREBASE_CLIENT_EMAIL=your-client-email
@@ -54,13 +61,21 @@ CORS_ORIGIN=http://localhost:5000
 npm run build
 ```
 
-### Executar em Desenvolvimento
+### Emular Cloud Functions
+
+```bash
+npm run serve
+```
+
+Com a configuração padrão do projeto, a API HTTP fica disponível no emulador em `http://127.0.0.1:5001/bd-pi3-1808d/us-central1/api`.
+
+### Executar o Express local
 
 ```bash
 npm run dev
 ```
 
-O servidor iniciará em `http://localhost:3000`
+Esse modo mantém a API em `http://localhost:3000` para desenvolvimento rápido. Ele não executa as Functions agendadas.
 
 ### Type Checking
 
@@ -169,7 +184,22 @@ Ver documentação detalhada em `DATAMODEL.md` (a ser criado com descrição das
 
 ## Deploy
 
-(A ser implementado conforme requisitos do projeto)
+Na raiz do repositório:
+
+```bash
+firebase deploy --only functions
+```
+
+O `firebase.json` usa `backend/` como diretório de Functions e executa o build TypeScript antes do deploy.
+
+As rotas Express continuam sob o prefixo da Function HTTP `api`, por exemplo `/auth/login` e `/orders` após a URL da Function.
+
+O job de variação de preço foi migrado para quatro Functions agendadas:
+
+- `updateDailyTokenPrices` - a cada minuto
+- `updateWeeklyTokenPrices` - a cada 2 minutos
+- `updateMonthlyTokenPrices` - a cada 3 minutos
+- `updateSemiannualTokenPrices` - a cada 4 minutos
 
 ## Licença
 

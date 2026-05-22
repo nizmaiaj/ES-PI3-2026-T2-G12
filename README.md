@@ -32,7 +32,7 @@ O objetivo do projeto é proporcionar experiência prática em arquitetura de so
 
 ## 🛠️ Tecnologias utilizadas
 
-Backend: Node.js (versão LTS) – TypeScript/JavaScript<br>
+Backend: Firebase Cloud Functions – Node.js/TypeScript<br>
 Frontend Mobile: Flutter – Dart<br>
 Banco de Dados: Firebase Firestore (NoSQL)<br>
 IDE: Visual Studio Code / Android Studio<br>
@@ -44,7 +44,7 @@ Versionamento: Git + GitHub
 
 Aplicação Mobile (Flutter)<br>
 ⬇<br>
-API Backend (Node.js)<br>
+API HTTP (Firebase Cloud Functions)<br>
 ⬇<br>
 Firebase Firestore<br><br>
 
