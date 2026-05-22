@@ -1672,40 +1672,44 @@ class _TelaHomeState extends State<TelaHome> {
   Widget _buildFiltrosGrafico() {
     const filtros = [
       ('D', 'Diário'),
+      ('Se', 'Semanal'),
       ('M', 'Mensal'),
       ('S', 'Semestral'),
       ('A', 'Anual'),
     ];
-    return Row(
-      children: filtros.map((f) {
-        final ativo = _filtroGrafico == f.$1;
-        return GestureDetector(
-          onTap: () {
-            if (_filtroGrafico != f.$1) {
-              setState(() {
-                _filtroGrafico = f.$1;
-                _graficoDadosFuture = _buscarDadosGrafico(f.$1);
-              });
-            }
-          },
-          child: Container(
-            margin: const EdgeInsets.only(right: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: ativo ? _roxo : const Color(0xFFF0F0F5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              f.$2,
-              style: TextStyle(
-                fontSize: 10,
-                color: ativo ? Colors.white : Colors.grey,
-                fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filtros.map((f) {
+          final ativo = _filtroGrafico == f.$1;
+          return GestureDetector(
+            onTap: () {
+              if (_filtroGrafico != f.$1) {
+                setState(() {
+                  _filtroGrafico = f.$1;
+                  _graficoDadosFuture = _buscarDadosGrafico(f.$1);
+                });
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: ativo ? _roxo : const Color(0xFFF0F0F5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                f.$2,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: ativo ? Colors.white : Colors.grey,
+                  fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -1743,14 +1747,24 @@ class _TelaHomeState extends State<TelaHome> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 20,
+            reservedSize: 24,
             interval: _intervaloXLabel(pontos.length),
-            getTitlesWidget: (val, _) {
+            getTitlesWidget: (val, meta) {
               final i = val.toInt();
               if (i < 0 || i >= pontos.length) return const SizedBox.shrink();
-              return Text(
-                _labelEixoX(pontos[i].data),
-                style: const TextStyle(fontSize: 8, color: Color(0xFF888888)),
+              if (val != meta.appliedInterval * (val ~/ meta.appliedInterval)) {
+                return const SizedBox.shrink();
+              }
+              return SideTitleWidget(
+                axisSide: meta.axisSide,
+                space: 4,
+                child: Text(
+                  _labelEixoX(pontos[i].data),
+                  style: const TextStyle(
+                    fontSize: 8,
+                    color: Color(0xFF888888),
+                  ),
+                ),
               );
             },
           ),
@@ -1800,6 +1814,10 @@ class _TelaHomeState extends State<TelaHome> {
     switch (filtro) {
       case 'D':
         inicio = DateTime(agora.year, agora.month, agora.day);
+        break;
+      case 'Se':
+        inicio = agora.subtract(const Duration(days: 6));
+        inicio = DateTime(inicio.year, inicio.month, inicio.day);
         break;
       case 'S':
         final mes = agora.month - 5;
@@ -1853,6 +1871,14 @@ class _TelaHomeState extends State<TelaHome> {
           pontos.add(_PontoGrafico(dt, buckets[h.toString().padLeft(2, '0')] ?? 0));
         }
         break;
+      case 'Se':
+        for (var i = 6; i >= 0; i--) {
+          final dt = DateTime(agora.year, agora.month, agora.day)
+              .subtract(Duration(days: i));
+          final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+          pontos.add(_PontoGrafico(dt, buckets[key] ?? 0));
+        }
+        break;
       case 'M':
         for (var d = 1; d <= agora.day; d++) {
           final dt = DateTime(agora.year, agora.month, d);
@@ -1881,16 +1907,20 @@ class _TelaHomeState extends State<TelaHome> {
 
   String _bucketKey(DateTime dt, String filtro) {
     switch (filtro) {
-      case 'D': return dt.hour.toString().padLeft(2, '0');
-      case 'M': return dt.day.toString().padLeft(2, '0');
-      default:  return '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+      case 'D':  return dt.hour.toString().padLeft(2, '0');
+      case 'Se': return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      case 'M':  return dt.day.toString().padLeft(2, '0');
+      default:   return '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
     }
   }
 
   String _labelEixoX(DateTime dt) {
     switch (_filtroGrafico) {
-      case 'D': return '${dt.hour}h';
-      case 'M': return dt.day.toString().padLeft(2, '0');
+      case 'D':  return '${dt.hour}h';
+      case 'Se':
+        const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        return dias[dt.weekday % 7];
+      case 'M':  return dt.day.toString().padLeft(2, '0');
       default:
         const m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
         return m[dt.month - 1];
@@ -1898,9 +1928,10 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   double _intervaloXLabel(int count) {
-    if (count <= 8) return 1;
-    if (count <= 16) return 2;
-    return (count / 6).ceilToDouble();
+    if (count <= 7)  return 1;
+    if (count <= 14) return 2;
+    if (count <= 21) return 3;
+    return (count / 5).ceilToDouble();
   }
 
   String _compactarValor(double val) {

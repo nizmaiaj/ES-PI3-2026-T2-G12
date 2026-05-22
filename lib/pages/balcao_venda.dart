@@ -115,7 +115,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
         ),
       ),
       bottomNavigationBar: AppBottomNav(
-        selectedIndex: 1,
+        selectedIndex: 2,
         onItemSelected: _selecionarNav,
         backgroundColor: _fundo,
       ),
@@ -393,7 +393,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
       return;
     }
 
-    if (index != 1) {
+    if (index != 2) {
       Navigator.pop(context);
     }
   }

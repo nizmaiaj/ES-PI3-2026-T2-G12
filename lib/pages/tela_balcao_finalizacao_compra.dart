@@ -1,14 +1,30 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
-  final Function(int) onNavigate;
-  final VoidCallback onCarteiraAlterada;
+import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 
+class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
   const TelaBalcaoFinalizacaoCompra({
     super.key,
+    required this.startup,
+    required this.quantidade,
+    required this.total,
+    required this.saldoDisponivel,
     required this.onNavigate,
     required this.onCarteiraAlterada,
+    this.ofertaId,
+    this.precoFinal,
   });
+
+  final Map<String, String> startup;
+  final int quantidade;
+  final double total;
+  final double saldoDisponivel;
+  final Function(int) onNavigate;
+  final VoidCallback onCarteiraAlterada;
+  final String? ofertaId;
+  final double? precoFinal;
 
   @override
   State<TelaBalcaoFinalizacaoCompra> createState() =>
@@ -17,60 +33,45 @@ class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
 
 class _TelaBalcaoFinalizacaoCompraState
     extends State<TelaBalcaoFinalizacaoCompra> {
-  // Controles de Texto
-  final TextEditingController _precoController = TextEditingController(
-    text: "R\$ 480,00",
-  );
-  final TextEditingController _quantidadeController = TextEditingController();
-  final TextEditingController _senhaController = TextEditingController();
+  static const _azulPrimario = Color(0xFF3F51B5);
 
-  // Estados da Tela
+  final _senhaController = TextEditingController();
+  final _balcaoService = BalcaoService();
+
   bool _mostrarConfirmacaoSenha = false;
-  bool _erroQuantidade = false;
   bool _erroSenha = false;
+  bool _processando = false;
 
-  // Dados simulados baseados nos seus prints
-  double _saldoDisponivel = 250.00;
-  final double _precoPorToken = 480.00;
-  double _totalEstimado = 0.0;
+  String? get _uid =>
+      FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
-  @override
-  void initState() {
-    super.initState();
-    _quantidadeController.addListener(_calcularTotal);
+  String? get _startupId {
+    final id = widget.startup['id']?.trim();
+    return id == null || id.isEmpty ? null : id;
   }
 
-  void _calcularTotal() {
-    final texto = _quantidadeController.text.replaceAll(',', '.');
-    final qtd = double.tryParse(texto) ?? 0.0;
+  String get _nomeStartup => widget.startup['nome'] ?? 'Startup';
 
-    setState(() {
-      _totalEstimado = qtd * _precoPorToken;
-      // Valida se a quantidade digitada é válida
-      _erroQuantidade = _quantidadeController.text.isNotEmpty && qtd <= 0;
-    });
-  }
+  // Usa precoFinal (da oferta) se disponível, senão o preço atual da startup
+  double get _preco =>
+      widget.precoFinal ??
+      _numero(widget.startup['valorToken'], fallback: 1.45);
 
   @override
   void dispose() {
-    _quantidadeController.dispose();
-    _precoController.dispose();
     _senhaController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    bool possuiSaldoSuficiente = _saldoDisponivel >= _totalEstimado;
-    bool exibirAvisoSaldo = _totalEstimado > 0 && !possuiSaldoSuficiente;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF3F51B5),
+        backgroundColor: _azulPrimario,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => widget.onNavigate(0),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Comprar Tokens',
@@ -80,378 +81,18 @@ class _TelaBalcaoFinalizacaoCompraState
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // CARD SUPERIOR: INFOS DO TOKEN
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Nome',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Qtd de tokens:',
-                          style: TextStyle(color: Colors.black54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'R\$ 480,00',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '/Token',
-                          style: TextStyle(color: Colors.black54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              _buildCardToken(),
               const SizedBox(height: 24),
-
-              // SE NÃO ESTIVER NO MODAL DE SENHA, MOSTRA O FLUXO NORMAL DE COMPRA
               if (!_mostrarConfirmacaoSenha) ...[
-                const Text('Preço (R\$)'),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _precoController,
-                  enabled: false,
-                  decoration: InputDecoration(
-                    fillColor: const Color(0xFFE0E0E0),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    const Text('Quantidade (tokens)'),
-                    const SizedBox(width: 4),
-                    Text('*', style: TextStyle(color: Colors.blue.shade300)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _quantidadeController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          fillColor: const Color(0xFFE0E0E0),
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_erroQuantidade) ...[
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Informe uma quantidade válida de tokens',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total estimado',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    Text(
-                      'R\$ ${_totalEstimado.toStringAsFixed(2).replaceAll('.', ',')}',
-                      style: const TextStyle(
-                        color: Color(0xFF3F51B5),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Saldo Disponível',
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                      Text(
-                        'R\$ ${_saldoDisponivel.toStringAsFixed(2).replaceAll('.', ',')}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (exibirAvisoSaldo) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Você não possui saldo suficiente para concluir esta compra. Adicione créditos à sua carteira para continuar.',
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                const SizedBox(height: 20),
-                Center(
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed:
-                          (_totalEstimado > 0 &&
-                              possuiSaldoSuficiente &&
-                              !_erroQuantidade)
-                          ? () =>
-                                setState(() => _mostrarConfirmacaoSenha = true)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3F51B5),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Comprar',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ]
-              // LAYOUT DE CONFIRMAÇÃO DE SENHA
-              else ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD3D3D3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () =>
-                              setState(() => _mostrarConfirmacaoSenha = false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'X',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Text(
-                        'Confirme sua identidade para concluir a compra',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Por segurança, informe sua senha para finalizar a transação e confirmar a aquisição dos tokens.',
-                        style: TextStyle(color: Colors.black87, fontSize: 13),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Digite a sua senha',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _senhaController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          fillColor: Colors.white,
-                          filled: true,
-                          hintText: '••••••',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      if (_erroSenha)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a compra dos tokens não foi realizada. Verifique sua senha e tente novamente.',
-                                style: TextStyle(
-                                  color: Colors.red.shade800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 24),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (_senhaController.text != "123456") {
-                              setState(() => _erroSenha = true);
-                            } else {
-                              // === AQUI ENTRA O CÓDIGO DE SUCESSO ===
-
-                              // 1. Esconde o modal de senha e zera os campos
-                              setState(() {
-                                _erroSenha = false;
-                                _mostrarConfirmacaoSenha = false;
-                                _saldoDisponivel -=
-                                    _totalEstimado; // Opcional: Desconta do saldo visualmente
-                                _quantidadeController.clear();
-                                _senhaController.clear();
-                                _totalEstimado = 0.0;
-                              });
-
-                              // 2. Mostra um aviso verde de sucesso
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'Compra realizada com sucesso!',
-                                        style: TextStyle(fontSize: 16),
-                                      ),
-                                    ],
-                                  ),
-                                  backgroundColor: Colors.green,
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-
-                              // 3. Avisa a Home para atualizar o saldo
-                              widget.onCarteiraAlterada();
-
-                              // 4. Redireciona para a Home depois de 2 segundos (tempo para o usuário ler)
-                              Future.delayed(const Duration(seconds: 2), () {
-                                widget.onNavigate(0);
-                              });
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3F51B5),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Finalizar Transação',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildResumo(),
+                const SizedBox(height: 32),
+                _buildBotaoConfirmar(),
+              ] else ...[
+                _buildConfirmacaoSenha(),
               ],
             ],
           ),
@@ -459,4 +100,368 @@ class _TelaBalcaoFinalizacaoCompraState
       ),
     );
   }
+
+  Widget _buildCardToken() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0E0E0),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _nomeStartup,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Qtd: ${widget.quantidade} tokens',
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'R\$ ${_formatarNumero(_preco)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '/Token',
+                style: TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResumo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Preço (R\$)', style: TextStyle(color: Colors.black54)),
+        const SizedBox(height: 8),
+        _campoReadonly('R\$ ${_formatarNumero(_preco)}'),
+        const SizedBox(height: 20),
+        const Text(
+          'Quantidade (tokens)',
+          style: TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _campoReadonly('${widget.quantidade}'),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Total estimado',
+              style: TextStyle(color: Colors.black54),
+            ),
+            Text(
+              'R\$ ${_formatarNumero(widget.total)}',
+              style: const TextStyle(
+                color: _azulPrimario,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0E0E0),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Saldo Disponível',
+                style: TextStyle(color: Colors.black54),
+              ),
+              Text(
+                'R\$ ${_formatarNumero(widget.saldoDisponivel)}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _campoReadonly(String valor) {
+    return Container(
+      width: double.infinity,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0E0E0),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(valor, style: const TextStyle(color: Colors.black87)),
+    );
+  }
+
+  Widget _buildBotaoConfirmar() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _processando
+            ? null
+            : () => setState(() => _mostrarConfirmacaoSenha = true),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _azulPrimario,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Comprar',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirmacaoSenha() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD3D3D3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _mostrarConfirmacaoSenha = false;
+                _erroSenha = false;
+                _senhaController.clear();
+              }),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'X',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          const Text(
+            'Confirme sua identidade para concluir a compra',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Por segurança, informe sua senha para finalizar a transação e confirmar a aquisição dos tokens.',
+            style: TextStyle(color: Colors.black87, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Digite a sua senha',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _senhaController,
+            obscureText: true,
+            decoration: InputDecoration(
+              fillColor: Colors.white,
+              filled: true,
+              hintText: '••••••',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(25),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_erroSenha) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a compra dos tokens não foi realizada. Verifique sua senha e tente novamente.',
+                    style: TextStyle(
+                      color: Colors.red.shade800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _processando ? null : _finalizarCompra,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _azulPrimario,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _processando
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Text(
+                      'Finalizar Transação',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _finalizarCompra() async {
+    final uid = _uid;
+    final startupId = _startupId;
+
+    if (uid == null || startupId == null) {
+      _mostrarMensagem('Dados inválidos. Tente novamente.');
+      return;
+    }
+
+    setState(() {
+      _processando = true;
+      _erroSenha = false;
+    });
+
+    try {
+      // Reautenticação com a senha informada
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.email != null) {
+        final credential = EmailAuthProvider.credential(
+          email: user.email!,
+          password: _senhaController.text,
+        );
+        await user.reauthenticateWithCredential(credential);
+      }
+
+      // Usa comprarDeOferta quando veio de uma oferta específica,
+      // senão comprarDiretamente ao preço atual da startup
+      final ofertaId = widget.ofertaId;
+      if (ofertaId != null) {
+        await _balcaoService.comprarDeOferta(
+          compradorId: uid,
+          ofertaId: ofertaId,
+          quantidade: widget.quantidade,
+        );
+      } else {
+        await _balcaoService.comprarDiretamente(
+          compradorId: uid,
+          startupId: startupId,
+          quantidade: widget.quantidade,
+          preco: _preco,
+        );
+      }
+
+      widget.onCarteiraAlterada();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 10),
+              Text(
+                'Compra realizada com sucesso!',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      widget.onNavigate(0);
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } on FirebaseAuthException {
+      setState(() => _erroSenha = true);
+    } on FirebaseException catch (e) {
+      _mostrarMensagem(e.message ?? 'Não foi possível concluir a operação.');
+    } catch (e) {
+      _mostrarMensagem(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _processando = false);
+    }
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
+    );
+  }
+}
+
+String _formatarNumero(double value) =>
+    value.toStringAsFixed(2).replaceAll('.', ',');
+
+double _numero(dynamic value, {double fallback = 0}) {
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final t = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
+    final n = t.contains(',')
+        ? t.replaceAll('.', '').replaceAll(',', '.')
+        : t;
+    return double.tryParse(n) ?? fallback;
+  }
+  return fallback;
 }

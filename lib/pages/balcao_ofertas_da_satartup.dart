@@ -6,6 +6,7 @@ import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_venda.dart';
+import 'tela_balcao_compra.dart';
 
 class BalcaoOfertasDaStartup extends StatefulWidget {
   const BalcaoOfertasDaStartup({
@@ -32,30 +33,54 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   final BalcaoService _balcaoService = BalcaoService();
   bool _processandoCompra = false;
 
-  List<OfertaStartup> get _ofertasCompra {
-    final preco = _precoAtual;
-    final variacao = _variacaoPreco;
-
-    return [
-      OfertaStartup(preco: preco, quantidade: 50),
-      OfertaStartup(preco: _precoComPiso(preco - variacao), quantidade: 120),
-      OfertaStartup(
-        preco: _precoComPiso(preco - (variacao * 2)),
-        quantidade: 200,
-      ),
-      OfertaStartup(
-        preco: _precoComPiso(preco - (variacao * 3)),
-        quantidade: 150,
-      ),
-      OfertaStartup(
-        preco: _precoComPiso(preco - (variacao * 4)),
-        quantidade: 100,
-      ),
-    ];
+  @override
+  void initState() {
+    super.initState();
+    _seedOfertasSeNecessario();
   }
 
-  List<OfertaStartup> _ordenadas(List<OfertaStartup> ofertas) {
-    return [...ofertas]..sort((a, b) => a.preco.compareTo(b.preco));
+  Future<void> _seedOfertasSeNecessario() async {
+    final startupId = _startupId;
+    if (startupId == null) return;
+
+    final snap = await _firestore
+        .collection('orders')
+        .where('startupId', isEqualTo: startupId)
+        .get();
+
+    final jaExiste = snap.docs.any(
+      (d) => _texto(d.data()['tipo']).toLowerCase() == 'ofertacompra',
+    );
+    if (jaExiste) return;
+
+    final preco = _precoAtual;
+    final ofertas = [
+      (fator: 0.885, quantidade: 100),
+      (fator: 0.910, quantidade: 50),
+      (fator: 0.930, quantidade: 200),
+      (fator: 0.950, quantidade: 75),
+      (fator: 0.970, quantidade: 30),
+    ];
+
+    final batch = _firestore.batch();
+    for (final o in ofertas) {
+      final ref = _firestore.collection('orders').doc();
+      final precoOferta = double.parse(
+        (preco * o.fator).toStringAsFixed(2),
+      );
+      batch.set(ref, {
+        'tipo': 'ofertacompra',
+        'startupId': startupId,
+        'preco': precoOferta,
+        'precoUnitario': precoOferta,
+        'quantidade': o.quantidade,
+        'quantidadeRestante': o.quantidade,
+        'quantidadeExecutada': 0,
+        'status': 'aberta',
+        'criadoEm': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   String get _nomeStartup => widget.startup['nome'] ?? 'Nome da startup';
@@ -72,8 +97,6 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
 
   double get _precoAtual =>
       _numero(widget.startup['valorToken'], fallback: 1.45);
-
-  double get _variacaoPreco => _precoAtual >= 10 ? 1 : 0.01;
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream() {
     return _firestore.collection('orders').snapshots();
@@ -96,11 +119,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
                   children: [
                     _buildPrecoAtual(),
                     const SizedBox(height: 22),
-                    _buildSecaoOfertas(
-                      titulo: 'Ofertas de Compras',
-                      ofertas: _ordenadas(_ofertasCompra),
-                      precoColor: _azulPrimario,
-                    ),
+                    _buildSecaoOfertasCompraReais(),
                     const SizedBox(height: 28),
                     _buildSecaoOfertasVendaReais(),
                     const SizedBox(height: 34),
@@ -113,7 +132,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
         ),
       ),
       bottomNavigationBar: AppBottomNav(
-        selectedIndex: 1,
+        selectedIndex: 2,
         onItemSelected: _selecionarNav,
         backgroundColor: _fundo,
       ),
@@ -173,49 +192,88 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     );
   }
 
-  Widget _buildSecaoOfertas({
-    required String titulo,
-    required List<OfertaStartup> ofertas,
-    required Color precoColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: const TextStyle(
-            color: _textoEscuro,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        const _TabelaHeader(),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: _cardTabela,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.16),
-                blurRadius: 5,
-                offset: const Offset(0, 3),
+  Widget _buildSecaoOfertasCompraReais() {
+    final startupId = _startupId;
+
+    if (startupId == null) {
+      return _buildSecaoOfertasVazia(
+        'Ofertas de Compras',
+        'Startup inválida.',
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _ordersStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildSecaoOfertasVazia(
+            'Ofertas de Compras',
+            'Não foi possível carregar as ofertas de compra.',
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: _azulPrimario),
+          );
+        }
+
+        final ofertas = snapshot.data!.docs
+            .map(_OfertaCompraSistema.tryFromDoc)
+            .whereType<_OfertaCompraSistema>()
+            .where((o) => o.startupId == startupId && o.estaDisponivel)
+            .toList()
+          ..sort((a, b) => a.preco.compareTo(b.preco));
+
+        if (ofertas.isEmpty) {
+          return _buildSecaoOfertasVazia(
+            'Ofertas de Compras',
+            'Nenhuma oferta de compra disponível para esta startup.',
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ofertas de Compras',
+              style: TextStyle(
+                color: _textoEscuro,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
-            ],
-          ),
-          child: Column(
-            children: ofertas
-                .map(
-                  (oferta) =>
-                      _OfertaLinha(oferta: oferta, precoColor: precoColor),
-                )
-                .toList(),
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 12),
+            const _TabelaHeader(comAcao: true),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: _cardTabela,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: ofertas
+                    .map(
+                      (oferta) => _OfertaCompraLinha(
+                        oferta: oferta,
+                        onComprar: () => _abrirCompra(oferta: oferta),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -371,7 +429,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
           child: _AcaoButton(
             texto: 'Comprar',
             cor: _azulPrimario,
-            onPressed: () {},
+            onPressed: () => _abrirCompra(),
           ),
         ),
         const SizedBox(width: 14),
@@ -410,6 +468,22 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
 
           return total;
         });
+  }
+
+  void _abrirCompra({_OfertaCompraSistema? oferta}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TelaBalcaoCompra(
+          startup: widget.startup,
+          onNavigate: widget.onNavigate ?? (_) {},
+          onCarteiraAlterada: () {},
+          ofertaId: oferta?.id,
+          ofertaPreco: oferta?.preco,
+          ofertaMaxQtd: oferta?.quantidadeRestante,
+        ),
+      ),
+    );
   }
 
   void _abrirVenda(int tokensDisponiveis) {
@@ -474,7 +548,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       return;
     }
 
-    if (index != 1) {
+    if (index != 2) {
       Navigator.pop(context);
     }
   }
@@ -496,13 +570,38 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   }
 }
 
-class OfertaStartup {
-  const OfertaStartup({required this.preco, required this.quantidade});
+class _OfertaCompraSistema {
+  const _OfertaCompraSistema({
+    required this.id,
+    required this.startupId,
+    required this.preco,
+    required this.quantidadeRestante,
+    required this.status,
+  });
 
+  static _OfertaCompraSistema? tryFromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? {};
+    final tipo = _texto(data['tipo']).toLowerCase();
+    if (tipo != 'ofertacompra') return null;
+    return _OfertaCompraSistema(
+      id: doc.id,
+      startupId: _texto(data['startupId']),
+      preco: _numero(data['preco'] ?? data['precoUnitario']),
+      quantidadeRestante: _quantidadeRestante(data),
+      status: _texto(data['status']).toLowerCase(),
+    );
+  }
+
+  final String id;
+  final String startupId;
   final double preco;
-  final int quantidade;
+  final int quantidadeRestante;
+  final String status;
 
-  double get total => preco * quantidade;
+  double get total => preco * quantidadeRestante;
+  bool get estaDisponivel => _statusAberto(status) && quantidadeRestante > 0;
 }
 
 class _OrdemVendaAberta {
@@ -567,11 +666,14 @@ class _TabelaHeader extends StatelessWidget {
   }
 }
 
-class _OfertaLinha extends StatelessWidget {
-  const _OfertaLinha({required this.oferta, required this.precoColor});
+class _OfertaCompraLinha extends StatelessWidget {
+  const _OfertaCompraLinha({
+    required this.oferta,
+    required this.onComprar,
+  });
 
-  final OfertaStartup oferta;
-  final Color precoColor;
+  final _OfertaCompraSistema oferta;
+  final VoidCallback onComprar;
 
   @override
   Widget build(BuildContext context) {
@@ -581,13 +683,34 @@ class _OfertaLinha extends StatelessWidget {
         children: [
           _TabelaCelula(
             _formatarNumero(oferta.preco),
-            color: precoColor,
+            color: _BalcaoOfertasDaStartupState._azulPrimario,
             fontWeight: FontWeight.w700,
           ),
-          _TabelaCelula('${oferta.quantidade}', fontWeight: FontWeight.w700),
+          _TabelaCelula(
+            '${oferta.quantidadeRestante}',
+            fontWeight: FontWeight.w700,
+          ),
           _TabelaCelula(
             _formatarNumero(oferta.total),
             fontWeight: FontWeight.w700,
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 76,
+            height: 30,
+            child: ElevatedButton(
+              onPressed: onComprar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _BalcaoOfertasDaStartupState._azulPrimario,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text('Comprar', style: TextStyle(fontSize: 11)),
+            ),
           ),
         ],
       ),
@@ -802,10 +925,6 @@ String _formatarMoeda(double value, {bool comEspaco = false}) {
 
 String _formatarNumero(double value) {
   return value.toStringAsFixed(2).replaceAll('.', ',');
-}
-
-double _precoComPiso(double value) {
-  return value < 0.01 ? 0.01 : value;
 }
 
 double _numero(dynamic value, {double fallback = 0}) {

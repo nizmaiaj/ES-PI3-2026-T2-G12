@@ -1,393 +1,448 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class TelaBalcaoCompra extends StatefulWidget {
-  final Function(int) onNavigate; // Permite alternar as abas na TelaHome
+import '../services/auth_session.dart';
+import '../widgets/app_bottom_nav.dart';
+import 'tela_balcao_finalizacao_compra.dart';
 
-  const TelaBalcaoCompra({super.key, required this.onNavigate});
+class TelaBalcaoCompra extends StatefulWidget {
+  const TelaBalcaoCompra({
+    super.key,
+    required this.startup,
+    required this.onNavigate,
+    required this.onCarteiraAlterada,
+    this.ofertaId,
+    this.ofertaPreco,
+    this.ofertaMaxQtd,
+  });
+
+  final Map<String, String> startup;
+  final Function(int) onNavigate;
+  final VoidCallback onCarteiraAlterada;
+  final String? ofertaId;
+  final double? ofertaPreco;
+  final int? ofertaMaxQtd;
 
   @override
   State<TelaBalcaoCompra> createState() => _TelaBalcaoCompraState();
 }
 
 class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
-  int _selectedIndex = 2; // Começa na aba Balcão (índice 2)
+  static const _azulPrimario = Color(0xFF3F51B5);
+  static const _fundo = Color(0xFFF8F9FE);
+  static const _cinza = Color(0xFFEEEEF5);
 
-  static const _roxo = Color(
-    0xFF4C3BCF,
-  ); // O mesmo roxo oficial da sua TelaHome
+  final _quantidadeController = TextEditingController();
+  bool _erroQuantidade = false;
+  double _totalEstimado = 0.0;
+
+  String? get _uid =>
+      FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+
+  String get _nomeStartup => widget.startup['nome'] ?? 'Startup';
+
+  // Usa o preço da oferta se disponível, caso contrário usa o preço atual da startup
+  double get _preco =>
+      widget.ofertaPreco ??
+      _numero(widget.startup['valorToken'], fallback: 1.45);
+
+  @override
+  void initState() {
+    super.initState();
+    _quantidadeController.addListener(_calcularTotal);
+  }
+
+  @override
+  void dispose() {
+    _quantidadeController.dispose();
+    super.dispose();
+  }
+
+  void _calcularTotal() {
+    final qtd = int.tryParse(_quantidadeController.text.trim()) ?? 0;
+    final max = widget.ofertaMaxQtd;
+    setState(() {
+      _totalEstimado = qtd * _preco;
+      _erroQuantidade = _quantidadeController.text.isNotEmpty &&
+          (qtd <= 0 || (max != null && qtd > max));
+    });
+  }
+
+  Stream<double> _saldoStream() {
+    final uid = _uid;
+    if (uid == null) return Stream.value(0.0);
+    return FirebaseFirestore.instance
+        .collection('wallets')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => _numero(doc.data()?['saldoReais']));
+  }
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<double>(
+      stream: _saldoStream(),
+      builder: (context, snapshot) {
+        return _buildTela(snapshot.data ?? 0.0);
+      },
+    );
+  }
+
+  Widget _buildTela(double saldo) {
+    final int qtd = int.tryParse(_quantidadeController.text.trim()) ?? 0;
+    final bool saldoSuficiente = saldo >= _totalEstimado;
+    final bool dentroDoLimite =
+        widget.ofertaMaxQtd == null || qtd <= widget.ofertaMaxQtd!;
+    final bool podeComprar = qtd > 0 &&
+        !_erroQuantidade &&
+        _totalEstimado > 0 &&
+        saldoSuficiente &&
+        dentroDoLimite;
+    final bool exibirAvisoSaldo = _totalEstimado > 0 && !saldoSuficiente;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5FA),
+      backgroundColor: _fundo,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            // ----------------------------------------------------
-            // HEADER ROXO SÓLIDO (Padronizado com o estilo do app)
-            // ----------------------------------------------------
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-              decoration: const BoxDecoration(color: _roxo),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: 48.0,
-                      ), // Centraliza o texto compensando a seta
-                      child: Text(
-                        'Comprar Tokens',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ----------------------------------------------------
-            // CONTEÚDO SCROLLABLE (Tudo junto de forma linear)
-            // ----------------------------------------------------
+            _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // CARD TOKENS (NOME / VALOR) - Estilo cinza padrão do protótipo
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(
-                          0xFFEEEEF5,
-                        ), // Mesmo cinza dos itens da Home
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Nome',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Qtd de tokens:',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'R\$ 480,00',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                '/Token',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildCardToken(),
                     const SizedBox(height: 24),
-
-                    // CAMPO: PREÇO
-                    const Text(
-                      'Preço (R\$)',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEEEEF5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    _buildCampoPreco(),
                     const SizedBox(height: 24),
-
-                    // CAMPO: QUANTIDADE + ALERTA LADO A LADO
-                    const Text(
-                      'Quantidade (tokens) *',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 120, // Largura fixa do campo
-                          child: Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEEEEF5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red,
-                                size: 20,
-                              ),
-                              SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Informe uma quantidade válida de tokens',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildCampoQuantidade(),
                     const SizedBox(height: 24),
-
-                    // TOTAL ESTIMADO
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total estimado',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                        Text(
-                          'R\$ 72,00',
-                          style: TextStyle(
-                            color: _roxo,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildTotalEstimado(),
                     const SizedBox(height: 12),
-
-                    // CARD SALDO DISPONÍVEL
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEEEEF5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Saldo Disponível',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                          Text(
-                            'R\$ 250,00',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // MENSAGEM DE ERRO (SALDO INSUFICIENTE)
-                    const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red, size: 22),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Você não possui saldo suficiente para concluir esta compra. Adicione créditos à sua carteira para continuar.',
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 13,
-                              height: 1.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildCardSaldo(saldo),
+                    if (exibirAvisoSaldo) ...[
+                      const SizedBox(height: 16),
+                      _buildAvisoSaldo(),
+                    ],
                     const SizedBox(height: 32),
-
-                    // BOTÃO COMPRAR
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _roxo,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Comprar',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildBotaoComprar(podeComprar, qtd, saldo),
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: AppBottomNav(
+        selectedIndex: 2,
+        onItemSelected: (index) {
+          widget.onNavigate(index);
+          Navigator.popUntil(context, (route) => route.isFirst);
+        },
+        backgroundColor: _fundo,
+      ),
+    );
+  }
 
-            // ----------------------------------------------------
-            // MENU INFERIOR PADRÃO (Igualzinho ao da TelaHome)
-            // ----------------------------------------------------
-            Container(
-              margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDEDED),
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // ABA 0: HOME
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedIndex = 0);
-                      widget.onNavigate(0); // Avisa a Home para trocar de tela
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.home_outlined,
-                          color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Home",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // ABA 1: CATÁLOGO
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedIndex = 1);
-                      widget.onNavigate(1); // Avisa a Home para trocar de tela
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.menu_book_outlined,
-                          color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Catálogo",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // ABA 2: BALCÃO
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedIndex = 2);
-                      widget.onNavigate(2);
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.swap_horiz,
-                          color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Balcão",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      color: _azulPrimario,
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 22,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: 48),
+              child: Text(
+                'Comprar Tokens',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardToken() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cinza,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _nomeStartup,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.ofertaMaxQtd != null
+                    ? 'Disponível: ${widget.ofertaMaxQtd} tokens'
+                    : 'Qtd de tokens:',
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'R\$ ${_formatarNumero(_preco)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '/Token',
+                style: TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCampoPreco() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Preço (R\$)',
+          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: _cinza,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'R\$ ${_formatarNumero(_preco)}',
+            style: const TextStyle(color: Colors.black87),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCampoQuantidade() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Quantidade (tokens) *',
+          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 120,
+              child: TextField(
+                controller: _quantidadeController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  fillColor: _cinza,
+                  filled: true,
+                  hintText: widget.ofertaMaxQtd != null
+                      ? 'Máx: ${widget.ofertaMaxQtd}'
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            if (_erroQuantidade) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.ofertaMaxQtd != null
+                            ? 'Máximo disponível: ${widget.ofertaMaxQtd} tokens'
+                            : 'Informe uma quantidade válida de tokens',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTotalEstimado() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Total estimado',
+          style: TextStyle(color: Colors.black54),
+        ),
+        Text(
+          'R\$ ${_formatarNumero(_totalEstimado)}',
+          style: const TextStyle(
+            color: _azulPrimario,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCardSaldo(double saldo) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cinza,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Saldo Disponível',
+            style: TextStyle(color: Colors.black54),
+          ),
+          Text(
+            'R\$ ${_formatarNumero(saldo)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvisoSaldo() {
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.error_outline, color: Colors.red, size: 22),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Você não possui saldo suficiente para concluir esta compra. Adicione créditos à sua carteira para continuar.',
+            style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.3),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBotaoComprar(bool podeComprar, int qtd, double saldo) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: podeComprar ? () => _irParaFinalizacao(qtd, saldo) : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _azulPrimario,
+          disabledBackgroundColor: _azulPrimario.withValues(alpha: 0.4),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: const Text(
+          'Comprar',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
+
+  void _irParaFinalizacao(int quantidade, double saldo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TelaBalcaoFinalizacaoCompra(
+          startup: widget.startup,
+          quantidade: quantidade,
+          total: _totalEstimado,
+          saldoDisponivel: saldo,
+          ofertaId: widget.ofertaId,
+          precoFinal: widget.ofertaPreco,
+          onNavigate: widget.onNavigate,
+          onCarteiraAlterada: widget.onCarteiraAlterada,
+        ),
+      ),
+    );
+  }
+}
+
+String _formatarNumero(double value) =>
+    value.toStringAsFixed(2).replaceAll('.', ',');
+
+double _numero(dynamic value, {double fallback = 0}) {
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final t = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
+    final n = t.contains(',')
+        ? t.replaceAll('.', '').replaceAll(',', '.')
+        : t;
+    return double.tryParse(n) ?? fallback;
+  }
+  return fallback;
 }

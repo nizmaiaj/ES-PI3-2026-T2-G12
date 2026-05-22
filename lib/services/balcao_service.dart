@@ -255,6 +255,206 @@ class BalcaoService {
     });
   }
 
+  Future<void> comprarDeOferta({
+    required String compradorId,
+    required String ofertaId,
+    required int quantidade,
+  }) async {
+    if (quantidade <= 0) throw Exception('Informe uma quantidade válida de tokens.');
+
+    final ofertaRef = _firestore.collection('orders').doc(ofertaId);
+    final ofertaSnap = await ofertaRef.get();
+    final ofertaData = ofertaSnap.data();
+    if (ofertaData == null) throw Exception('Oferta não encontrada.');
+
+    final startupId = _texto(ofertaData['startupId']);
+    if (startupId.isEmpty) throw Exception('Oferta inválida.');
+
+    final holdingRef = await _normalizarHoldingRef(compradorId, startupId);
+    final compraRef = _firestore.collection('orders').doc();
+    final txRef = _firestore.collection('transactions').doc();
+    final creditRef = _firestore.collection('walletCredits').doc();
+    final walletRef = _firestore.collection('wallets').doc(compradorId);
+    final now = FieldValue.serverTimestamp();
+
+    await _firestore.runTransaction((txn) async {
+      final ofertaDoc = await txn.get(ofertaRef);
+      if (!ofertaDoc.exists) throw Exception('Oferta não encontrada.');
+
+      final oferta = ofertaDoc.data() ?? {};
+      final tipo = _texto(oferta['tipo']).toLowerCase();
+      final status = _texto(oferta['status']).toLowerCase();
+      final preco = _numero(oferta['preco'] ?? oferta['precoUnitario']);
+      final qtdRestante = _quantidadeRestante(oferta);
+      final qtdExecutada = _numero(oferta['quantidadeExecutada']).toInt();
+      final qtdOriginal = _numero(oferta['quantidade']).toInt();
+
+      if (tipo != 'ofertacompra' || !_statusAberto(status)) {
+        throw Exception('Esta oferta não está mais disponível.');
+      }
+      if (qtdRestante < quantidade) {
+        throw Exception('Quantidade indisponível nesta oferta.');
+      }
+
+      final total = preco * quantidade;
+      final walletDoc = await txn.get(walletRef);
+      final holdingDoc = await txn.get(holdingRef);
+
+      if (!walletDoc.exists) throw Exception('Carteira não encontrada.');
+      final saldo = _numero(walletDoc.data()?['saldoReais']);
+      if (saldo < total) throw Exception('Saldo insuficiente na carteira.');
+
+      final holding = holdingDoc.data();
+      final qtdAtual = _numero(holding?['quantidade']).toInt();
+      final precoMedioAtual = _numero(holding?['precoMedioCompra']);
+      final novaQtd = qtdAtual + quantidade;
+      final novoPrecoMedio = ((qtdAtual * precoMedioAtual) + total) / novaQtd;
+
+      final novaExecutada = qtdExecutada + quantidade;
+      final novaRestante = qtdOriginal - novaExecutada;
+      final novoStatus = novaRestante <= 0 ? 'executada' : 'parcial';
+
+      txn.update(ofertaRef, {
+        'quantidadeExecutada': novaExecutada,
+        'quantidadeRestante': novaRestante < 0 ? 0 : novaRestante,
+        'status': novoStatus,
+        'updatedAt': now,
+        if (novoStatus == 'executada') 'executadaEm': now,
+      });
+
+      txn.update(walletRef, {'saldoReais': saldo - total, 'updatedAt': now});
+
+      txn.set(holdingRef, {
+        'userId': compradorId,
+        'startupId': startupId,
+        'quantidade': novaQtd,
+        'precoMedioCompra': novoPrecoMedio,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      txn.set(compraRef, {
+        'id': compraRef.id,
+        'userId': compradorId,
+        'buyerId': compradorId,
+        'startupId': startupId,
+        'tipo': 'compra',
+        'quantidade': quantidade,
+        'quantidadeExecutada': quantidade,
+        'quantidadeRestante': 0,
+        'preco': preco,
+        'precoUnitario': preco,
+        'status': 'executada',
+        'ofertaCompraId': ofertaId,
+        'createdAt': now,
+        'updatedAt': now,
+        'executadaEm': now,
+      });
+
+      txn.set(txRef, {
+        'id': txRef.id,
+        'startupId': startupId,
+        'buyerId': compradorId,
+        'quantidade': quantidade,
+        'precoUnitario': preco,
+        'valorTotal': total,
+        'orderCompraId': compraRef.id,
+        'ofertaCompraId': ofertaId,
+        'executadaEm': now,
+      });
+
+      txn.set(creditRef, {
+        'userId': compradorId,
+        'valor': -total,
+        'tipo': 'compra',
+        'descricao': 'Compra de $quantidade tokens',
+        'createdAt': now,
+      });
+    });
+  }
+
+  Future<void> comprarDiretamente({
+    required String compradorId,
+    required String startupId,
+    required int quantidade,
+    required double preco,
+  }) async {
+    if (quantidade <= 0) throw Exception('Informe uma quantidade válida de tokens.');
+    if (preco <= 0) throw Exception('Preço inválido.');
+
+    final holdingRef = await _normalizarHoldingRef(compradorId, startupId);
+    final compraOrderRef = _firestore.collection('orders').doc();
+    final transactionRef = _firestore.collection('transactions').doc();
+    final walletCreditRef = _firestore.collection('walletCredits').doc();
+    final compradorWalletRef = _firestore.collection('wallets').doc(compradorId);
+    final now = FieldValue.serverTimestamp();
+    final total = preco * quantidade;
+
+    await _firestore.runTransaction((txn) async {
+      final walletDoc = await txn.get(compradorWalletRef);
+      final holdingDoc = await txn.get(holdingRef);
+
+      if (!walletDoc.exists) throw Exception('Carteira não encontrada.');
+
+      final saldo = _numero(walletDoc.data()?['saldoReais']);
+      if (saldo < total) throw Exception('Saldo insuficiente na carteira.');
+
+      final holding = holdingDoc.data();
+      final qtdAtual = _numero(holding?['quantidade']).toInt();
+      final precoMedioAtual = _numero(holding?['precoMedioCompra']);
+      final novaQtd = qtdAtual + quantidade;
+      final novoPrecoMedio = ((qtdAtual * precoMedioAtual) + total) / novaQtd;
+
+      txn.update(compradorWalletRef, {
+        'saldoReais': saldo - total,
+        'updatedAt': now,
+      });
+
+      txn.set(holdingRef, {
+        'userId': compradorId,
+        'startupId': startupId,
+        'quantidade': novaQtd,
+        'precoMedioCompra': novoPrecoMedio,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      txn.set(compraOrderRef, {
+        'id': compraOrderRef.id,
+        'userId': compradorId,
+        'buyerId': compradorId,
+        'startupId': startupId,
+        'tipo': 'compra',
+        'quantidade': quantidade,
+        'quantidadeExecutada': quantidade,
+        'quantidadeRestante': 0,
+        'preco': preco,
+        'precoUnitario': preco,
+        'status': 'executada',
+        'createdAt': now,
+        'updatedAt': now,
+        'executadaEm': now,
+      });
+
+      txn.set(transactionRef, {
+        'id': transactionRef.id,
+        'startupId': startupId,
+        'buyerId': compradorId,
+        'quantidade': quantidade,
+        'precoUnitario': preco,
+        'valorTotal': total,
+        'orderCompraId': compraOrderRef.id,
+        'executadaEm': now,
+      });
+
+      txn.set(walletCreditRef, {
+        'userId': compradorId,
+        'valor': -total,
+        'tipo': 'compra',
+        'descricao': 'Compra de $quantidade tokens',
+        'createdAt': now,
+      });
+    });
+  }
+
   Future<void> cancelarOrdem({
     required String usuarioId,
     required String ordemId,
