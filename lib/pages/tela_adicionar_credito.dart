@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInputFormatter, TextEditingValue, TextSelection;
 import 'tela_home.dart';
 import '../services/auth_session.dart';
 
@@ -57,9 +58,8 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: _valorController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [_CurrencyInputFormatter()],
                       style: const TextStyle(
                         color: Colors.black87,
                         fontSize: 26,
@@ -293,31 +293,14 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
     );
   }
 
+  // Com o _CurrencyInputFormatter, o texto está sempre em "R$ X.XXX,YY".
+  // Basta extrair os dígitos e dividir por 100.
   double? _lerValorDigitado(String texto) {
-    final apenasNumero = texto.replaceAll(RegExp(r'[^0-9,.]'), '');
-    if (apenasNumero.trim().isEmpty) return null;
-
-    final ultimoPonto = apenasNumero.lastIndexOf('.');
-    final ultimaVirgula = apenasNumero.lastIndexOf(',');
-    final ultimoSeparador = ultimoPonto > ultimaVirgula
-        ? ultimoPonto
-        : ultimaVirgula;
-
-    if (ultimoSeparador == -1) {
-      return double.tryParse(apenasNumero);
-    }
-
-    final casasDecimais = apenasNumero.length - ultimoSeparador - 1;
-    final separadorDecimal =
-        (ultimoPonto != -1 && ultimaVirgula != -1) ||
-        casasDecimais == 1 ||
-        casasDecimais == 2;
-
-    final normalizado = separadorDecimal
-        ? '${apenasNumero.substring(0, ultimoSeparador).replaceAll(RegExp(r'[,.]'), '')}.${apenasNumero.substring(ultimoSeparador + 1)}'
-        : apenasNumero.replaceAll(RegExp(r'[,.]'), '');
-
-    return double.tryParse(normalizado);
+    final digits = texto.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return null;
+    final centavos = int.tryParse(digits) ?? 0;
+    if (centavos <= 0) return null;
+    return centavos / 100;
   }
 
   double _lerNumero(dynamic valor) {
@@ -345,6 +328,7 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
   }
 
   Widget _buildBottomNav(BuildContext context) {
+
     return Container(
       margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
       height: 70,
@@ -399,6 +383,43 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      return newValue.copyWith(
+        text: '',
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    // Limita a 11 dígitos → máx R$ 999.999.999,99
+    final clamped = digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final centavos = int.parse(clamped);
+    final reais = centavos ~/ 100;
+    final cents = centavos % 100;
+
+    final reaisStr = reais.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < reaisStr.length; i++) {
+      final remaining = reaisStr.length - i;
+      buffer.write(reaisStr[i]);
+      if (remaining > 1 && remaining % 3 == 1) buffer.write('.');
+    }
+
+    final formatted = 'R\$ ${buffer.toString()},${cents.toString().padLeft(2, '0')}';
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

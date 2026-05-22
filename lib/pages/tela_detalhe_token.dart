@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/app_bottom_nav.dart';
@@ -400,34 +399,43 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     final startupDoc = startupId.isEmpty
         ? null
         : await _firestore.collection('startups').doc(startupId).get();
-    final historico = startupId.isEmpty
-        ? <_PontoPreco>[]
-        : await _buscarHistoricoTransacoes(startupId);
 
     final precoStartup = _lerPrecoStartup(startupDoc?.data());
-    final precoHistorico = historico.isNotEmpty ? historico.last.preco : 0.0;
-    final precoAtual = _primeiroPrecoValido([
-      precoHistorico,
+    final precoBase = _primeiroPrecoValido([
       precoStartup,
       widget.precoAtualInicial,
       widget.precoMedioCompra,
     ]);
 
+    var historico = startupId.isEmpty
+        ? <_PontoPreco>[]
+        : await _buscarHistoricoPrecos(startupId);
+
+    // Garante que o gráfico nunca fica vazio: injeta o preço atual como ponto
+    // inicial quando não há histórico registrado ainda.
+    if (historico.isEmpty && precoBase > 0) {
+      historico = [_PontoPreco(data: DateTime.now(), preco: precoBase)];
+    }
+
+    final precoAtual = _primeiroPrecoValido([
+      historico.isNotEmpty ? historico.last.preco : 0.0,
+      precoBase,
+    ]);
+
     return _TokenDetalheDados(precoAtual: precoAtual, historico: historico);
   }
 
-  Future<List<_PontoPreco>> _buscarHistoricoTransacoes(String startupId) async {
+  Future<List<_PontoPreco>> _buscarHistoricoPrecos(String startupId) async {
     final snapshot = await _firestore
-        .collection('transactions')
+        .collection('tokenPrices')
         .where('startupId', isEqualTo: startupId)
         .get();
 
-    final pontos =
-        snapshot.docs
-            .map((doc) => _PontoPreco.fromMap(doc.data()))
-            .where((ponto) => ponto.preco > 0)
-            .toList()
-          ..sort((a, b) => a.data.compareTo(b.data));
+    final pontos = snapshot.docs
+        .map((doc) => _PontoPreco.fromMap(doc.data()))
+        .where((p) => p.preco > 0)
+        .toList()
+      ..sort((a, b) => a.data.compareTo(b.data));
 
     return pontos;
   }
@@ -514,238 +522,165 @@ class _GraficoPreco extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 0.78,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _GraficoPrecoPainter(
-                pontos: pontos,
-                periodo: periodo,
-                lineColor: lineColor,
+    if (pontos.length < 2) {
+      return AspectRatio(
+        aspectRatio: 0.78,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE0E0E0)),
+            ),
+            child: const Text(
+              'Histórico insuficiente',
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          if (pontos.length < 2)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
-                ),
-                child: const Text(
-                  'Histórico insuficiente',
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    final spots = List.generate(
+      pontos.length,
+      (i) => FlSpot(i.toDouble(), pontos[i].preco),
+    );
+
+    final precos = pontos.map((p) => p.preco);
+    final minPreco = precos.reduce((a, b) => a < b ? a : b);
+    final maxPreco = precos.reduce((a, b) => a > b ? a : b);
+    final margem = minPreco == maxPreco
+        ? (maxPreco * 0.05).clamp(1.0, double.infinity)
+        : (maxPreco - minPreco) * 0.12;
+    final minY = (minPreco - margem).clamp(0.0, double.infinity);
+    final maxY = maxPreco + margem;
+    final intervalY = ((maxY - minY) / 4).clamp(0.01, double.infinity);
+    final n = pontos.length;
+    final xInterval = (n <= 5 ? 1.0 : (n / 5).ceilToDouble());
+
+    return AspectRatio(
+      aspectRatio: 0.78,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            horizontalInterval: intervalY,
+            verticalInterval: xInterval,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: Colors.black.withValues(alpha: 0.08),
+              strokeWidth: 0.8,
+            ),
+            getDrawingVerticalLine: (_) => FlLine(
+              color: Colors.black.withValues(alpha: 0.08),
+              strokeWidth: 0.8,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              axisNameWidget: Text(
+                'Valor (R\$)',
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              ),
+              axisNameSize: 16,
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 54,
+                interval: intervalY,
+                getTitlesWidget: (val, _) => Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    _formatarNumeroCurto(val),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Color(0xFF888888),
+                    ),
+                    textAlign: TextAlign.right,
                   ),
                 ),
               ),
             ),
-        ],
+            bottomTitles: AxisTitles(
+              axisNameWidget: Text(
+                periodo.eixoX,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              ),
+              axisNameSize: 16,
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: xInterval,
+                getTitlesWidget: (val, meta) {
+                  final i = val.toInt();
+                  if (i < 0 || i >= pontos.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    space: 4,
+                    child: Text(
+                      _formatarData(pontos[i].data, periodo),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        color: Color(0xFF888888),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.15),
+            ),
+          ),
+          minY: minY,
+          maxY: maxY,
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              curveSmoothness: 0.3,
+              color: lineColor,
+              barWidth: 2.6,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: n <= 30,
+                getDotPainter: (_, _, _, _) => FlDotCirclePainter(
+                  radius: 3,
+                  color: lineColor,
+                  strokeWidth: 0,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    lineColor.withValues(alpha: 0.18),
+                    lineColor.withValues(alpha: 0.02),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  }
-}
-
-class _GraficoPrecoPainter extends CustomPainter {
-  _GraficoPrecoPainter({
-    required this.pontos,
-    required this.periodo,
-    required this.lineColor,
-  });
-
-  final List<_PontoPreco> pontos;
-  final _PeriodoGrafico periodo;
-  final Color lineColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final textStyle = TextStyle(
-      color: Colors.black.withValues(alpha: 0.74),
-      fontSize: 10,
-    );
-    final titleStyle = TextStyle(
-      color: Colors.black.withValues(alpha: 0.86),
-      fontSize: 12,
-      fontWeight: FontWeight.w700,
-    );
-    final axisPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.42)
-      ..strokeWidth = 1;
-    final gridPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.18)
-      ..strokeWidth = 0.8;
-
-    _drawText(
-      canvas,
-      'Valorização ${periodo.label}',
-      Offset(size.width / 2, 2),
-      titleStyle,
-      textAlign: TextAlign.center,
-    );
-
-    final plot = Rect.fromLTWH(48, 28, size.width - 62, size.height - 70);
-    canvas.drawRect(plot, axisPaint..style = PaintingStyle.stroke);
-
-    final bounds = _ChartBounds.fromPontos(pontos);
-
-    for (var i = 0; i <= 4; i++) {
-      final y = plot.top + (plot.height / 4) * i;
-      canvas.drawLine(Offset(plot.left, y), Offset(plot.right, y), gridPaint);
-
-      final valor = bounds.max - ((bounds.max - bounds.min) / 4) * i;
-      _drawText(
-        canvas,
-        _formatarNumeroCurto(valor),
-        Offset(plot.left - 8, y - 7),
-        textStyle,
-        textAlign: TextAlign.right,
-      );
-    }
-
-    final verticalTicks = pontos.length < 2 ? 4 : math.min(7, pontos.length);
-    for (var i = 0; i < verticalTicks; i++) {
-      final x = verticalTicks == 1
-          ? plot.center.dx
-          : plot.left + (plot.width / (verticalTicks - 1)) * i;
-      canvas.drawLine(Offset(x, plot.top), Offset(x, plot.bottom), gridPaint);
-    }
-
-    _drawText(
-      canvas,
-      'Valor (R\$)',
-      Offset(10, plot.center.dy),
-      textStyle,
-      rotation: -math.pi / 2,
-      textAlign: TextAlign.center,
-    );
-    _drawText(
-      canvas,
-      periodo.eixoX,
-      Offset(plot.center.dx, size.height - 16),
-      textStyle,
-      textAlign: TextAlign.center,
-    );
-
-    if (pontos.isEmpty) return;
-
-    final offsets = <Offset>[];
-    for (var i = 0; i < pontos.length; i++) {
-      offsets.add(_offsetDoPonto(pontos[i], i, plot, bounds));
-    }
-
-    if (offsets.length >= 2) {
-      final path = Path()..moveTo(offsets.first.dx, offsets.first.dy);
-      for (final offset in offsets.skip(1)) {
-        path.lineTo(offset.dx, offset.dy);
-      }
-
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = lineColor
-          ..strokeWidth = 2.6
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      );
-    }
-
-    final pointPaint = Paint()..color = lineColor;
-    final markerRadius = pontos.length > 45 ? 2.2 : 3.2;
-    for (final offset in offsets) {
-      canvas.drawCircle(offset, markerRadius, pointPaint);
-    }
-
-    final labelIndexes = _labelIndexes(pontos.length);
-    for (final index in labelIndexes) {
-      final offset = offsets[index];
-      _drawText(
-        canvas,
-        _formatarData(pontos[index].data, periodo),
-        Offset(offset.dx, plot.bottom + 8),
-        textStyle,
-        textAlign: TextAlign.center,
-      );
-    }
-  }
-
-  Offset _offsetDoPonto(
-    _PontoPreco ponto,
-    int index,
-    Rect plot,
-    _ChartBounds bounds,
-  ) {
-    final x = bounds.periodoMs <= 0 || pontos.length == 1
-        ? plot.center.dx
-        : plot.left +
-              (ponto.data.millisecondsSinceEpoch - bounds.inicioMs) /
-                  bounds.periodoMs *
-                  plot.width;
-    final y =
-        plot.bottom -
-        ((ponto.preco - bounds.min) / (bounds.max - bounds.min)) * plot.height;
-
-    return Offset(
-      x.clamp(plot.left, plot.right),
-      y.clamp(plot.top, plot.bottom),
-    );
-  }
-
-  List<int> _labelIndexes(int length) {
-    if (length == 0) return const [];
-    if (length <= 3) return List.generate(length, (index) => index);
-
-    return {
-      0,
-      (length * 0.25).round().clamp(0, length - 1),
-      (length * 0.5).round().clamp(0, length - 1),
-      (length * 0.75).round().clamp(0, length - 1),
-      length - 1,
-    }.toList()..sort();
-  }
-
-  void _drawText(
-    Canvas canvas,
-    String text,
-    Offset offset,
-    TextStyle style, {
-    TextAlign textAlign = TextAlign.left,
-    double rotation = 0,
-  }) {
-    final span = TextSpan(text: text, style: style);
-    final painter = TextPainter(
-      text: span,
-      textAlign: textAlign,
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: 90);
-
-    final dx = switch (textAlign) {
-      TextAlign.center => offset.dx - painter.width / 2,
-      TextAlign.right => offset.dx - painter.width,
-      _ => offset.dx,
-    };
-
-    canvas.save();
-    canvas.translate(offset.dx, offset.dy);
-    canvas.rotate(rotation);
-    painter.paint(canvas, Offset(dx - offset.dx, -painter.height / 2));
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _GraficoPrecoPainter oldDelegate) {
-    return oldDelegate.pontos != pontos ||
-        oldDelegate.periodo != periodo ||
-        oldDelegate.lineColor != lineColor;
   }
 }
 
@@ -824,46 +759,6 @@ class _PontoPreco {
   final double preco;
 }
 
-class _ChartBounds {
-  const _ChartBounds({
-    required this.min,
-    required this.max,
-    required this.inicioMs,
-    required this.periodoMs,
-  });
-
-  factory _ChartBounds.fromPontos(List<_PontoPreco> pontos) {
-    if (pontos.isEmpty) {
-      return _ChartBounds(
-        min: 0,
-        max: 1,
-        inicioMs: DateTime.now().millisecondsSinceEpoch,
-        periodoMs: 0,
-      );
-    }
-
-    final precos = pontos.map((ponto) => ponto.preco);
-    final minPreco = precos.reduce(math.min);
-    final maxPreco = precos.reduce(math.max);
-    final margem = minPreco == maxPreco
-        ? math.max(1, maxPreco * 0.05)
-        : (maxPreco - minPreco) * 0.12;
-
-    return _ChartBounds(
-      min: math.max(0, minPreco - margem),
-      max: maxPreco + margem,
-      inicioMs: pontos.first.data.millisecondsSinceEpoch,
-      periodoMs:
-          pontos.last.data.millisecondsSinceEpoch -
-          pontos.first.data.millisecondsSinceEpoch,
-    );
-  }
-
-  final double min;
-  final double max;
-  final int inicioMs;
-  final int periodoMs;
-}
 
 enum _PeriodoGrafico {
   diario('Diário', 'Horas'),

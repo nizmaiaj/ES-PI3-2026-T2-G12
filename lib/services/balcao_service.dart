@@ -362,6 +362,15 @@ class BalcaoService {
         'executadaEm': now,
       });
 
+      final tokenPriceRef = _firestore.collection('tokenPrices').doc();
+      txn.set(tokenPriceRef, {
+        'id': tokenPriceRef.id,
+        'startupId': startupId,
+        'preco': preco,
+        'volume': quantidade,
+        'timestamp': now,
+      });
+
       txn.set(creditRef, {
         'userId': compradorId,
         'valor': -total,
@@ -443,6 +452,15 @@ class BalcaoService {
         'valorTotal': total,
         'orderCompraId': compraOrderRef.id,
         'executadaEm': now,
+      });
+
+      final tokenPriceRef = _firestore.collection('tokenPrices').doc();
+      txn.set(tokenPriceRef, {
+        'id': tokenPriceRef.id,
+        'startupId': startupId,
+        'preco': preco,
+        'volume': quantidade,
+        'timestamp': now,
       });
 
       txn.set(walletCreditRef, {
