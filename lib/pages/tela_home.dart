@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:fl_chart/fl_chart.dart';
+
 import '../services/auth_session.dart';
 import 'balcao_negociacao.dart';
 import 'tela_adicionar_credito.dart';
@@ -23,6 +25,8 @@ class TelaHome extends StatefulWidget {
 class _TelaHomeState extends State<TelaHome> {
   bool _patrimonioVisivel = false;
   int _selectedIndex = 0;
+  String _filtroGrafico = 'M';
+  Future<List<_PontoGrafico>>? _graficoDadosFuture;
 
   Future<_HomeResumo>? _homeResumoFuture;
   late final Future<String> _nomeUsuarioFuture;
@@ -42,6 +46,7 @@ class _TelaHomeState extends State<TelaHome> {
     super.initState();
     _homeResumoFuture = _buscarResumoHome();
     _nomeUsuarioFuture = _buscarNomeUsuario();
+    _graficoDadosFuture = _buscarDadosGrafico(_filtroGrafico);
     _iniciarMonitoramentoNotificacoes();
   }
 
@@ -62,6 +67,7 @@ class _TelaHomeState extends State<TelaHome> {
   void _recarregarHome() {
     setState(() {
       _homeResumoFuture = _buscarResumoHome();
+      _graficoDadosFuture = _buscarDadosGrafico(_filtroGrafico);
     });
   }
 
@@ -449,6 +455,8 @@ class _TelaHomeState extends State<TelaHome> {
                                     ],
                                   ),
                                 ),
+                                const SizedBox(height: 24),
+                                _buildGraficoInvestimentos(),
                                 const SizedBox(height: 24),
                                 const Text(
                                   'Meus Tokens',
@@ -1598,6 +1606,308 @@ class _TelaHomeState extends State<TelaHome> {
     return '${texto[0].toUpperCase()}${texto.substring(1)}';
   }
 
+  Widget _buildGraficoInvestimentos() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Evolução dos Investimentos',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildFiltrosGrafico(),
+          const SizedBox(height: 20),
+          FutureBuilder<List<_PontoGrafico>>(
+            future: _graficoDadosFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+
+              final pontos = snapshot.data ?? [];
+              final temDados = pontos.any((p) => p.valor > 0);
+
+              if (!temDados) {
+                return SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: Text(
+                      'Nenhuma movimentação no período.',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return SizedBox(
+                height: 160,
+                child: LineChart(_buildLineChartData(pontos)),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiltrosGrafico() {
+    const filtros = [
+      ('D', 'Diário'),
+      ('M', 'Mensal'),
+      ('S', 'Semestral'),
+      ('A', 'Anual'),
+    ];
+    return Row(
+      children: filtros.map((f) {
+        final ativo = _filtroGrafico == f.$1;
+        return GestureDetector(
+          onTap: () {
+            if (_filtroGrafico != f.$1) {
+              setState(() {
+                _filtroGrafico = f.$1;
+                _graficoDadosFuture = _buscarDadosGrafico(f.$1);
+              });
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: ativo ? _roxo : const Color(0xFFF0F0F5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              f.$2,
+              style: TextStyle(
+                fontSize: 10,
+                color: ativo ? Colors.white : Colors.grey,
+                fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  LineChartData _buildLineChartData(List<_PontoGrafico> pontos) {
+    final spots = List.generate(
+      pontos.length,
+      (i) => FlSpot(i.toDouble(), pontos[i].valor),
+    );
+    final maxY = pontos.fold<double>(0, (m, p) => p.valor > m ? p.valor : m);
+    final effectiveMaxY = maxY > 0 ? maxY * 1.25 : 100.0;
+    final interval = (effectiveMaxY / 4).ceilToDouble();
+
+    return LineChartData(
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: interval,
+        getDrawingHorizontalLine: (_) => const FlLine(
+          color: Color(0xFFEEEEEE),
+          strokeWidth: 1,
+        ),
+      ),
+      titlesData: FlTitlesData(
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 46,
+            interval: interval,
+            getTitlesWidget: (val, _) => Text(
+              'R\$${_compactarValor(val)}',
+              style: const TextStyle(fontSize: 8, color: Color(0xFFAAAAAA)),
+            ),
+          ),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 20,
+            interval: _intervaloXLabel(pontos.length),
+            getTitlesWidget: (val, _) {
+              final i = val.toInt();
+              if (i < 0 || i >= pontos.length) return const SizedBox.shrink();
+              return Text(
+                _labelEixoX(pontos[i].data),
+                style: const TextStyle(fontSize: 8, color: Color(0xFF888888)),
+              );
+            },
+          ),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      minY: 0,
+      maxY: effectiveMaxY,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          curveSmoothness: 0.3,
+          color: _roxo,
+          barWidth: 2.5,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _roxo.withValues(alpha: 0.20),
+                _roxo.withValues(alpha: 0.02),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<List<_PontoGrafico>> _buscarDadosGrafico(String filtro) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+    if (uid == null) return [];
+
+    final agora = DateTime.now();
+    DateTime inicio;
+
+    switch (filtro) {
+      case 'D':
+        inicio = DateTime(agora.year, agora.month, agora.day);
+        break;
+      case 'S':
+        final mes = agora.month - 5;
+        inicio = mes <= 0
+            ? DateTime(agora.year - 1, mes + 12, 1)
+            : DateTime(agora.year, mes, 1);
+        break;
+      case 'A':
+        inicio = DateTime(agora.year, 1, 1);
+        break;
+      default: // 'M'
+        inicio = DateTime(agora.year, agora.month, 1);
+    }
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('transactions')
+        .where('buyerId', isEqualTo: uid)
+        .get();
+
+    final Map<String, double> buckets = {};
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final dt = _lerData(
+        data['executadaEm'] ?? data['createdAt'] ?? data['updatedAt'],
+      );
+      if (dt == null || dt.isBefore(inicio)) continue;
+
+      final chave = _bucketKey(dt, filtro);
+      final valor = _lerNumero(
+        data['valorTotal'] ?? data['valor'] ?? data['amount'],
+      );
+      buckets[chave] = (buckets[chave] ?? 0) + valor;
+    }
+
+    return _gerarPontos(filtro, agora, inicio, buckets);
+  }
+
+  List<_PontoGrafico> _gerarPontos(
+    String filtro,
+    DateTime agora,
+    DateTime inicio,
+    Map<String, double> buckets,
+  ) {
+    final pontos = <_PontoGrafico>[];
+
+    switch (filtro) {
+      case 'D':
+        for (var h = 0; h <= agora.hour; h++) {
+          final dt = DateTime(agora.year, agora.month, agora.day, h);
+          pontos.add(_PontoGrafico(dt, buckets[h.toString().padLeft(2, '0')] ?? 0));
+        }
+        break;
+      case 'M':
+        for (var d = 1; d <= agora.day; d++) {
+          final dt = DateTime(agora.year, agora.month, d);
+          pontos.add(_PontoGrafico(dt, buckets[d.toString().padLeft(2, '0')] ?? 0));
+        }
+        break;
+      case 'S':
+        for (var i = 5; i >= 0; i--) {
+          var m = agora.month - i;
+          var y = agora.year;
+          if (m <= 0) { m += 12; y--; }
+          final dt = DateTime(y, m, 1);
+          pontos.add(_PontoGrafico(dt, buckets['$y-${m.toString().padLeft(2, '0')}'] ?? 0));
+        }
+        break;
+      case 'A':
+        for (var m = 1; m <= agora.month; m++) {
+          final dt = DateTime(agora.year, m, 1);
+          pontos.add(_PontoGrafico(dt, buckets['${agora.year}-${m.toString().padLeft(2, '0')}'] ?? 0));
+        }
+        break;
+    }
+
+    return pontos;
+  }
+
+  String _bucketKey(DateTime dt, String filtro) {
+    switch (filtro) {
+      case 'D': return dt.hour.toString().padLeft(2, '0');
+      case 'M': return dt.day.toString().padLeft(2, '0');
+      default:  return '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+    }
+  }
+
+  String _labelEixoX(DateTime dt) {
+    switch (_filtroGrafico) {
+      case 'D': return '${dt.hour}h';
+      case 'M': return dt.day.toString().padLeft(2, '0');
+      default:
+        const m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return m[dt.month - 1];
+    }
+  }
+
+  double _intervaloXLabel(int count) {
+    if (count <= 8) return 1;
+    if (count <= 16) return 2;
+    return (count / 6).ceilToDouble();
+  }
+
+  String _compactarValor(double val) {
+    if (val >= 1000) return '${(val / 1000).toStringAsFixed(1)}k';
+    return val.toStringAsFixed(0);
+  }
+
   void _mostrarMensagem(String mensagem) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
@@ -1672,6 +1982,13 @@ class _StartupResumo {
   const _StartupResumo({required this.nome, required this.precoAtual});
   final String nome;
   final double precoAtual;
+}
+
+
+class _PontoGrafico {
+  const _PontoGrafico(this.data, this.valor);
+  final DateTime data;
+  final double valor;
 }
 
 class _HoldingAgregado {

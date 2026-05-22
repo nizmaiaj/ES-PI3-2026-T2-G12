@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import 'visao_geral_utils.dart';
@@ -65,19 +66,20 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   // ── ESTRUTURA SOCIETÁRIA ──────────────────────────────────────────────────
 
   Widget _buildEstruturaCard(List<SocioStartup> socios) {
-    final segmentos = [
-      for (var i = 0; i < socios.length; i++)
-        SegmentoDonut(
-          percentual: socios[i].percentual ?? 0,
-          cor: corSocio(i),
-          label: socios[i].percentualExibido,
-        ),
-    ];
-
     final totalPercentual = socios.fold<double>(
       0,
       (total, s) => total + (s.percentual ?? 0),
     );
+
+    final sections = List.generate(socios.length, (i) {
+      final pct = socios[i].percentual ?? 0;
+      return PieChartSectionData(
+        value: pct,
+        color: corSocio(i),
+        radius: 28,
+        showTitle: false,
+      );
+    });
 
     return Container(
       width: double.infinity,
@@ -104,10 +106,18 @@ class _AbaSociedadeState extends State<AbaSociedade> {
               SizedBox(
                 width: 130,
                 height: 130,
-                child: CustomPaint(
-                  painter: GraficoPizzaPainter(segmentos),
-                  child: Center(
-                    child: Column(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PieChart(
+                      PieChartData(
+                        sections: sections,
+                        centerSpaceRadius: 37,
+                        sectionsSpace: 2,
+                        startDegreeOffset: -90,
+                      ),
+                    ),
+                    Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
@@ -124,7 +134,7 @@ class _AbaSociedadeState extends State<AbaSociedade> {
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
               ),
               const SizedBox(width: 20),

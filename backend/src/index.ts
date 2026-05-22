@@ -12,6 +12,7 @@ import ordersRoutes from './routes/orders';
 import transactionsRoutes from './routes/transactions';
 import portfolioRoutes from './routes/portfolio';
 import { errorHandler } from './middleware/errorHandler';
+import iniciarJobs from './jobs/tokenPriceJob';
 
 dotenv.config();
 
@@ -42,4 +43,5 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 MesclaInvest Backend running on port ${PORT}`);
+  iniciarJobs();
 });

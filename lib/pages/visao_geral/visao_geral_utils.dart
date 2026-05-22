@@ -281,7 +281,8 @@ class GraficoPizzaPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2;
-    const gap = 0.015;
+    const innerRatio = 0.55;
+    const gap = 0.018;
 
     final segs = segmentos.where((s) => s.percentual > 0).toList();
     final total = segs.fold<double>(0, (acc, s) => acc + s.percentual);
@@ -291,6 +292,11 @@ class GraficoPizzaPainter extends CustomPainter {
         center,
         radius,
         Paint()..color = const Color(0xFFE5E7EB),
+      );
+      canvas.drawCircle(
+        center,
+        radius * innerRatio,
+        Paint()..color = Colors.white,
       );
       return;
     }
@@ -309,28 +315,15 @@ class GraficoPizzaPainter extends CustomPainter {
 
       canvas.drawPath(path, Paint()..color = seg.cor);
 
-      if (seg.percentual >= 8) {
-        final midAngle = startAngle + gap / 2 + actualSweep / 2;
-        final lx = center.dx + radius * 0.62 * math.cos(midAngle);
-        final ly = center.dy + radius * 0.62 * math.sin(midAngle);
-
-        final tp = TextPainter(
-          text: TextSpan(
-            text: seg.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-
-        tp.paint(canvas, Offset(lx - tp.width / 2, ly - tp.height / 2));
-      }
-
       startAngle += 2 * math.pi * (seg.percentual / total);
     }
+
+    // Círculo interno — cria o efeito de rosquinha
+    canvas.drawCircle(
+      center,
+      radius * innerRatio,
+      Paint()..color = Colors.white,
+    );
   }
 
   @override

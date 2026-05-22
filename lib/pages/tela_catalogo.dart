@@ -149,7 +149,8 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                   final status = startup['status'] ?? '';
                   final nome = startup['nome'] ?? '';
                   final filtroStatus =
-                      _filtroAtivo == "Todos" || status == _filtroAtivo;
+                      _filtroAtivo == "Todos" ||
+                      status.toLowerCase() == _filtroAtivo.toLowerCase();
                   final filtroBusca = nome.toLowerCase().contains(
                     busca.toLowerCase(),
                   );
