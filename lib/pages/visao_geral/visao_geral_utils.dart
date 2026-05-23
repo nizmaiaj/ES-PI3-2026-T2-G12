@@ -304,6 +304,93 @@ class DocumentoStartup {
   }
 }
 
+class VideoStartup {
+  const VideoStartup({
+    required this.titulo,
+    required this.descricao,
+    required this.storagePath,
+    required this.url,
+  });
+
+  factory VideoStartup.fromValue(dynamic value) {
+    if (value is Map) return VideoStartup.fromMap(value);
+
+    return VideoStartup(
+      titulo: 'Vídeo de Apresentação',
+      descricao: 'Conheça a startup',
+      storagePath: '',
+      url: parseText(value),
+    );
+  }
+
+  factory VideoStartup.fromMapEntry(dynamic key, dynamic value) {
+    if (value is Map) {
+      final data = Map<dynamic, dynamic>.from(value);
+      data.putIfAbsent('titulo', () => key);
+      return VideoStartup.fromMap(data);
+    }
+
+    return VideoStartup(
+      titulo: parseText(key, fallback: 'Vídeo de Apresentação'),
+      descricao: 'Conheça a startup',
+      storagePath: '',
+      url: parseText(value),
+    );
+  }
+
+  factory VideoStartup.fromMap(Map<dynamic, dynamic> data) {
+    return VideoStartup(
+      titulo: parseText(
+        data['titulo'] ?? data['title'] ?? data['nome'] ?? data['name'],
+        fallback: 'Vídeo de Apresentação',
+      ),
+      descricao: parseText(
+        data['descricao'] ??
+            data['descrição'] ??
+            data['description'] ??
+            data['resumo'] ??
+            data['summary'],
+        fallback: 'Conheça a startup',
+      ),
+      storagePath: parseText(
+        data['storagePath'] ??
+            data['videoStoragePath'] ??
+            data['path'] ??
+            data['videoPath'] ??
+            data['caminhoStorage'] ??
+            data['caminhoVideo'] ??
+            data['arquivoStorage'],
+      ),
+      url: parseText(
+        data['url'] ??
+            data['videoUrl'] ??
+            data['downloadUrl'] ??
+            data['downloadURL'] ??
+            data['link'],
+      ),
+    );
+  }
+
+  final String titulo;
+  final String descricao;
+  final String storagePath;
+  final String url;
+
+  VideoStartup copyWith({
+    String? titulo,
+    String? descricao,
+    String? storagePath,
+    String? url,
+  }) {
+    return VideoStartup(
+      titulo: titulo ?? this.titulo,
+      descricao: descricao ?? this.descricao,
+      storagePath: storagePath ?? this.storagePath,
+      url: url ?? this.url,
+    );
+  }
+}
+
 // ── FUNÇÕES UTILITÁRIAS ───────────────────────────────────────────────────────
 
 String parseText(dynamic value, {String fallback = ''}) {
@@ -366,6 +453,32 @@ List<DocumentoStartup> parseDocumentosStartup(dynamic value) {
 
   return const [];
 }
+
+List<VideoStartup> parseVideosStartup(dynamic value) {
+  if (value is Iterable) {
+    return value
+        .map(VideoStartup.fromValue)
+        .where((video) => video.titulo.trim().isNotEmpty)
+        .toList();
+  }
+
+  if (value is Map) {
+    return value.entries
+        .map((entry) => VideoStartup.fromMapEntry(entry.key, entry.value))
+        .where((video) => video.titulo.trim().isNotEmpty)
+        .toList();
+  }
+
+  if (value != null) {
+    final video = VideoStartup.fromValue(value);
+    return video.url.isEmpty ? const [] : [video];
+  }
+
+  return const [];
+}
+
+String videoStoragePathPadrao(String startupId) =>
+    'startups/$startupId/video/video.mp4';
 
 String formatDataAtualizacao(DateTime data) {
   final dia = data.day.toString().padLeft(2, '0');

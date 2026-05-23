@@ -11,5 +11,10 @@ service firebase.storage {
       allow read: if true;
       allow write: if false;
     }
+
+    match /startups/{startupId}/video/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

@@ -101,6 +101,97 @@ class VideoThumbnailCache extends ChangeNotifier {
   }
 }
 
+Future<List<VideoStartup>> carregarVideosStartup({
+  required String? startupId,
+  required Map<String, dynamic>? data,
+}) async {
+  final id = startupId?.trim() ?? '';
+  final videosConfigurados = <VideoStartup>[
+    ...parseVideosStartup(
+      data?['videos'] ??
+          data?['videosApresentacao'] ??
+          data?['videoApresentacao'] ??
+          data?['video'],
+    ),
+  ];
+
+  if (videosConfigurados.isEmpty && data != null) {
+    final videoUrl = parseText(
+      data['videoUrl'] ?? data['urlVideo'] ?? data['linkVideo'],
+    );
+    final videoStoragePath = parseText(
+      data['videoStoragePath'] ??
+          data['videoPath'] ??
+          data['caminhoVideo'] ??
+          data['videoStorage'],
+    );
+
+    if (videoUrl.isNotEmpty || videoStoragePath.isNotEmpty) {
+      videosConfigurados.add(
+        VideoStartup(
+          titulo: 'Vídeo de Apresentação',
+          descricao: 'Conheça a startup',
+          storagePath: videoStoragePath,
+          url: videoUrl,
+        ),
+      );
+    }
+  }
+
+  final candidatos = videosConfigurados.isEmpty && id.isNotEmpty
+      ? [
+          VideoStartup(
+            titulo: 'Vídeo de Apresentação',
+            descricao: 'Conheça a startup',
+            storagePath: videoStoragePathPadrao(id),
+            url: '',
+          ),
+        ]
+      : videosConfigurados;
+
+  final resolvidos = <VideoStartup>[];
+  final urlsUsadas = <String>{};
+
+  for (final video in candidatos) {
+    final url = await _resolverUrlVideoStartup(video, id);
+    if (url == null || url.isEmpty || !urlsUsadas.add(url)) continue;
+    resolvidos.add(video.copyWith(url: url));
+  }
+
+  return resolvidos;
+}
+
+Future<String?> _resolverUrlVideoStartup(
+  VideoStartup video,
+  String startupId,
+) async {
+  final url = video.url.trim();
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+  final storagePath = _pareceCaminhoStorageVideo(url)
+      ? url
+      : video.storagePath.trim();
+  if (storagePath.isNotEmpty) return _buscarStorageDownloadUrl(storagePath);
+
+  if (startupId.isEmpty) return null;
+  return _buscarStorageDownloadUrl(videoStoragePathPadrao(startupId));
+}
+
+bool _pareceCaminhoStorageVideo(String value) {
+  return value.startsWith('gs://') || value.startsWith('startups/');
+}
+
+Future<String?> _buscarStorageDownloadUrl(String storagePath) async {
+  try {
+    final ref = storagePath.startsWith('gs://')
+        ? FirebaseStorage.instance.refFromURL(storagePath)
+        : FirebaseStorage.instance.ref(storagePath);
+    return await ref.getDownloadURL();
+  } catch (_) {
+    return null;
+  }
+}
+
 class AbaConteudo extends StatefulWidget {
   const AbaConteudo({super.key, required this.startupId, this.thumbnailCache});
 
@@ -112,12 +203,13 @@ class AbaConteudo extends StatefulWidget {
 }
 
 class _AbaConteudoState extends State<AbaConteudo> {
-  List<Map<String, String>> _videos = [];
+  List<VideoStartup> _videos = [];
   List<DocumentoStartup> _documentos = [];
   late final VideoThumbnailCache _thumbnailCache;
   late final bool _isThumbnailCacheLocal;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoSubscription;
+  int _conteudoVersao = 0;
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _isVideoLoading = false;
@@ -147,7 +239,8 @@ class _AbaConteudoState extends State<AbaConteudo> {
         .collection('startups')
         .doc(startupId)
         .snapshots()
-        .listen((snapshot) {
+        .listen((snapshot) async {
+          final versao = ++_conteudoVersao;
           if (!mounted) return;
 
           final data = snapshot.data();
@@ -160,30 +253,19 @@ class _AbaConteudoState extends State<AbaConteudo> {
             return;
           }
 
-          final videosDoBanco = data['videos'] as List<dynamic>?;
           final documentosDoBanco = data['documentos'] ?? data['documents'];
-          final novosVideos = (videosDoBanco ?? []).map((v) {
-            final video = v is Map ? v : const <String, dynamic>{};
-            return {
-              'titulo': parseText(
-                video['titulo'],
-                fallback: 'Vídeo de Apresentação',
-              ),
-              'descricao': parseText(
-                video['descricao'],
-                fallback: 'Conheça a startup',
-              ),
-              'url': parseText(video['url']),
-            };
-          }).toList();
+          final novosVideos = await carregarVideosStartup(
+            startupId: startupId,
+            data: data,
+          );
+
+          if (!mounted || versao != _conteudoVersao) return;
 
           setState(() {
             _videos = novosVideos;
             _documentos = parseDocumentosStartup(documentosDoBanco);
           });
-          _thumbnailCache.syncWithUrls(
-            novosVideos.map((video) => video['url'] ?? ''),
-          );
+          _thumbnailCache.syncWithUrls(novosVideos.map((video) => video.url));
         });
   }
 
@@ -368,21 +450,18 @@ class _AbaConteudoState extends State<AbaConteudo> {
               ),
             ),
           ...List.generate(_videos.length, (i) {
+            final video = _videos[i];
             return InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
-                final url = _videos[i]['url'] ?? '';
+                final url = video.url;
                 if (url.isNotEmpty) {
                   _playVideo(url);
                 } else {
                   _mostrarMensagem('Vídeo indisponível.');
                 }
               },
-              child: _buildVideoItem(
-                _videos[i]['titulo'] ?? 'Vídeo de Apresentação',
-                _videos[i]['descricao'] ?? 'Conheça a startup',
-                _videos[i]['url'] ?? '',
-              ),
+              child: _buildVideoItem(video.titulo, video.descricao, video.url),
             );
           }),
         ],

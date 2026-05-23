@@ -33,6 +33,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   final Map<String, Future<String?>> _logoUrlFutures = {};
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoPreloadSubscription;
+  int _conteudoPreloadVersao = 0;
 
   static const _azulPrimario = Color(0xFF3F51B5);
 
@@ -86,6 +87,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
     final startupId = _startupId;
     if (startupId == null) {
+      _conteudoPreloadVersao++;
       _thumbnailCache.syncWithUrls(const []);
       return;
     }
@@ -94,21 +96,23 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         .collection('startups')
         .doc(startupId)
         .snapshots()
-        .listen((snapshot) {
+        .listen((snapshot) async {
+          final versao = ++_conteudoPreloadVersao;
           final data = snapshot.data();
-          final videos = data?['videos'];
 
-          if (videos is! Iterable) {
+          if (!snapshot.exists || data == null) {
             _thumbnailCache.syncWithUrls(const []);
             return;
           }
 
-          _thumbnailCache.syncWithUrls(
-            videos.map((video) {
-              if (video is! Map) return '';
-              return video['url']?.toString().trim() ?? '';
-            }),
+          final videos = await carregarVideosStartup(
+            startupId: startupId,
+            data: data,
           );
+
+          if (!mounted || versao != _conteudoPreloadVersao) return;
+
+          _thumbnailCache.syncWithUrls(videos.map((video) => video.url));
         });
   }
 
