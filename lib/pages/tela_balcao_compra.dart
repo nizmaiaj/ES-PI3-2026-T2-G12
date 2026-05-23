@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import '../services/balcao_service.dart';
 import '../widgets/app_bottom_nav.dart';
-import 'tela_balcao_finalizacao_compra.dart';
 
 class TelaBalcaoCompra extends StatefulWidget {
   const TelaBalcaoCompra({
@@ -34,11 +34,17 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   static const _cinza = Color(0xFFEEEEF5);
 
   final _quantidadeController = TextEditingController();
+  final _balcaoService = BalcaoService();
   bool _erroQuantidade = false;
+  bool _processandoCompra = false;
   double _totalEstimado = 0.0;
 
-  String? get _uid =>
-      FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+
+  String? get _startupId {
+    final id = widget.startup['id']?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
 
   String get _nomeStartup => widget.startup['nome'] ?? 'Startup';
 
@@ -64,7 +70,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     final max = widget.ofertaMaxQtd;
     setState(() {
       _totalEstimado = qtd * _preco;
-      _erroQuantidade = _quantidadeController.text.isNotEmpty &&
+      _erroQuantidade =
+          _quantidadeController.text.isNotEmpty &&
           (qtd <= 0 || (max != null && qtd > max));
     });
   }
@@ -94,11 +101,13 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     final bool saldoSuficiente = saldo >= _totalEstimado;
     final bool dentroDoLimite =
         widget.ofertaMaxQtd == null || qtd <= widget.ofertaMaxQtd!;
-    final bool podeComprar = qtd > 0 &&
+    final bool podeComprar =
+        qtd > 0 &&
         !_erroQuantidade &&
         _totalEstimado > 0 &&
         saldoSuficiente &&
-        dentroDoLimite;
+        dentroDoLimite &&
+        !_processandoCompra;
     final bool exibirAvisoSaldo = _totalEstimado > 0 && !saldoSuficiente;
 
     return Scaffold(
@@ -329,10 +338,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Total estimado',
-          style: TextStyle(color: Colors.black54),
-        ),
+        const Text('Total estimado', style: TextStyle(color: Colors.black54)),
         Text(
           'R\$ ${_formatarNumero(_totalEstimado)}',
           style: const TextStyle(
@@ -393,7 +399,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: podeComprar ? () => _irParaFinalizacao(qtd, saldo) : null,
+        onPressed: podeComprar ? () => _abrirConfirmacaoCompra(qtd) : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: _azulPrimario,
           disabledBackgroundColor: _azulPrimario.withValues(alpha: 0.4),
@@ -403,29 +409,297 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
           ),
           elevation: 0,
         ),
-        child: const Text(
-          'Comprar',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        child: _processandoCompra
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : const Text(
+                'Comprar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
 
-  void _irParaFinalizacao(int quantidade, double saldo) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TelaBalcaoFinalizacaoCompra(
-          startup: widget.startup,
-          quantidade: quantidade,
-          total: _totalEstimado,
-          saldoDisponivel: saldo,
-          ofertaId: widget.ofertaId,
-          precoFinal: widget.ofertaPreco,
-          onNavigate: widget.onNavigate,
-          onCarteiraAlterada: widget.onCarteiraAlterada,
+  Future<void> _abrirConfirmacaoCompra(int quantidade) async {
+    final uid = _uid;
+    final startupId = _startupId;
+
+    if (uid == null || startupId == null) {
+      _mostrarMensagem('Dados inválidos. Tente novamente.');
+      return;
+    }
+
+    final senhaController = TextEditingController();
+    var erroSenha = false;
+    String? mensagemErro;
+
+    final compraConfirmada = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> finalizarCompra() async {
+              if (_processandoCompra) return;
+
+              if (senhaController.text.isEmpty) {
+                setDialogState(() {
+                  erroSenha = true;
+                  mensagemErro = 'Informe sua senha para confirmar a compra.';
+                });
+                return;
+              }
+
+              setState(() => _processandoCompra = true);
+              setDialogState(() {
+                erroSenha = false;
+                mensagemErro = null;
+              });
+
+              try {
+                await _executarCompra(
+                  uid: uid,
+                  startupId: startupId,
+                  quantidade: quantidade,
+                  senha: senhaController.text,
+                );
+
+                widget.onCarteiraAlterada();
+
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop(true);
+              } on FirebaseAuthException {
+                if (!mounted) return;
+                setState(() => _processandoCompra = false);
+                if (!dialogContext.mounted) return;
+                setDialogState(() {
+                  erroSenha = true;
+                  mensagemErro = null;
+                });
+              } on FirebaseException catch (e) {
+                if (!mounted) return;
+                setState(() => _processandoCompra = false);
+                if (!dialogContext.mounted) return;
+                setDialogState(() {
+                  erroSenha = true;
+                  mensagemErro =
+                      e.message ?? 'Não foi possível concluir a operação.';
+                });
+              } catch (e) {
+                if (!mounted) return;
+                setState(() => _processandoCompra = false);
+                if (!dialogContext.mounted) return;
+                setDialogState(() {
+                  erroSenha = true;
+                  mensagemErro = e.toString().replaceFirst('Exception: ', '');
+                });
+              }
+            }
+
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD3D3D3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: _processandoCompra
+                              ? null
+                              : () => Navigator.of(dialogContext).pop(false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'X',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Confirme sua identidade para concluir a compra',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Por segurança, informe sua senha para finalizar a transação e confirmar a aquisição dos tokens.',
+                        style: TextStyle(color: Colors.black87, fontSize: 13),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Digite a sua senha',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: senhaController,
+                        obscureText: true,
+                        enabled: !_processandoCompra,
+                        decoration: InputDecoration(
+                          fillColor: Colors.white,
+                          filled: true,
+                          hintText: '••••••',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (erroSenha) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                mensagemErro ??
+                                    'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a compra dos tokens não foi realizada. Verifique sua senha e tente novamente.',
+                                style: TextStyle(
+                                  color: Colors.red.shade800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _processandoCompra
+                              ? null
+                              : finalizarCompra,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _azulPrimario,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _processandoCompra
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'Finalizar Transação',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    senhaController.dispose();
+
+    if (compraConfirmada != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 10),
+            Text(
+              'Compra realizada com sucesso!',
+              style: TextStyle(fontSize: 16),
+            ),
+          ],
         ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    widget.onNavigate(0);
+    Navigator.popUntil(context, (route) => route.isFirst);
+  }
+
+  Future<void> _executarCompra({
+    required String uid,
+    required String startupId,
+    required int quantidade,
+    required String senha,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.email != null) {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: senha,
+      );
+      await user.reauthenticateWithCredential(credential);
+    }
+
+    final ofertaId = widget.ofertaId;
+    if (ofertaId != null) {
+      await _balcaoService.comprarDeOferta(
+        compradorId: uid,
+        ofertaId: ofertaId,
+        quantidade: quantidade,
+      );
+      return;
+    }
+
+    await _balcaoService.comprarDiretamente(
+      compradorId: uid,
+      startupId: startupId,
+      quantidade: quantidade,
+      preco: _preco,
+    );
+  }
+
+  void _mostrarMensagem(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
     );
   }
 }
@@ -439,9 +713,7 @@ double _numero(dynamic value, {double fallback = 0}) {
   if (value is num) return value.toDouble();
   if (value is String) {
     final t = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
-    final n = t.contains(',')
-        ? t.replaceAll('.', '').replaceAll(',', '.')
-        : t;
+    final n = t.contains(',') ? t.replaceAll('.', '').replaceAll(',', '.') : t;
     return double.tryParse(n) ?? fallback;
   }
   return fallback;
