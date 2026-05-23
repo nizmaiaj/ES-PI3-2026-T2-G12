@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
@@ -29,6 +30,7 @@ class TelaVisaoGeral extends StatefulWidget {
 class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
   final VideoThumbnailCache _thumbnailCache = VideoThumbnailCache();
+  final Map<String, Future<String?>> _logoUrlFutures = {};
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoPreloadSubscription;
 
@@ -197,7 +199,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: _buildLogo(widget.startup['imagem'] ?? ''),
+              child: _buildLogo(
+                widget.startup['imagem'] ?? '',
+                widget.startup['logoStoragePath'] ?? '',
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -216,9 +221,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildLogo(String imagem) {
+  Widget _buildLogo(String imagem, String logoStoragePath) {
     const fallback = Icon(Icons.business, color: _azulPrimario, size: 36);
-    if (imagem.isEmpty) return fallback;
+
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return Image.network(
         imagem,
@@ -226,11 +231,44 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         errorBuilder: (_, _, _) => fallback,
       );
     }
-    return Image.asset(
-      imagem,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => fallback,
+
+    if (imagem.isNotEmpty) {
+      return Image.asset(
+        imagem,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+
+    if (logoStoragePath.isEmpty) return fallback;
+
+    return FutureBuilder<String?>(
+      future: _logoUrlFutures.putIfAbsent(
+        logoStoragePath,
+        () => _buscarLogoUrl(logoStoragePath),
+      ),
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        if (url == null || url.isEmpty) return fallback;
+
+        return Image.network(
+          url,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        );
+      },
     );
+  }
+
+  Future<String?> _buscarLogoUrl(String storagePath) async {
+    try {
+      final ref = storagePath.startsWith('gs://')
+          ? FirebaseStorage.instance.refFromURL(storagePath)
+          : FirebaseStorage.instance.ref(storagePath);
+      return await ref.getDownloadURL();
+    } catch (_) {
+      return null;
+    }
   }
 
   // ── STATS CARD ────────────────────────────────────────────────────────────

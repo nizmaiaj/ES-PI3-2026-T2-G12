@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -30,6 +31,7 @@ class _TelaHomeState extends State<TelaHome> {
 
   Future<_HomeResumo>? _homeResumoFuture;
   late final Future<String> _nomeUsuarioFuture;
+  final Map<String, Future<String?>> _logoUrlFutures = {};
   final _notificacoesNovasController = StreamController<bool>.broadcast();
   final List<StreamSubscription<dynamic>> _notificacoesSubscriptions = [];
   final _updatesSubscriptions =
@@ -540,15 +542,7 @@ class _TelaHomeState extends State<TelaHome> {
                                         ),
                                         child: Row(
                                           children: [
-                                            Container(
-                                              width: 48,
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade300,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                            ),
+                                            _buildTokenLogo(token),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: Column(
@@ -1372,6 +1366,8 @@ class _TelaHomeState extends State<TelaHome> {
         return _TokenResumo(
           startupId: holding.startupId,
           nome: startup.nome,
+          logoUrl: startup.logoUrl,
+          logoStoragePath: startup.logoStoragePath,
           quantidade: holding.quantidade,
           precoMedioCompra: holding.precoMedioCompra,
           precoAtual: precoAtual,
@@ -1443,7 +1439,12 @@ class _TelaHomeState extends State<TelaHome> {
     String startupId,
   ) async {
     if (startupId.isEmpty) {
-      return const _StartupResumo(nome: 'Token sem startup', precoAtual: 0);
+      return const _StartupResumo(
+        nome: 'Token sem startup',
+        precoAtual: 0,
+        logoUrl: '',
+        logoStoragePath: '',
+      );
     }
 
     final startupDoc = await firestore
@@ -1452,6 +1453,16 @@ class _TelaHomeState extends State<TelaHome> {
         .get();
     final data = startupDoc.data();
     final nome = data?['nome'] ?? data?['nomeStartup'] ?? data?['razaoSocial'];
+    final logoUrl = _lerTexto(
+      data?['logoUrl'] ?? data?['imagem'] ?? data?['imageUrl'],
+    );
+    final logoStoragePath = _lerTexto(
+      data?['logoStoragePath'] ??
+          data?['logoPath'] ??
+          data?['caminhoLogo'] ??
+          data?['logoStorage'],
+      fallback: 'startups/$startupId/logo/logo.png',
+    );
     final precoAtual = _lerNumero(
       data?['valorToken'] ??
           data?['precoToken'] ??
@@ -1461,10 +1472,111 @@ class _TelaHomeState extends State<TelaHome> {
     );
 
     if (nome is String && nome.trim().isNotEmpty) {
-      return _StartupResumo(nome: nome.trim(), precoAtual: precoAtual);
+      return _StartupResumo(
+        nome: nome.trim(),
+        precoAtual: precoAtual,
+        logoUrl: logoUrl,
+        logoStoragePath: logoStoragePath,
+      );
     }
 
-    return _StartupResumo(nome: startupId, precoAtual: precoAtual);
+    return _StartupResumo(
+      nome: startupId,
+      precoAtual: precoAtual,
+      logoUrl: logoUrl,
+      logoStoragePath: logoStoragePath,
+    );
+  }
+
+  Widget _buildTokenLogo(_TokenResumo token) {
+    final fallback = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(Icons.business, color: _roxo, size: 24),
+    );
+
+    final imagem = token.logoUrl.trim();
+    final storagePath = _logoStoragePathToken(token);
+
+    Widget clip(Widget child) {
+      return ClipRRect(borderRadius: BorderRadius.circular(10), child: child);
+    }
+
+    if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
+      return clip(
+        Image.network(
+          imagem,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    }
+
+    if (imagem.isNotEmpty && !_pareceCaminhoStorage(imagem)) {
+      return clip(
+        Image.asset(
+          imagem,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      );
+    }
+
+    if (storagePath.isEmpty) return fallback;
+
+    return FutureBuilder<String?>(
+      future: _logoUrlFutures.putIfAbsent(
+        storagePath,
+        () => _buscarLogoUrl(storagePath),
+      ),
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        if (url == null || url.isEmpty) return fallback;
+
+        return clip(
+          Image.network(
+            url,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => fallback,
+          ),
+        );
+      },
+    );
+  }
+
+  String _logoStoragePathToken(_TokenResumo token) {
+    final imagem = token.logoUrl.trim();
+    if (_pareceCaminhoStorage(imagem)) return imagem;
+
+    final configurado = token.logoStoragePath.trim();
+    if (configurado.isNotEmpty) return configurado;
+
+    return 'startups/${token.startupId}/logo/logo.png';
+  }
+
+  bool _pareceCaminhoStorage(String value) {
+    return value.startsWith('gs://') || value.startsWith('startups/');
+  }
+
+  Future<String?> _buscarLogoUrl(String storagePath) async {
+    try {
+      final ref = storagePath.startsWith('gs://')
+          ? FirebaseStorage.instance.refFromURL(storagePath)
+          : FirebaseStorage.instance.ref(storagePath);
+      return await ref.getDownloadURL();
+    } catch (_) {
+      return null;
+    }
   }
 
   double _lerNumero(dynamic valor) {
@@ -1971,6 +2083,8 @@ class _TokenResumo {
   const _TokenResumo({
     required this.startupId,
     required this.nome,
+    required this.logoUrl,
+    required this.logoStoragePath,
     required this.quantidade,
     required this.precoMedioCompra,
     required this.precoAtual,
@@ -1978,6 +2092,8 @@ class _TokenResumo {
 
   final String startupId;
   final String nome;
+  final String logoUrl;
+  final String logoStoragePath;
   final double quantidade;
   final double precoMedioCompra;
   final double precoAtual;
@@ -2010,9 +2126,17 @@ class _NotificacaoHome {
 }
 
 class _StartupResumo {
-  const _StartupResumo({required this.nome, required this.precoAtual});
+  const _StartupResumo({
+    required this.nome,
+    required this.precoAtual,
+    required this.logoUrl,
+    required this.logoStoragePath,
+  });
+
   final String nome;
   final double precoAtual;
+  final String logoUrl;
+  final String logoStoragePath;
 }
 
 

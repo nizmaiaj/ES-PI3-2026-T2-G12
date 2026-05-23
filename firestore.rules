@@ -2,56 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
-
-    match /users/{userId} {
-      allow create: if isOwner(userId);
-      allow read, update, delete: if isOwner(userId);
-    }
-
-    match /wallets/{userId} {
-      allow create: if isOwner(userId);
-      allow read, update, delete: if isOwner(userId);
-    }
-
-    match /startups/{startupId} {
-      allow read: if signedIn();
-      allow write: if false;
-
-      match /updates/{updateId} {
-        allow read: if signedIn();
-        allow write: if false;
-      }
-    }
-
-    match /tokenHoldings/{holdingId} {
-      allow read, write: if signedIn();
-    }
-
-    match /orders/{orderId} {
-      allow read, write: if signedIn();
-    }
-
-    match /transactions/{transactionId} {
-      allow read, write: if signedIn();
-    }
-
-    match /tokenPrices/{priceId} {
-      allow read, write: if signedIn();
-    }
-
-    match /walletCredits/{creditId} {
-      allow read, write: if signedIn();
-    }
-
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

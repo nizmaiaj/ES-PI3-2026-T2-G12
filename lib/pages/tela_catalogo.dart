@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/app_bottom_nav.dart';
@@ -24,6 +25,7 @@ class TelaCatalogo extends StatefulWidget {
 class _TelaCatalogoState extends State<TelaCatalogo> {
   String _filtroAtivo = "Todos";
   String busca = "";
+  final Map<String, Future<String?>> _logoUrlFutures = {};
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -202,6 +204,13 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       'id': doc.id,
       'nome': _texto(data['nome'] ?? data['name'] ?? data['startupName']),
       'imagem': _texto(data['logoUrl'] ?? data['imagem'] ?? data['imageUrl']),
+      'logoStoragePath': _texto(
+        data['logoStoragePath'] ??
+            data['logoPath'] ??
+            data['caminhoLogo'] ??
+            data['logoStorage'],
+        fallback: 'startups/${doc.id}/logo/logo.png',
+      ),
       'desc': _texto(
         data['descricao'] ?? data['sumarioExecutivo'] ?? data['description'],
       ),
@@ -241,7 +250,10 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: _buildStartupLogo(item['imagem'] ?? ''),
+                child: _buildStartupLogo(
+                  item['imagem'] ?? '',
+                  item['logoStoragePath'] ?? '',
+                ),
               ),
               const SizedBox(width: 15),
               Expanded(
@@ -334,15 +346,13 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     );
   }
 
-  Widget _buildStartupLogo(String imagem) {
+  Widget _buildStartupLogo(String imagem, String logoStoragePath) {
     final fallback = Container(
       width: 60,
       height: 60,
       color: Colors.white,
       child: const Icon(Icons.business, color: Color(0xFF3F51B5)),
     );
-
-    if (imagem.isEmpty) return fallback;
 
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return Image.network(
@@ -354,13 +364,47 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       );
     }
 
-    return Image.asset(
-      imagem,
-      width: 60,
-      height: 60,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => fallback,
+    if (imagem.isNotEmpty) {
+      return Image.asset(
+        imagem,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      );
+    }
+
+    if (logoStoragePath.isEmpty) return fallback;
+
+    return FutureBuilder<String?>(
+      future: _logoUrlFutures.putIfAbsent(
+        logoStoragePath,
+        () => _buscarLogoUrl(logoStoragePath),
+      ),
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        if (url == null || url.isEmpty) return fallback;
+
+        return Image.network(
+          url,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => fallback,
+        );
+      },
     );
+  }
+
+  Future<String?> _buscarLogoUrl(String storagePath) async {
+    try {
+      final ref = storagePath.startsWith('gs://')
+          ? FirebaseStorage.instance.refFromURL(storagePath)
+          : FirebaseStorage.instance.ref(storagePath);
+      return await ref.getDownloadURL();
+    } catch (_) {
+      return null;
+    }
   }
 
   Widget _buildEstadoLista(String mensagem) {

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -33,6 +34,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   static const _vermelho = Color(0xFFD04444);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Map<String, Future<String?>> _logoUrlFutures = {};
   late final Future<_TokenDetalheDados> _dadosFuture;
   _PeriodoGrafico _periodo = _PeriodoGrafico.mensal;
 
@@ -52,6 +54,8 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
             _TokenDetalheDados(
               precoAtual: widget.precoAtualInicial,
               historico: const [],
+              logoUrl: '',
+              logoStoragePath: _logoStoragePathPadrao(),
             );
 
         return Scaffold(
@@ -61,7 +65,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
             bottom: false,
             child: Column(
               children: [
-                _buildHeader(dados.precoAtual),
+                _buildHeader(dados),
                 Expanded(child: _buildBody(snapshot, dados)),
               ],
             ),
@@ -76,7 +80,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     );
   }
 
-  Widget _buildHeader(double precoAtual) {
+  Widget _buildHeader(_TokenDetalheDados dados) {
     final topPadding = MediaQuery.paddingOf(context).top;
 
     return Container(
@@ -127,26 +131,35 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
           ),
           const SizedBox(height: 22),
           Padding(
-            padding: const EdgeInsets.only(left: 88),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.only(left: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  'Preço atual',
-                  style: TextStyle(color: Colors.white70, fontSize: 20),
-                ),
-                const SizedBox(height: 20),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _formatarMoeda(precoAtual),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 42,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
+                _buildHeaderLogo(dados.logoUrl, dados.logoStoragePath),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Preço atual',
+                        style: TextStyle(color: Colors.white70, fontSize: 20),
+                      ),
+                      const SizedBox(height: 20),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _formatarMoeda(dados.precoAtual),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 42,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -155,6 +168,118 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         ],
       ),
     );
+  }
+
+  Widget _buildHeaderLogo(String logoUrl, String logoStoragePath) {
+    Widget frame(Widget child) {
+      return Container(
+        width: 118,
+        height: 118,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ClipRRect(borderRadius: BorderRadius.circular(21), child: child),
+      );
+    }
+
+    final fallback = frame(
+      const Icon(Icons.business_rounded, color: _azulPrimario, size: 50),
+    );
+    final imagem = logoUrl.trim();
+    final storagePath = _logoStoragePath(imagem, logoStoragePath);
+
+    if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
+      return frame(
+        Image.network(
+          imagem,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const Icon(
+            Icons.business_rounded,
+            color: _azulPrimario,
+            size: 50,
+          ),
+        ),
+      );
+    }
+
+    if (imagem.isNotEmpty && !_pareceCaminhoStorage(imagem)) {
+      return frame(
+        Image.asset(
+          imagem,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const Icon(
+            Icons.business_rounded,
+            color: _azulPrimario,
+            size: 50,
+          ),
+        ),
+      );
+    }
+
+    if (storagePath.isEmpty) return fallback;
+
+    return FutureBuilder<String?>(
+      future: _logoUrlFutures.putIfAbsent(
+        storagePath,
+        () => _buscarLogoUrl(storagePath),
+      ),
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        if (url == null || url.isEmpty) return fallback;
+
+        return frame(
+          Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const Icon(
+              Icons.business_rounded,
+              color: _azulPrimario,
+              size: 50,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _logoStoragePath(String imagem, String logoStoragePath) {
+    if (_pareceCaminhoStorage(imagem)) return imagem;
+
+    final configurado = logoStoragePath.trim();
+    if (configurado.isNotEmpty) return configurado;
+
+    return _logoStoragePathPadrao();
+  }
+
+  String _logoStoragePathPadrao() {
+    final startupId = widget.startupId.trim();
+    if (startupId.isEmpty) return '';
+
+    return 'startups/$startupId/logo/logo.png';
+  }
+
+  bool _pareceCaminhoStorage(String value) {
+    return value.startsWith('gs://') || value.startsWith('startups/');
+  }
+
+  Future<String?> _buscarLogoUrl(String storagePath) async {
+    try {
+      final ref = storagePath.startsWith('gs://')
+          ? FirebaseStorage.instance.refFromURL(storagePath)
+          : FirebaseStorage.instance.ref(storagePath);
+      return await ref.getDownloadURL();
+    } catch (_) {
+      return null;
+    }
   }
 
   Widget _buildBody(
@@ -400,7 +525,8 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         ? null
         : await _firestore.collection('startups').doc(startupId).get();
 
-    final precoStartup = _lerPrecoStartup(startupDoc?.data());
+    final startupData = startupDoc?.data();
+    final precoStartup = _lerPrecoStartup(startupData);
     final precoBase = _primeiroPrecoValido([
       precoStartup,
       widget.precoAtualInicial,
@@ -422,7 +548,25 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
       precoBase,
     ]);
 
-    return _TokenDetalheDados(precoAtual: precoAtual, historico: historico);
+    final logoUrl = _texto(
+      startupData?['logoUrl'] ??
+          startupData?['imagem'] ??
+          startupData?['imageUrl'],
+    );
+    final logoStoragePath = _texto(
+      startupData?['logoStoragePath'] ??
+          startupData?['logoPath'] ??
+          startupData?['caminhoLogo'] ??
+          startupData?['logoStorage'],
+      fallback: _logoStoragePathPadrao(),
+    );
+
+    return _TokenDetalheDados(
+      precoAtual: precoAtual,
+      historico: historico,
+      logoUrl: logoUrl,
+      logoStoragePath: logoStoragePath,
+    );
   }
 
   Future<List<_PontoPreco>> _buscarHistoricoPrecos(String startupId) async {
@@ -431,11 +575,12 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         .where('startupId', isEqualTo: startupId)
         .get();
 
-    final pontos = snapshot.docs
-        .map((doc) => _PontoPreco.fromMap(doc.data()))
-        .where((p) => p.preco > 0)
-        .toList()
-      ..sort((a, b) => a.data.compareTo(b.data));
+    final pontos =
+        snapshot.docs
+            .map((doc) => _PontoPreco.fromMap(doc.data()))
+            .where((p) => p.preco > 0)
+            .toList()
+          ..sort((a, b) => a.data.compareTo(b.data));
 
     return pontos;
   }
@@ -643,9 +788,7 @@ class _GraficoPreco extends StatelessWidget {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(
-              color: Colors.black.withValues(alpha: 0.15),
-            ),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
           ),
           minY: minY,
           maxY: maxY,
@@ -727,10 +870,17 @@ class _ResumoCarteiraItem extends StatelessWidget {
 }
 
 class _TokenDetalheDados {
-  const _TokenDetalheDados({required this.precoAtual, required this.historico});
+  const _TokenDetalheDados({
+    required this.precoAtual,
+    required this.historico,
+    required this.logoUrl,
+    required this.logoStoragePath,
+  });
 
   final double precoAtual;
   final List<_PontoPreco> historico;
+  final String logoUrl;
+  final String logoStoragePath;
 }
 
 class _PontoPreco {
@@ -758,7 +908,6 @@ class _PontoPreco {
   final DateTime data;
   final double preco;
 }
-
 
 enum _PeriodoGrafico {
   diario('Diário', 'Horas'),
@@ -797,6 +946,13 @@ DateTime? _data(dynamic value) {
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
   return null;
+}
+
+String _texto(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+
+  final texto = value.toString().trim();
+  return texto.isEmpty ? fallback : texto;
 }
 
 double _numero(dynamic value, {double fallback = 0}) {
