@@ -15,7 +15,6 @@ const kVgCoresSocios = [
   Color(0xFFF59E0B),
   Color(0xFF0EA5E9),
 ];
-const kVgDocumentos = ['Plano de negócios', 'Eventos'];
 
 Color corSocio(int index) => kVgCoresSocios[index % kVgCoresSocios.length];
 
@@ -57,7 +56,10 @@ class SocioStartup {
   factory SocioStartup.fromMap(Map<dynamic, dynamic> data) {
     return SocioStartup(
       nome: parseText(
-        data['nome'] ?? data['name'] ?? data['nomeCompleto'] ?? data['fullName'],
+        data['nome'] ??
+            data['name'] ??
+            data['nomeCompleto'] ??
+            data['fullName'],
       ),
       cargo: parseText(
         data['cargo'] ??
@@ -187,6 +189,121 @@ class AtualizacaoStartup {
   String get tipoExibido => tipoAtualizacaoExibido(tipo);
 }
 
+class DocumentoStartup {
+  const DocumentoStartup({
+    required this.titulo,
+    required this.descricao,
+    required this.storagePath,
+    required this.url,
+    required this.nomeArquivo,
+    required this.tipo,
+    required this.updatedAt,
+  });
+
+  factory DocumentoStartup.fromValue(dynamic value) {
+    if (value is Map) return DocumentoStartup.fromMap(value);
+    return DocumentoStartup(
+      titulo: parseText(value, fallback: 'Documento'),
+      descricao: '',
+      storagePath: '',
+      url: '',
+      nomeArquivo: '',
+      tipo: '',
+      updatedAt: null,
+    );
+  }
+
+  factory DocumentoStartup.fromMapEntry(dynamic key, dynamic value) {
+    if (value is Map) {
+      final data = Map<dynamic, dynamic>.from(value);
+      data.putIfAbsent('titulo', () => key);
+      return DocumentoStartup.fromMap(data);
+    }
+
+    return DocumentoStartup(
+      titulo: parseText(key, fallback: 'Documento'),
+      descricao: '',
+      storagePath: parseText(value),
+      url: '',
+      nomeArquivo: '',
+      tipo: '',
+      updatedAt: null,
+    );
+  }
+
+  factory DocumentoStartup.fromMap(Map<dynamic, dynamic> data) {
+    return DocumentoStartup(
+      titulo: parseText(
+        data['titulo'] ?? data['title'] ?? data['nome'] ?? data['name'],
+        fallback: 'Documento',
+      ),
+      descricao: parseText(
+        data['descricao'] ??
+            data['descrição'] ??
+            data['description'] ??
+            data['resumo'] ??
+            data['summary'],
+      ),
+      storagePath: parseText(
+        data['storagePath'] ??
+            data['path'] ??
+            data['caminhoStorage'] ??
+            data['arquivoStorage'],
+      ),
+      url: parseText(
+        data['url'] ??
+            data['downloadUrl'] ??
+            data['downloadURL'] ??
+            data['link'],
+      ),
+      nomeArquivo: parseText(
+        data['nomeArquivo'] ??
+            data['fileName'] ??
+            data['filename'] ??
+            data['arquivo'],
+      ),
+      tipo: parseText(data['tipo'] ?? data['type']),
+      updatedAt: parseDateTime(
+        data['updatedAt'] ?? data['atualizadoEm'] ?? data['geradoEm'],
+      ),
+    );
+  }
+
+  final String titulo;
+  final String descricao;
+  final String storagePath;
+  final String url;
+  final String nomeArquivo;
+  final String tipo;
+  final DateTime? updatedAt;
+
+  bool get temArquivo => storagePath.isNotEmpty || url.isNotEmpty;
+
+  String get chave {
+    if (storagePath.isNotEmpty) return storagePath;
+    if (url.isNotEmpty) return url;
+    return titulo;
+  }
+
+  String get nomeArquivoDownload {
+    if (nomeArquivo.trim().isNotEmpty) return nomeArquivo.trim();
+    final base = titulo
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return '${base.isEmpty ? 'documento' : base}.pdf';
+  }
+
+  String get detalheExibido {
+    if (descricao.isNotEmpty && nomeArquivo.isNotEmpty) {
+      return '$descricao - $nomeArquivo';
+    }
+    if (descricao.isNotEmpty) return descricao;
+    if (nomeArquivo.isNotEmpty) return nomeArquivo;
+    return temArquivo ? 'PDF disponível' : 'Arquivo não configurado';
+  }
+}
+
 // ── FUNÇÕES UTILITÁRIAS ───────────────────────────────────────────────────────
 
 String parseText(dynamic value, {String fallback = ''}) {
@@ -230,6 +347,24 @@ DateTime? parseDateTime(dynamic value) {
   if (value is DateTime) return value;
   if (value is String) return DateTime.tryParse(value);
   return null;
+}
+
+List<DocumentoStartup> parseDocumentosStartup(dynamic value) {
+  if (value is Iterable) {
+    return value
+        .map(DocumentoStartup.fromValue)
+        .where((doc) => doc.titulo.trim().isNotEmpty)
+        .toList();
+  }
+
+  if (value is Map) {
+    return value.entries
+        .map((entry) => DocumentoStartup.fromMapEntry(entry.key, entry.value))
+        .where((doc) => doc.titulo.trim().isNotEmpty)
+        .toList();
+  }
+
+  return const [];
 }
 
 String formatDataAtualizacao(DateTime data) {

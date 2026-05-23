@@ -1,8 +1,10 @@
-  
+import 'dart:async';
 
 import 'package:chewie/chewie.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'visao_geral_utils.dart';
@@ -18,51 +20,67 @@ class AbaConteudo extends StatefulWidget {
 
 class _AbaConteudoState extends State<AbaConteudo> {
   List<Map<String, String>> _videos = [];
+  List<DocumentoStartup> _documentos = [];
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _conteudoSubscription;
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _isVideoLoading = false;
+  String? _documentoEmAcao;
 
   @override
   void initState() {
     super.initState();
-    _ouvirVideos();
+    _ouvirConteudo();
   }
 
   @override
   void dispose() {
+    _conteudoSubscription?.cancel();
     _disposeVideoController();
     super.dispose();
   }
 
-  void _ouvirVideos() {
+  void _ouvirConteudo() {
     final startupId = widget.startupId;
     if (startupId == null) return;
 
-    FirebaseFirestore.instance
+    _conteudoSubscription = FirebaseFirestore.instance
         .collection('startups')
         .doc(startupId)
         .snapshots()
         .listen((snapshot) {
-          if (!snapshot.exists || snapshot.data() == null) return;
-          final videosDoBanco =
-              snapshot.data()!['videos'] as List<dynamic>?;
-          if (videosDoBanco != null && mounted) {
+          if (!mounted) return;
+
+          final data = snapshot.data();
+          if (!snapshot.exists || data == null) {
             setState(() {
-              _videos = videosDoBanco.map((v) {
-                return {
-                  'titulo': parseText(
-                    v['titulo'],
-                    fallback: 'Vídeo de Apresentação',
-                  ),
-                  'descricao': parseText(
-                    v['descricao'],
-                    fallback: 'Conheça a startup',
-                  ),
-                  'url': parseText(v['url']),
-                };
-              }).toList();
+              _videos = [];
+              _documentos = [];
             });
+            return;
           }
+
+          final videosDoBanco = data['videos'] as List<dynamic>?;
+          final documentosDoBanco = data['documentos'] ?? data['documents'];
+
+          setState(() {
+            _videos = (videosDoBanco ?? []).map((v) {
+              final video = v is Map ? v : const <String, dynamic>{};
+              return {
+                'titulo': parseText(
+                  video['titulo'],
+                  fallback: 'Vídeo de Apresentação',
+                ),
+                'descricao': parseText(
+                  video['descricao'],
+                  fallback: 'Conheça a startup',
+                ),
+                'url': parseText(video['url']),
+              };
+            }).toList();
+            _documentos = parseDocumentosStartup(documentosDoBanco);
+          });
         });
   }
 
@@ -125,6 +143,63 @@ class _AbaConteudoState extends State<AbaConteudo> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
+  }
+
+  Future<String> _resolverUrlDocumento(DocumentoStartup documento) async {
+    if (documento.url.isNotEmpty) return documento.url;
+    if (documento.storagePath.isEmpty) {
+      throw Exception('Documento sem arquivo configurado.');
+    }
+
+    return FirebaseStorage.instance.ref(documento.storagePath).getDownloadURL();
+  }
+
+  Future<void> _abrirDocumento(DocumentoStartup documento) async {
+    await _executarAcaoDocumento(documento, baixar: false);
+  }
+
+  Future<void> _baixarDocumento(DocumentoStartup documento) async {
+    await _executarAcaoDocumento(documento, baixar: true);
+  }
+
+  Future<void> _executarAcaoDocumento(
+    DocumentoStartup documento, {
+    required bool baixar,
+  }) async {
+    if (!documento.temArquivo) {
+      _mostrarMensagem('Arquivo do documento não configurado.');
+      return;
+    }
+
+    setState(() => _documentoEmAcao = documento.chave);
+
+    try {
+      final url = await _resolverUrlDocumento(documento);
+      final uri = baixar
+          ? _uriParaDownload(url, documento.nomeArquivoDownload)
+          : Uri.parse(url);
+      final abriu = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+
+      if (!abriu) {
+        _mostrarMensagem('Não foi possível abrir o documento.');
+      }
+    } catch (_) {
+      _mostrarMensagem('Não foi possível acessar este documento.');
+    } finally {
+      if (mounted) setState(() => _documentoEmAcao = null);
+    }
+  }
+
+  Uri _uriParaDownload(String url, String nomeArquivo) {
+    final uri = Uri.parse(url);
+    final params = Map<String, String>.from(uri.queryParameters);
+    params['response-content-disposition'] =
+        'attachment; filename="$nomeArquivo"';
+    return uri.replace(queryParameters: params);
   }
 
   @override
@@ -233,10 +308,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
           children: [
             Text(
               titulo,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
@@ -269,11 +341,26 @@ class _AbaConteudoState extends State<AbaConteudo> {
             ),
           ),
           const SizedBox(height: 14),
-          ...List.generate(kVgDocumentos.length, (i) {
+          if (_documentos.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'Nenhum documento disponível para esta startup.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ...List.generate(_documentos.length, (i) {
             return Column(
               children: [
-                _buildDocumentoItem(kVgDocumentos[i]),
-                if (i < kVgDocumentos.length - 1)
+                _buildDocumentoItem(_documentos[i]),
+                if (i < _documentos.length - 1)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Divider(height: 1, color: Color(0xFFEEEEEE)),
@@ -286,7 +373,9 @@ class _AbaConteudoState extends State<AbaConteudo> {
     );
   }
 
-  Widget _buildDocumentoItem(String nome) {
+  Widget _buildDocumentoItem(DocumentoStartup documento) {
+    final carregando = _documentoEmAcao == documento.chave;
+
     return Row(
       children: [
         Container(
@@ -303,7 +392,62 @@ class _AbaConteudoState extends State<AbaConteudo> {
           ),
         ),
         const SizedBox(width: 14),
-        Text(nome, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                documento.titulo,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                documento.detalheExibido,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (carregando)
+          const SizedBox(
+            width: 42,
+            height: 42,
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else ...[
+          Tooltip(
+            message: 'Abrir documento',
+            child: IconButton(
+              icon: const Icon(Icons.open_in_new, size: 20),
+              color: kVgAzul,
+              onPressed: documento.temArquivo
+                  ? () => _abrirDocumento(documento)
+                  : null,
+            ),
+          ),
+          Tooltip(
+            message: 'Baixar documento',
+            child: IconButton(
+              icon: const Icon(Icons.download_outlined, size: 21),
+              color: kVgAzul,
+              onPressed: documento.temArquivo
+                  ? () => _baixarDocumento(documento)
+                  : null,
+            ),
+          ),
+        ],
       ],
     );
   }
