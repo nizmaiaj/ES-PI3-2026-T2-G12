@@ -9,10 +9,103 @@ import 'package:video_player/video_player.dart';
 
 import 'visao_geral_utils.dart';
 
+class VideoThumbnailCache extends ChangeNotifier {
+  final Map<String, VideoPlayerController> _controllers = {};
+  final Set<String> _urlsAtivas = {};
+  final Set<String> _carregando = {};
+  final Set<String> _comErro = {};
+  bool _disposed = false;
+
+  VideoPlayerController? controllerFor(String url) => _controllers[url];
+
+  bool isLoading(String url) => _carregando.contains(url);
+
+  void syncWithUrls(Iterable<String> urls) {
+    if (_disposed) return;
+
+    final novasUrls = urls.where((url) => url.isNotEmpty).toSet();
+    final removidas = _urlsAtivas
+        .where((url) => !novasUrls.contains(url))
+        .toList();
+
+    _urlsAtivas
+      ..clear()
+      ..addAll(novasUrls);
+
+    for (final url in removidas) {
+      _controllers.remove(url)?.dispose();
+      _carregando.remove(url);
+      _comErro.remove(url);
+    }
+
+    _carregando.removeWhere((url) => !novasUrls.contains(url));
+    _comErro.removeWhere((url) => !novasUrls.contains(url));
+
+    for (final url in novasUrls) {
+      if (_controllers.containsKey(url) ||
+          _carregando.contains(url) ||
+          _comErro.contains(url)) {
+        continue;
+      }
+      _load(url);
+    }
+
+    _notificar();
+  }
+
+  Future<void> _load(String url) async {
+    if (_disposed) return;
+
+    _carregando.add(url);
+    _notificar();
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+
+    try {
+      await controller.initialize();
+      await controller.pause();
+      await controller.setVolume(0);
+      await controller.seekTo(Duration.zero);
+
+      if (_disposed || !_urlsAtivas.contains(url)) {
+        await controller.dispose();
+        return;
+      }
+
+      _controllers[url] = controller;
+      _comErro.remove(url);
+    } catch (_) {
+      await controller.dispose();
+      if (!_disposed) _comErro.add(url);
+    } finally {
+      _carregando.remove(url);
+      _notificar();
+    }
+  }
+
+  void _notificar() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+    _urlsAtivas.clear();
+    _carregando.clear();
+    _comErro.clear();
+    super.dispose();
+  }
+}
+
 class AbaConteudo extends StatefulWidget {
-  const AbaConteudo({super.key, required this.startupId});
+  const AbaConteudo({super.key, required this.startupId, this.thumbnailCache});
 
   final String? startupId;
+  final VideoThumbnailCache? thumbnailCache;
 
   @override
   State<AbaConteudo> createState() => _AbaConteudoState();
@@ -21,6 +114,8 @@ class AbaConteudo extends StatefulWidget {
 class _AbaConteudoState extends State<AbaConteudo> {
   List<Map<String, String>> _videos = [];
   List<DocumentoStartup> _documentos = [];
+  late final VideoThumbnailCache _thumbnailCache;
+  late final bool _isThumbnailCacheLocal;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoSubscription;
   VideoPlayerController? _videoPlayerController;
@@ -31,12 +126,15 @@ class _AbaConteudoState extends State<AbaConteudo> {
   @override
   void initState() {
     super.initState();
+    _isThumbnailCacheLocal = widget.thumbnailCache == null;
+    _thumbnailCache = widget.thumbnailCache ?? VideoThumbnailCache();
     _ouvirConteudo();
   }
 
   @override
   void dispose() {
     _conteudoSubscription?.cancel();
+    if (_isThumbnailCacheLocal) _thumbnailCache.dispose();
     _disposeVideoController();
     super.dispose();
   }
@@ -58,29 +156,34 @@ class _AbaConteudoState extends State<AbaConteudo> {
               _videos = [];
               _documentos = [];
             });
+            _thumbnailCache.syncWithUrls(const []);
             return;
           }
 
           final videosDoBanco = data['videos'] as List<dynamic>?;
           final documentosDoBanco = data['documentos'] ?? data['documents'];
+          final novosVideos = (videosDoBanco ?? []).map((v) {
+            final video = v is Map ? v : const <String, dynamic>{};
+            return {
+              'titulo': parseText(
+                video['titulo'],
+                fallback: 'Vídeo de Apresentação',
+              ),
+              'descricao': parseText(
+                video['descricao'],
+                fallback: 'Conheça a startup',
+              ),
+              'url': parseText(video['url']),
+            };
+          }).toList();
 
           setState(() {
-            _videos = (videosDoBanco ?? []).map((v) {
-              final video = v is Map ? v : const <String, dynamic>{};
-              return {
-                'titulo': parseText(
-                  video['titulo'],
-                  fallback: 'Vídeo de Apresentação',
-                ),
-                'descricao': parseText(
-                  video['descricao'],
-                  fallback: 'Conheça a startup',
-                ),
-                'url': parseText(video['url']),
-              };
-            }).toList();
+            _videos = novosVideos;
             _documentos = parseDocumentosStartup(documentosDoBanco);
           });
+          _thumbnailCache.syncWithUrls(
+            novosVideos.map((video) => video['url'] ?? ''),
+          );
         });
   }
 
@@ -278,6 +381,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
               child: _buildVideoItem(
                 _videos[i]['titulo'] ?? 'Vídeo de Apresentação',
                 _videos[i]['descricao'] ?? 'Conheça a startup',
+                _videos[i]['url'] ?? '',
               ),
             );
           }),
@@ -286,38 +390,96 @@ class _AbaConteudoState extends State<AbaConteudo> {
     );
   }
 
-  Widget _buildVideoItem(String titulo, String descricao) {
+  Widget _buildVideoItem(String titulo, String descricao, String url) {
     return Row(
       children: [
-        Container(
-          width: 110,
-          height: 70,
-          decoration: BoxDecoration(
-            color: const Color(0xFFD4D4D4),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.play_circle_outline,
-            color: Colors.white,
-            size: 38,
-          ),
-        ),
+        _buildVideoThumbnail(url),
         const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              titulo,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              descricao,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                descricao,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVideoThumbnail(String url) {
+    return AnimatedBuilder(
+      animation: _thumbnailCache,
+      builder: (context, _) {
+        final controller = _thumbnailCache.controllerFor(url);
+        final carregando = _thumbnailCache.isLoading(url);
+        final pronto = controller != null && controller.value.isInitialized;
+        final tamanho = pronto ? controller.value.size : Size.zero;
+        final larguraVideo = tamanho.width > 0 ? tamanho.width : 16.0;
+        final alturaVideo = tamanho.height > 0 ? tamanho.height : 9.0;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 110,
+            height: 70,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (pronto)
+                  FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: larguraVideo,
+                      height: alturaVideo,
+                      child: VideoPlayer(controller),
+                    ),
+                  )
+                else
+                  const DecoratedBox(
+                    decoration: BoxDecoration(color: Color(0xFFD4D4D4)),
+                  ),
+                if (pronto)
+                  const DecoratedBox(
+                    decoration: BoxDecoration(color: Color(0x33000000)),
+                  ),
+                if (carregando && !pronto)
+                  const Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  const Center(
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: Colors.white,
+                      size: 38,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

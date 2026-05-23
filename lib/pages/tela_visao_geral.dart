@@ -1,5 +1,8 @@
 //Eduarda Prado Deiró
 
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -25,6 +28,9 @@ class TelaVisaoGeral extends StatefulWidget {
 
 class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
+  final VideoThumbnailCache _thumbnailCache = VideoThumbnailCache();
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _conteudoPreloadSubscription;
 
   static const _azulPrimario = Color(0xFF3F51B5);
 
@@ -36,8 +42,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     'Perguntas',
   ];
 
-  String? get _uid =>
-      FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
   String? get _startupId {
     final id = widget.startup['id']?.trim();
@@ -51,6 +56,58 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     final email = user?.email?.trim() ?? AuthSession.email?.trim();
     if (email != null && email.isNotEmpty) return email;
     return 'Usuário';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciarPreloadConteudo();
+  }
+
+  @override
+  void didUpdateWidget(covariant TelaVisaoGeral oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.startup['id'] != widget.startup['id']) {
+      _iniciarPreloadConteudo();
+    }
+  }
+
+  @override
+  void dispose() {
+    _conteudoPreloadSubscription?.cancel();
+    _thumbnailCache.dispose();
+    super.dispose();
+  }
+
+  void _iniciarPreloadConteudo() {
+    _conteudoPreloadSubscription?.cancel();
+
+    final startupId = _startupId;
+    if (startupId == null) {
+      _thumbnailCache.syncWithUrls(const []);
+      return;
+    }
+
+    _conteudoPreloadSubscription = FirebaseFirestore.instance
+        .collection('startups')
+        .doc(startupId)
+        .snapshots()
+        .listen((snapshot) {
+          final data = snapshot.data();
+          final videos = data?['videos'];
+
+          if (videos is! Iterable) {
+            _thumbnailCache.syncWithUrls(const []);
+            return;
+          }
+
+          _thumbnailCache.syncWithUrls(
+            videos.map((video) {
+              if (video is! Map) return '';
+              return video['url']?.toString().trim() ?? '';
+            }),
+          );
+        });
   }
 
   @override
@@ -89,7 +146,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
       case 'Sociedade':
         return AbaSociedade(startupId: sId);
       case 'Conteúdo':
-        return AbaConteudo(startupId: sId);
+        return AbaConteudo(startupId: sId, thumbnailCache: _thumbnailCache);
       case 'Atualizações':
         return AbaAtualizacoes(startupId: sId);
       case 'Perguntas':
@@ -249,9 +306,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     return Container(
       margin: const EdgeInsets.only(top: 14),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
       ),
       child: Row(
         children: _tabs.map((tab) {
@@ -276,8 +331,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight:
-                          ativo ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
                       color: ativo ? _azulPrimario : Colors.grey,
                     ),
                   ),
