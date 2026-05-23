@@ -48,6 +48,17 @@ FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_PRIVATE_KEY=your-private-key
 FIREBASE_CLIENT_EMAIL=your-client-email
 
+# Necessárias para enviar o código curto de recuperação de senha por e-mail.
+# Apenas em desenvolvimento local, PASSWORD_RESET_DEV_CODE=true imprime e
+# retorna o código quando SMTP_HOST/SMTP_FROM não forem preenchidas.
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+SMTP_FROM=no-reply@mesclainvest.com
+PASSWORD_RESET_DEV_CODE=false
+
 CORS_ORIGIN=http://localhost:5000
 ```
 
@@ -95,7 +106,9 @@ npm run lint
 
 - **POST** `/auth/register` - Registrar novo usuário
 - **POST** `/auth/login` - Fazer login
-- **POST** `/auth/forgot-password` - Recuperação de senha
+- **POST** `/auth/forgot-password` - Enviar código de recuperação de senha
+- **POST** `/auth/password-reset/verify-code` - Verificar código recebido por e-mail
+- **POST** `/auth/password-reset/confirm` - Salvar nova senha após validação do código
 
 ### Usuários (Requer autenticação)
 
@@ -152,7 +165,9 @@ Ver documentação detalhada em `DATAMODEL.md` (a ser criado com descrição das
 
 - ✅ POST /auth/register
 - ✅ POST /auth/login
-- ✅ POST /auth/forgot-password (Recuperação de senha)
+- ✅ POST /auth/forgot-password (Envio de código de recuperação)
+- ✅ POST /auth/password-reset/verify-code
+- ✅ POST /auth/password-reset/confirm
 - ✅ GET /users/me
 - ✅ GET /wallet
 - ✅ POST /wallet/credit

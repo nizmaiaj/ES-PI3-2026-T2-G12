@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
 import 'auth_session.dart';
 
 class AuthException implements Exception {
@@ -12,6 +15,30 @@ class AuthException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class PasswordResetRequest {
+  const PasswordResetRequest({
+    required this.email,
+    required this.resetId,
+    required this.message,
+    this.devCode,
+  });
+
+  final String email;
+  final String resetId;
+  final String message;
+  final String? devCode;
+}
+
+class PasswordResetVerification {
+  const PasswordResetVerification({
+    required this.resetToken,
+    required this.message,
+  });
+
+  final String resetToken;
+  final String message;
 }
 
 typedef SmsCodeResolver =
@@ -123,15 +150,73 @@ class AuthService {
     }
   }
 
-  Future<String> forgotPassword({required String email}) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-      return 'O link de recuperação de senha foi enviado para o seu e-mail';
-    } on FirebaseAuthException catch (error) {
-      throw AuthException(_authErrorMessage(error));
-    } catch (_) {
-      throw AuthException('Não foi possível enviar o e-mail de recuperação.');
+  Future<PasswordResetRequest> forgotPassword({required String email}) async {
+    final response = await _postPublicApi('/auth/forgot-password', {
+      'email': email,
+    });
+
+    final resetId = response['resetId'];
+    final returnedEmail = response['email'];
+
+    if (resetId is! String || resetId.isEmpty) {
+      throw AuthException('Resposta inválida ao solicitar recuperação.');
     }
+
+    return PasswordResetRequest(
+      email: returnedEmail is String && returnedEmail.isNotEmpty
+          ? returnedEmail
+          : email,
+      resetId: resetId,
+      message: _messageFromApi(
+        response,
+        fallback: 'O código de recuperação foi enviado para o seu e-mail.',
+      ),
+      devCode: response['devCode'] is String
+          ? response['devCode'] as String
+          : null,
+    );
+  }
+
+  Future<PasswordResetVerification> verifyPasswordResetCode({
+    required String email,
+    required String resetId,
+    required String code,
+  }) async {
+    final response = await _postPublicApi('/auth/password-reset/verify-code', {
+      'email': email,
+      'resetId': resetId,
+      'code': code,
+    });
+
+    final resetToken = response['resetToken'];
+
+    if (resetToken is! String || resetToken.isEmpty) {
+      throw AuthException('Resposta inválida ao verificar o código.');
+    }
+
+    return PasswordResetVerification(
+      resetToken: resetToken,
+      message: _messageFromApi(
+        response,
+        fallback: 'Código verificado com sucesso.',
+      ),
+    );
+  }
+
+  Future<String> resetPassword({
+    required String email,
+    required String resetId,
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    final response = await _postPublicApi('/auth/password-reset/confirm', {
+      'email': email,
+      'resetId': resetId,
+      'resetToken': resetToken,
+      'newPassword': newPassword,
+    });
+
+    return _messageFromApi(response, fallback: 'Senha redefinida com sucesso.');
   }
 
   Future<void> logout() async {
@@ -279,6 +364,67 @@ class AuthService {
     throw AuthException(
       'Telefone inválido. Informe DDD e número para ativar o 2FA.',
     );
+  }
+
+  Future<Map<String, dynamic>> _postPublicApi(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      final responseBody = _decodeApiBody(response.body);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AuthException(
+          _messageFromApi(
+            responseBody,
+            fallback: 'Não foi possível concluir a operação.',
+          ),
+        );
+      }
+
+      return responseBody;
+    } on TimeoutException {
+      throw AuthException('Tempo esgotado ao conectar com o servidor.');
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw AuthException('Não foi possível conectar ao servidor.');
+    }
+  }
+
+  Map<String, dynamic> _decodeApiBody(String rawBody) {
+    if (rawBody.isEmpty) return <String, dynamic>{};
+
+    final decoded = jsonDecode(rawBody);
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return <String, dynamic>{};
+  }
+
+  String _messageFromApi(
+    Map<String, dynamic> response, {
+    required String fallback,
+  }) {
+    final error = response['error'];
+    if (error is String && error.isNotEmpty) return error;
+
+    final message = response['message'];
+    if (message is String && message.isNotEmpty) return message;
+
+    return fallback;
   }
 
   Future<void> _saveSession(User? user) async {

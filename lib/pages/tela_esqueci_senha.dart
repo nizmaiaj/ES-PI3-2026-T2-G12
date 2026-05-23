@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import 'tela_verificacao.dart';
 
 class TelaEsqueciSenha extends StatefulWidget {
   const TelaEsqueciSenha({super.key});
@@ -14,7 +15,6 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
   final _emailController = TextEditingController();
 
   bool _carregando = false;
-  String? _mensagem;
   String? _erro;
 
   @override
@@ -25,7 +25,6 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
 
   Future<void> _enviarEmail() async {
     setState(() {
-      _mensagem = null;
       _erro = null;
     });
 
@@ -34,12 +33,22 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
     setState(() => _carregando = true);
 
     try {
-      final mensagem = await AuthService().forgotPassword(
+      final solicitacao = await AuthService().forgotPassword(
         email: _emailController.text.trim(),
       );
 
       if (!mounted) return;
-      setState(() => _mensagem = mensagem);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TelaVerificacaoCodigo(
+            email: solicitacao.email,
+            resetId: solicitacao.resetId,
+            initialMessage: solicitacao.message,
+            devCode: solicitacao.devCode,
+          ),
+        ),
+      );
     } on AuthException catch (error) {
       if (!mounted) return;
       setState(() => _erro = error.message);
@@ -107,7 +116,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Digite seu e-mail para receber o link de recuperação',
+                                'Digite seu e-mail para receber o código de verificação',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -132,14 +141,6 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                   return null;
                                 },
                               ),
-                              if (_mensagem != null) ...[
-                                const SizedBox(height: 14),
-                                _buildStatusMessage(
-                                  _mensagem!,
-                                  Colors.green,
-                                  Icons.check_circle_outline,
-                                ),
-                              ],
                               if (_erro != null) ...[
                                 const SizedBox(height: 14),
                                 _buildStatusMessage(
@@ -153,8 +154,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed:
-                                      _carregando ? null : _enviarEmail,
+                                  onPressed: _carregando ? null : _enviarEmail,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF4C3BCF),
                                     shape: RoundedRectangleBorder(
@@ -169,12 +169,12 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                             strokeWidth: 2.5,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : const Text(
-                                          'Enviar e-mail',
+                                          'Enviar código',
                                           style: TextStyle(
                                             fontSize: 18,
                                             color: Colors.white,
@@ -216,10 +216,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(
-            message,
-            style: TextStyle(color: color, fontSize: 13),
-          ),
+          child: Text(message, style: TextStyle(color: color, fontSize: 13)),
         ),
       ],
     );
@@ -266,7 +263,10 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFF4C3BCF), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF4C3BCF),
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),

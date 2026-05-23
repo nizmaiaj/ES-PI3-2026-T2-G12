@@ -3,8 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:es_pi3_2026_t2_g12/main.dart';
 
 void main() {
-  testWidgets('exibe a tela de login inicial', (WidgetTester tester) async {
+  testWidgets('navega da tela inicial para login', (WidgetTester tester) async {
     await tester.pumpWidget(const MeuApp());
+
+    expect(find.text('Começar agora'), findsOneWidget);
+
+    await tester.tap(find.text('Começar agora'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Boas-vindas ao MesclaInvest!'), findsOneWidget);
     expect(find.text('Entrar'), findsOneWidget);
