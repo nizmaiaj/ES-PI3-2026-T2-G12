@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
 class BalcaoVenda extends StatefulWidget {
@@ -26,8 +27,6 @@ class BalcaoVenda extends StatefulWidget {
 class _BalcaoVendaState extends State<BalcaoVenda> {
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _rosaVenda = Color(0xFFC928B8);
-  static const _fundo = Color(0xFFF8F9FE);
-  static const _cardCinza = Color(0xFFD9D9D9);
   static const _erro = Color(0xFFFF3B30);
 
   final BalcaoService _balcaoService = BalcaoService();
@@ -81,7 +80,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _fundo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -117,7 +116,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
       bottomNavigationBar: AppBottomNav(
         selectedIndex: 2,
         onItemSelected: _selecionarNav,
-        backgroundColor: _fundo,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -153,15 +152,18 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Widget _buildResumoStartup() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
-        color: _cardCinza,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
+            color: themeColors.shadow,
             blurRadius: 5,
             offset: const Offset(0, 3),
           ),
@@ -176,33 +178,35 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
                   _nomeStartup,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
               Text(
                 _formatarMoeda(widget.precoAtual),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 18),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: Text(
                   'Qtd de tokens:',
-                  style: TextStyle(fontSize: 11, color: Colors.black54),
+                  style: TextStyle(fontSize: 11, color: themeColors.mutedText),
                 ),
               ),
               Text(
                 '/Token',
-                style: TextStyle(fontSize: 11, color: Colors.black54),
+                style: TextStyle(fontSize: 11, color: themeColors.mutedText),
               ),
             ],
           ),
@@ -212,12 +216,14 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Widget _buildCampoPreco() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Preço (R\$)',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: themeColors.mutedText),
         ),
         const SizedBox(height: 10),
         _EntradaNegociacao(
@@ -233,17 +239,19 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Widget _buildCampoQuantidade() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
+          children: [
             Text(
               'Quantidade (tokens)',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(fontSize: 12, color: themeColors.mutedText),
             ),
-            SizedBox(width: 4),
-            Text(
+            const SizedBox(width: 4),
+            const Text(
               '*',
               style: TextStyle(
                 color: _azulPrimario,
@@ -277,11 +285,13 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Widget _buildTotalEstimado() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Row(
       children: [
-        const Text(
+        Text(
           'Total estimado',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          style: TextStyle(fontSize: 12, color: themeColors.mutedText),
         ),
         const Spacer(),
         Text(
@@ -297,23 +307,30 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Widget _buildTokensDisponiveis() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        color: _cardCinza,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
-          const Text(
+          Text(
             'Tokens Disponíveis',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: themeColors.mutedText),
           ),
           const Spacer(),
           Text(
             '${widget.tokensDisponiveis}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: colorScheme.onSurface,
+            ),
           ),
         ],
       ),
@@ -428,16 +445,23 @@ class _EntradaNegociacao extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return SizedBox(
       height: 44,
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurface,
+        ),
         decoration: InputDecoration(
           filled: true,
-          fillColor: _BalcaoVendaState._cardCinza,
+          fillColor: themeColors.elevatedSurface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
@@ -456,6 +480,8 @@ class _MensagemErro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -468,7 +494,7 @@ class _MensagemErro extends StatelessWidget {
         Expanded(
           child: Text(
             texto,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            style: TextStyle(fontSize: 12, color: themeColors.mutedText),
           ),
         ),
       ],

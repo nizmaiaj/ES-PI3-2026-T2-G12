@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_theme.dart';
+
 class TelaVerificacaoCodigo extends StatefulWidget {
   final String email;
   const TelaVerificacaoCodigo({super.key, required this.email});
@@ -29,13 +31,19 @@ class _TelaVerificacaoCodigoState extends State<TelaVerificacaoCodigo> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
+            colors: isDark
+                ? const [Color(0xFF101116), Color(0xFF1C2030)]
+                : const [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
@@ -59,11 +67,12 @@ class _TelaVerificacaoCodigoState extends State<TelaVerificacaoCodigo> {
                       const SizedBox(height: 4),
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         "MesclaInvest",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -71,25 +80,26 @@ class _TelaVerificacaoCodigoState extends State<TelaVerificacaoCodigo> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECEDF5),
+                          color: themeColors.subtleSurface,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               "Verificação de código",
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               "Digite o código enviado para o seu e-mail",
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.black54,
+                                color: themeColors.mutedText,
                               ),
                             ),
                             const SizedBox(height: 28),
@@ -157,13 +167,15 @@ class _TelaVerificacaoCodigoState extends State<TelaVerificacaoCodigo> {
   }
 
   Widget _buildOtpBox(int index) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: 55,
       height: 60,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD0D0E0)),
+        border: Border.all(color: themeColors.panelBorder),
       ),
       child: TextField(
         controller: _controllers[index],

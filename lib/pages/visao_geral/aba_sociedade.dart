@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
 class AbaSociedade extends StatefulWidget {
@@ -38,9 +39,7 @@ class _AbaSociedadeState extends State<AbaSociedade> {
           );
         }
         if (!snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: kVgAzul),
-          );
+          return const Center(child: CircularProgressIndicator(color: kVgAzul));
         }
 
         final socios = _sociosFromData(snapshot.data!.data());
@@ -68,6 +67,8 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   // ── ESTRUTURA SOCIETÁRIA ──────────────────────────────────────────────────
 
   Widget _buildEstruturaCard(List<SocioStartup> socios) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final totalPercentual = socios.fold<double>(
       0,
       (total, s) => total + (s.percentual ?? 0),
@@ -87,18 +88,18 @@ class _AbaSociedadeState extends State<AbaSociedade> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Estrutura Societária',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 20),
@@ -124,15 +125,18 @@ class _AbaSociedadeState extends State<AbaSociedade> {
                       children: [
                         Text(
                           formatPercentual(totalPercentual),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E),
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Total',
-                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: themeColors.faintText,
+                          ),
                         ),
                       ],
                     ),
@@ -166,6 +170,9 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   }
 
   Widget _buildLegendaItem(Color cor, String nome, String percentual) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Row(
       children: [
         Container(
@@ -177,15 +184,15 @@ class _AbaSociedadeState extends State<AbaSociedade> {
         Expanded(
           child: Text(
             nome,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+            style: TextStyle(fontSize: 10, color: themeColors.faintText),
           ),
         ),
         Text(
           percentual,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A2E),
+            color: colorScheme.onSurface,
           ),
         ),
       ],
@@ -195,13 +202,15 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   // ── APRESENTAÇÃO DOS SÓCIOS ───────────────────────────────────────────────
 
   Widget _buildApresentacaoSocios(List<SocioStartup> socios) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final sociosExibidos = socios.take(3).toList();
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -210,12 +219,12 @@ class _AbaSociedadeState extends State<AbaSociedade> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Apresentação dos Sócios',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colorScheme.onSurface,
                 ),
               ),
               GestureDetector(
@@ -251,10 +260,13 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   }
 
   Widget _buildSocioCardCompacto(SocioStartup socio) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FE),
+        color: themeColors.subtleSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -267,27 +279,27 @@ class _AbaSociedadeState extends State<AbaSociedade> {
               color: const Color(0xFFEDE7F6),
               borderRadius: BorderRadius.circular(19),
             ),
-            child: const Icon(
-              Icons.person_outline,
-              color: kVgAzul,
-              size: 22,
-            ),
+            child: const Icon(Icons.person_outline, color: kVgAzul, size: 22),
           ),
           const SizedBox(height: 8),
           Text(
             socio.nome,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
             socio.cargo.isEmpty ? 'Sócio' : socio.cargo,
-            style: const TextStyle(fontSize: 9, color: Colors.grey),
+            style: TextStyle(fontSize: 9, color: themeColors.faintText),
           ),
           const SizedBox(height: 6),
           Text(
             socio.descricao,
-            style: const TextStyle(fontSize: 9, color: Colors.grey),
+            style: TextStyle(fontSize: 9, color: themeColors.faintText),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -297,11 +309,14 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   }
 
   Widget _buildVerTodosView(List<SocioStartup> socios) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: themeColors.elevatedSurface,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -311,22 +326,22 @@ class _AbaSociedadeState extends State<AbaSociedade> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Apresentação dos Sócios',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   GestureDetector(
                     onTap: () => setState(() => _verTodosAberto = false),
-                    child: const Text(
+                    child: Text(
                       'X',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black54,
+                        color: themeColors.mutedText,
                       ),
                     ),
                   ),
@@ -351,10 +366,13 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   }
 
   Widget _buildSocioCardExpandido(SocioStartup socio) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FE),
+        color: themeColors.subtleSurface,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -376,19 +394,20 @@ class _AbaSociedadeState extends State<AbaSociedade> {
               children: [
                 Text(
                   socio.nome,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   socio.cargo.isEmpty ? 'Sócio' : socio.cargo,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: themeColors.faintText),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   socio.descricao,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: themeColors.faintText),
                 ),
               ],
             ),
@@ -401,13 +420,15 @@ class _AbaSociedadeState extends State<AbaSociedade> {
   // ── HELPERS ───────────────────────────────────────────────────────────────
 
   Widget _buildEstado(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 13),
         ),
       ),
     );
@@ -446,10 +467,25 @@ class _AbaSociedadeState extends State<AbaSociedade> {
 
   bool _pareceSocio(Map<dynamic, dynamic> value) {
     const campos = {
-      'nome', 'name', 'nomeCompleto', 'fullName', 'cargo', 'funcao',
-      'função', 'role', 'position', 'percentual', 'participacao',
-      'participação', 'participacaoPercentual', 'equity', 'descricao',
-      'descrição', 'description', 'bio', 'biografia',
+      'nome',
+      'name',
+      'nomeCompleto',
+      'fullName',
+      'cargo',
+      'funcao',
+      'função',
+      'role',
+      'position',
+      'percentual',
+      'participacao',
+      'participação',
+      'participacaoPercentual',
+      'equity',
+      'descricao',
+      'descrição',
+      'description',
+      'bio',
+      'biografia',
     };
     return value.keys.any((k) => campos.contains(k.toString()));
   }

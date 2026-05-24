@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class TelaRedefinirSenha extends StatefulWidget {
   const TelaRedefinirSenha({super.key});
 
@@ -24,13 +26,19 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
+            colors: isDark
+                ? const [Color(0xFF101116), Color(0xFF1C2030)]
+                : const [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
@@ -54,11 +62,12 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                       const SizedBox(height: 4),
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         "MesclaInvest",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -66,7 +75,7 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECEDF5),
+                          color: themeColors.subtleSurface,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Form(
@@ -74,23 +83,24 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Center(
+                              Center(
                                 child: Text(
                                   "Redefinir senha",
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              const Center(
+                              Center(
                                 child: Text(
                                   "Digite e confirme sua nova senha para continuar",
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Colors.black54,
+                                    color: themeColors.mutedText,
                                   ),
                                 ),
                               ),
@@ -104,8 +114,12 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                                   () => _obscureNovaSenha = !_obscureNovaSenha,
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return "Campo obrigatório";
-                                  if (v.length < 6) return "Mínimo 6 caracteres";
+                                  if (v == null || v.isEmpty) {
+                                    return "Campo obrigatório";
+                                  }
+                                  if (v.length < 6) {
+                                    return "Mínimo 6 caracteres";
+                                  }
                                   return null;
                                 },
                               ),
@@ -120,7 +134,9 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
                                       !_obscureConfirmarSenha,
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return "Campo obrigatório";
+                                  if (v == null || v.isEmpty) {
+                                    return "Campo obrigatório";
+                                  }
                                   if (v != _novaSenhaController.text) {
                                     return "As senhas não coincidem";
                                   }
@@ -178,15 +194,17 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
     required VoidCallback onToggle,
     String? Function(String?)? validator,
   }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 6),
@@ -195,9 +213,9 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
           obscureText: obscure,
           decoration: InputDecoration(
             hintText: "••••••",
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(color: themeColors.faintText),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).colorScheme.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 20,
               vertical: 16,
@@ -219,7 +237,10 @@ class _TelaRedefinirSenhaState extends State<TelaRedefinirSenha> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFF4C3BCF), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF4C3BCF),
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),

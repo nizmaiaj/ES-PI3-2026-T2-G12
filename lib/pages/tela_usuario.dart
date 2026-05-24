@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_session.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/sms_code_dialog.dart';
+import '../widgets/theme_mode_selector.dart';
 import 'tela_inicial.dart';
 
 class TelaUsuario extends StatefulWidget {
@@ -163,10 +165,11 @@ class _TelaUsuarioState extends State<TelaUsuario> {
   @override
   Widget build(BuildContext context) {
     final ref = _userRef;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
     // Estrutura principal da tela, com o fundo escuro e o painel branco central.
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F1F),
+      backgroundColor: themeColors.modalBackdrop,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -177,9 +180,9 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                 margin: const EdgeInsets.symmetric(horizontal: 22),
                 constraints: const BoxConstraints(maxWidth: 380),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: themeColors.elevatedSurface,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFD8D1E0), width: 5),
+                  border: Border.all(color: themeColors.panelBorder, width: 5),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(19),
@@ -217,6 +220,8 @@ class _TelaUsuarioState extends State<TelaUsuario> {
   }
 
   Widget _buildEstadoMensagem(String mensagem) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(28),
       child: Column(
@@ -225,7 +230,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
           Align(
             alignment: Alignment.centerRight,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.black, size: 20),
+              icon: Icon(Icons.close, color: colorScheme.onSurface, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -233,7 +238,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
           Text(
             mensagem,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, color: Colors.black87),
+            style: TextStyle(fontSize: 15, color: colorScheme.onSurface),
           ),
         ],
       ),
@@ -241,6 +246,9 @@ class _TelaUsuarioState extends State<TelaUsuario> {
   }
 
   Widget _buildConteudo(Map<String, dynamic> dados) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     // Extrai os campos que vieram do Firebase para preencher a tela.
     final nomeCompleto = (dados['nomeCompleto'] as String?)?.trim();
     final nomeFallback = nomeCompleto?.isNotEmpty == true
@@ -265,9 +273,13 @@ class _TelaUsuarioState extends State<TelaUsuario> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Seus dados',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _buildDadosCard(
@@ -276,31 +288,61 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                   telefone: _formatarTelefone(telefone),
                 ),
                 const SizedBox(height: 26),
-                const Text(
+                Text(
                   'Configurações',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Tema do aplicativo',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const SizedBox(
+                  width: double.infinity,
+                  child: ThemeModeSelector(),
+                ),
+                const SizedBox(height: 26),
+                Text(
+                  'Verificação em duas etapas',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Adicione uma camada extra de segurança à sua conta.',
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: themeColors.mutedText),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Ao ativar a verificação em duas etapas (2FA), será necessário confirmar sua identidade durante o login utilizando um código de verificação.',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.black87,
+                    color: themeColors.mutedText,
                     height: 1.25,
                   ),
                 ),
                 const SizedBox(height: 30),
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Ativar Verificação em Duas Etapas',
-                        style: TextStyle(fontSize: 12, color: Colors.black),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ),
                     Switch(
@@ -355,14 +397,17 @@ class _TelaUsuarioState extends State<TelaUsuario> {
 
   // Cabecalho com icone do usuario, saudacao e botao X para voltar.
   Widget _buildCabecalho(String nome) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 28, 18, 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F7F8),
+        color: themeColors.subtleSurface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: themeColors.shadow,
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -373,14 +418,18 @@ class _TelaUsuarioState extends State<TelaUsuario> {
         children: [
           Column(
             children: [
-              const Icon(Icons.account_circle_outlined, size: 28),
+              Icon(
+                Icons.account_circle_outlined,
+                size: 28,
+                color: colorScheme.onSurface,
+              ),
               const SizedBox(height: 16),
               Text(
                 'Olá, $nome',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],
@@ -389,7 +438,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
             top: 0,
             right: 2,
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.black, size: 18),
+              icon: Icon(Icons.close, color: colorScheme.onSurface, size: 18),
               onPressed: () => Navigator.pop(context),
               tooltip: 'Fechar',
             ),
@@ -405,15 +454,17 @@ class _TelaUsuarioState extends State<TelaUsuario> {
     required String cpf,
     required String telefone,
   }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(30, 22, 30, 26),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFEFEF),
+        color: themeColors.subtleSurface,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
+            color: themeColors.shadow,
             blurRadius: 4,
             offset: const Offset(0, 3),
           ),
@@ -433,26 +484,35 @@ class _TelaUsuarioState extends State<TelaUsuario> {
   }
 
   Widget _buildCampoDado(String label, String valor) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
         ),
         const SizedBox(height: 10),
         Text(
           valor,
-          style: const TextStyle(fontSize: 12, color: Color(0xFFBDBDBD)),
+          style: TextStyle(fontSize: 12, color: themeColors.faintText),
         ),
       ],
     );
   }
 
   Widget _buildDivisor() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 8, bottom: 8),
-      child: Divider(height: 1, thickness: 1, color: Color(0xFF6F6F6F)),
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Divider(height: 1, thickness: 1, color: themeColors.panelBorder),
     );
   }
 }

@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
 class AbaPerguntas extends StatefulWidget {
@@ -48,6 +49,8 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
       initialData: false,
       builder: (context, investidorSnap) {
         final temTokens = investidorSnap.data ?? false;
+        final colorScheme = Theme.of(context).colorScheme;
+        final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _perguntasStream(sId, isPrivada: false),
@@ -70,18 +73,21 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Perguntas e respostas públicas',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Confira dúvidas frequentes da comunidade sobre a startup',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: themeColors.faintText,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (carregando)
@@ -118,6 +124,8 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   // ── CHAT PRIVADO ─────────────────────────────────────────────────────────
 
   Widget _buildChat() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final sId = widget.startupId;
     if (sId == null) {
       return _buildEstado('Startup sem identificador para perguntas.');
@@ -129,12 +137,12 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFEBEDF8),
+            color: themeColors.subtleSurface,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -143,16 +151,16 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                        color: colorScheme.onSurface,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
                       'Acompanhe este canal para receber atualizações exclusivas '
                       'assim que sua solicitação for respondida',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.black54,
+                        color: themeColors.mutedText,
                         height: 1.5,
                       ),
                     ),
@@ -219,6 +227,8 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   // ── WIDGETS ───────────────────────────────────────────────────────────────
 
   Widget _buildPerguntaItem(PerguntaStartup p) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final expandido = _expandidas.contains(p.id);
     return GestureDetector(
       onTap: () => setState(() {
@@ -231,7 +241,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: themeColors.elevatedSurface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -244,11 +254,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                 color: const Color(0xFFEDE7F6),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(
-                Icons.person_outline,
-                color: kVgAzul,
-                size: 20,
-              ),
+              child: const Icon(Icons.person_outline, color: kVgAzul, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -258,15 +264,19 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                   if (p.nomeUsuario.isNotEmpty) ...[
                     Text(
                       p.nomeUsuario,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: themeColors.faintText,
+                      ),
                     ),
                     const SizedBox(height: 3),
                   ],
                   Text(
                     p.texto,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   if (expandido) ...[
@@ -276,8 +286,8 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                       style: TextStyle(
                         fontSize: 12,
                         color: p.foiRespondida
-                            ? Colors.grey
-                            : Colors.grey.shade500,
+                            ? themeColors.mutedText
+                            : themeColors.faintText,
                         fontStyle: p.foiRespondida
                             ? FontStyle.normal
                             : FontStyle.italic,
@@ -305,29 +315,36 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildAreaInvestidorCard({required bool temTokens}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBEDF8),
+        color: themeColors.subtleSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Área do Investidor',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Como investidor, você pode enviar perguntas privadas diretamente a startup '
             'para obter informações estratégicas e exclusivas.',
-            style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
+            style: TextStyle(
+              fontSize: 12,
+              color: themeColors.mutedText,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -356,9 +373,9 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
           ),
           if (!temTokens) ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Perguntas privadas ficam disponíveis para usuários que possuem tokens desta startup.',
-              style: TextStyle(fontSize: 11, color: Colors.black54),
+              style: TextStyle(fontSize: 11, color: themeColors.mutedText),
             ),
           ],
         ],
@@ -367,21 +384,24 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildInputPublico() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Tem uma Pergunta?',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -390,14 +410,15 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
               Expanded(
                 child: TextField(
                   controller: _controllerPublico,
+                  style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Digite sua pergunta...',
-                    hintStyle: const TextStyle(
-                      color: Colors.grey,
+                    hintStyle: TextStyle(
+                      color: themeColors.faintText,
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: const Color(0xFFF8F9FE),
+                    fillColor: themeColors.subtleSurface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -434,6 +455,8 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildPerguntaPrivada(PerguntaStartup p) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -448,7 +471,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey.shade600,
+                color: themeColors.mutedText,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -458,6 +481,9 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildBubble(String texto, {required bool ehInvestidor}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -474,22 +500,15 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                 color: Color(0xFFEDE7F6),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.person_outline,
-                color: kVgAzul,
-                size: 18,
-              ),
+              child: const Icon(Icons.person_outline, color: kVgAzul, size: 18),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: ehInvestidor ? kVgRoxoChat : Colors.white,
+                color: ehInvestidor ? kVgRoxoChat : themeColors.elevatedSurface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -501,9 +520,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                 texto,
                 style: TextStyle(
                   fontSize: 12,
-                  color: ehInvestidor
-                      ? Colors.white
-                      : const Color(0xFF1A1A2E),
+                  color: ehInvestidor ? Colors.white : colorScheme.onSurface,
                   height: 1.4,
                 ),
               ),
@@ -518,11 +535,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                 color: Color(0xFFEDE7F6),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.person_outline,
-                color: kVgAzul,
-                size: 18,
-              ),
+              child: const Icon(Icons.person_outline, color: kVgAzul, size: 18),
             ),
           ],
         ],
@@ -531,24 +544,31 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildChatInput() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      color: const Color(0xFFF8F9FE),
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: [
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: themeColors.elevatedSurface,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: themeColors.panelBorder),
               ),
               child: TextField(
                 controller: _controllerPrivado,
-                decoration: const InputDecoration(
+                style: TextStyle(color: colorScheme.onSurface),
+                decoration: InputDecoration(
                   hintText: 'Digite sua pergunta...',
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                  hintStyle: TextStyle(
+                    color: themeColors.faintText,
+                    fontSize: 13,
+                  ),
                   border: InputBorder.none,
                   isDense: true,
                 ),
@@ -657,30 +677,34 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
   }
 
   Widget _buildEstado(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 13),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 13),
         ),
       ),
     );
   }
 
   Widget _buildMensagem(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         mensagem,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: themeColors.mutedText, fontSize: 12),
       ),
     );
   }

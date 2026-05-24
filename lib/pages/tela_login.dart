@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/sms_code_dialog.dart';
 import 'tela_cadastro.dart';
 import 'tela_esqueci_senha.dart';
@@ -87,13 +88,19 @@ class _TelaLoginState extends State<TelaLogin> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
+            colors: isDark
+                ? const [Color(0xFF101116), Color(0xFF1C2030)]
+                : const [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
@@ -120,7 +127,9 @@ class _TelaLoginState extends State<TelaLogin> {
                   child: Container(
                     padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: themeColors.elevatedSurface.withValues(
+                        alpha: 0.92,
+                      ),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(45),
                         bottom: Radius.circular(45),
@@ -131,20 +140,20 @@ class _TelaLoginState extends State<TelaLogin> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Boas-vindas ao MesclaInvest!',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Precisamos desses dados para acessar o aplicativo',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.black54,
+                              color: themeColors.mutedText,
                             ),
                           ),
                           const SizedBox(height: 28),
@@ -282,13 +291,13 @@ class _TelaLoginState extends State<TelaLogin> {
                                       ),
                                     ),
                               child: RichText(
-                                text: const TextSpan(
+                                text: TextSpan(
                                   text: 'Não tem conta? ',
                                   style: TextStyle(
-                                    color: Colors.black54,
+                                    color: themeColors.mutedText,
                                     fontSize: 14,
                                   ),
-                                  children: [
+                                  children: const [
                                     TextSpan(
                                       text: 'Cadastre-se',
                                       style: TextStyle(
@@ -318,20 +327,22 @@ class _TelaLoginState extends State<TelaLogin> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w600,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
 
   InputDecoration _inputDecoration(String hint) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.grey),
+      hintStyle: TextStyle(color: themeColors.faintText),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Theme.of(context).colorScheme.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30),

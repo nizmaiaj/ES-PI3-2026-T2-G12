@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'tela_home.dart';
 
 class CpfInputFormatter extends TextInputFormatter {
@@ -146,13 +147,19 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
+            colors: isDark
+                ? const [Color(0xFF101116), Color(0xFF1C2030)]
+                : const [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
@@ -176,18 +183,19 @@ class _TelaCadastroState extends State<TelaCadastro> {
                       const SizedBox(height: 4),
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'MesclaInvest',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 20),
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECEDF5),
+                          color: themeColors.subtleSurface,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Form(
@@ -195,12 +203,13 @@ class _TelaCadastroState extends State<TelaCadastro> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Center(
+                              Center(
                                 child: Text(
                                   'Crie sua conta',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -430,6 +439,8 @@ class _TelaCadastroState extends State<TelaCadastro> {
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -438,10 +449,10 @@ class _TelaCadastroState extends State<TelaCadastro> {
           RichText(
             text: TextSpan(
               text: label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               children: const [
                 TextSpan(
@@ -459,9 +470,9 @@ class _TelaCadastroState extends State<TelaCadastro> {
             inputFormatters: formatters,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: themeColors.faintText),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
               suffixIcon: suffixIcon,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,

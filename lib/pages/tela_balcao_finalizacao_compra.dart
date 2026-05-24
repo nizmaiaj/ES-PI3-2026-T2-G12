@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 
 class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
   const TelaBalcaoFinalizacaoCompra({
@@ -42,8 +43,7 @@ class _TelaBalcaoFinalizacaoCompraState
   bool _erroSenha = false;
   bool _processando = false;
 
-  String? get _uid =>
-      FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
   String? get _startupId {
     final id = widget.startup['id']?.trim();
@@ -66,7 +66,7 @@ class _TelaBalcaoFinalizacaoCompraState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: _azulPrimario,
         leading: IconButton(
@@ -102,11 +102,14 @@ class _TelaBalcaoFinalizacaoCompraState
   }
 
   Widget _buildCardToken() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -117,15 +120,16 @@ class _TelaBalcaoFinalizacaoCompraState
             children: [
               Text(
                 _nomeStartup,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Qtd: ${widget.quantidade} tokens',
-                style: const TextStyle(color: Colors.black54, fontSize: 12),
+                style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
             ],
           ),
@@ -134,15 +138,16 @@ class _TelaBalcaoFinalizacaoCompraState
             children: [
               Text(
                 'R\$ ${_formatarNumero(_preco)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 '/Token',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
+                style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
             ],
           ),
@@ -152,16 +157,19 @@ class _TelaBalcaoFinalizacaoCompraState
   }
 
   Widget _buildResumo() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Preço (R\$)', style: TextStyle(color: Colors.black54)),
+        Text('Preço (R\$)', style: TextStyle(color: themeColors.mutedText)),
         const SizedBox(height: 8),
         _campoReadonly('R\$ ${_formatarNumero(_preco)}'),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Quantidade (tokens)',
-          style: TextStyle(color: Colors.black54),
+          style: TextStyle(color: themeColors.mutedText),
         ),
         const SizedBox(height: 8),
         _campoReadonly('${widget.quantidade}'),
@@ -169,9 +177,9 @@ class _TelaBalcaoFinalizacaoCompraState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Total estimado',
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(color: themeColors.mutedText),
             ),
             Text(
               'R\$ ${_formatarNumero(widget.total)}',
@@ -188,19 +196,22 @@ class _TelaBalcaoFinalizacaoCompraState
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFE0E0E0),
+            color: themeColors.elevatedSurface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Saldo Disponível',
-                style: TextStyle(color: Colors.black54),
+                style: TextStyle(color: themeColors.mutedText),
               ),
               Text(
                 'R\$ ${_formatarNumero(widget.saldoDisponivel)}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
               ),
             ],
           ),
@@ -210,16 +221,19 @@ class _TelaBalcaoFinalizacaoCompraState
   }
 
   Widget _campoReadonly(String valor) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(valor, style: const TextStyle(color: Colors.black87)),
+      child: Text(valor, style: TextStyle(color: colorScheme.onSurface)),
     );
   }
 
@@ -247,11 +261,14 @@ class _TelaBalcaoFinalizacaoCompraState
   }
 
   Widget _buildConfirmacaoSenha() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFD3D3D3),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -266,39 +283,52 @@ class _TelaBalcaoFinalizacaoCompraState
                 _senhaController.clear();
               }),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: themeColors.subtleSurface,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   'X',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
           ),
-          const Text(
+          Text(
             'Confirme sua identidade para concluir a compra',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Por segurança, informe sua senha para finalizar a transação e confirmar a aquisição dos tokens.',
-            style: TextStyle(color: Colors.black87, fontSize: 13),
+            style: TextStyle(color: themeColors.mutedText, fontSize: 13),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Digite a sua senha',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _senhaController,
             obscureText: true,
+            style: TextStyle(color: colorScheme.onSurface),
             decoration: InputDecoration(
-              fillColor: Colors.white,
+              fillColor: colorScheme.surface,
               filled: true,
               hintText: '••••••',
               border: OutlineInputBorder(
@@ -317,10 +347,7 @@ class _TelaBalcaoFinalizacaoCompraState
                 Expanded(
                   child: Text(
                     'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a compra dos tokens não foi realizada. Verifique sua senha e tente novamente.',
-                    style: TextStyle(
-                      color: Colors.red.shade800,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.red.shade800, fontSize: 12),
                   ),
                 ),
               ],
@@ -458,9 +485,7 @@ double _numero(dynamic value, {double fallback = 0}) {
   if (value is num) return value.toDouble();
   if (value is String) {
     final t = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
-    final n = t.contains(',')
-        ? t.replaceAll('.', '').replaceAll(',', '.')
-        : t;
+    final n = t.contains(',') ? t.replaceAll('.', '').replaceAll(',', '.') : t;
     return double.tryParse(n) ?? fallback;
   }
   return fallback;

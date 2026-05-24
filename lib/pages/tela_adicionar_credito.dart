@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show TextInputFormatter, TextEditingValue, TextSelection;
+import 'package:flutter/services.dart'
+    show TextInputFormatter, TextEditingValue, TextSelection;
 import 'tela_home.dart';
 import '../services/auth_session.dart';
+import '../theme/app_theme.dart';
 
 class TelaAdicionarCredito extends StatefulWidget {
   const TelaAdicionarCredito({super.key});
@@ -29,8 +31,11 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         top: false,
         child: Column(
@@ -42,33 +47,36 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Quanto você vai depositar?',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: colorScheme.onSurface,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 32),
-                    const Text(
+                    Text(
                       'Valor',
-                      style: TextStyle(color: Colors.black87, fontSize: 14),
+                      style: TextStyle(
+                        color: themeColors.mutedText,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _valorController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [_CurrencyInputFormatter()],
-                      style: const TextStyle(
-                        color: Colors.black87,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
                       decoration: InputDecoration(
                         hintText: 'R\$ 0,00',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFFB3B3B8),
+                        hintStyle: TextStyle(
+                          color: themeColors.faintText,
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
                         ),
@@ -77,17 +85,17 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
                           vertical: 18,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: colorScheme.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF8F8F8F),
+                          borderSide: BorderSide(
+                            color: themeColors.panelBorder,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF8F8F8F),
+                          borderSide: BorderSide(
+                            color: themeColors.panelBorder,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -328,16 +336,18 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
   }
 
   Widget _buildBottomNav(BuildContext context) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final inactiveColor = Theme.of(context).colorScheme.onSurface;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
       height: 70,
       decoration: BoxDecoration(
-        color: const Color(0xFFEDEDED),
+        color: themeColors.navSurface,
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: themeColors.shadow.withValues(alpha: 0.45),
             blurRadius: 10,
           ),
         ],
@@ -357,26 +367,26 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
           ),
           GestureDetector(
             onTap: () {},
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.menu_book_outlined, color: Colors.black87),
+                Icon(Icons.menu_book_outlined, color: inactiveColor),
                 Text(
                   "Catálogo",
-                  style: TextStyle(fontSize: 10, color: Colors.black87),
+                  style: TextStyle(fontSize: 10, color: inactiveColor),
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: () {},
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.swap_horiz, color: Colors.black87),
+                Icon(Icons.swap_horiz, color: inactiveColor),
                 Text(
                   "Balcão",
-                  style: TextStyle(fontSize: 10, color: Colors.black87),
+                  style: TextStyle(fontSize: 10, color: inactiveColor),
                 ),
               ],
             ),
@@ -403,7 +413,9 @@ class _CurrencyInputFormatter extends TextInputFormatter {
     }
 
     // Limita a 11 dígitos → máx R$ 999.999.999,99
-    final clamped = digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final clamped = digits.length > 11
+        ? digits.substring(digits.length - 11)
+        : digits;
     final centavos = int.parse(clamped);
     final reais = centavos ~/ 100;
     final cents = centavos % 100;
@@ -416,7 +428,8 @@ class _CurrencyInputFormatter extends TextInputFormatter {
       if (remaining > 1 && remaining % 3 == 1) buffer.write('.');
     }
 
-    final formatted = 'R\$ ${buffer.toString()},${cents.toString().padLeft(2, '0')}';
+    final formatted =
+        'R\$ ${buffer.toString()},${cents.toString().padLeft(2, '0')}';
     return newValue.copyWith(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),

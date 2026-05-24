@@ -1,8 +1,8 @@
-
 // Eduarda Prado Deiró
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
 class AbaVisaoGeral extends StatelessWidget {
@@ -27,31 +27,34 @@ class AbaVisaoGeral extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Column(
         children: [
-          _buildSumario(),
+          _buildSumario(context),
           const SizedBox(height: 16),
-          _buildAreaInvestidor(),
+          _buildAreaInvestidor(context),
         ],
       ),
     );
   }
 
-  Widget _buildSumario() {
+  Widget _buildSumario(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Sumário Executivo',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 10),
@@ -59,9 +62,9 @@ class AbaVisaoGeral extends StatelessWidget {
             startup['desc'] ??
                 'Este campo é destinado a apresentar um resumo prévio da startup, '
                     'destacando seus principais objetivos, propostas e a atuação da empresa no mercado.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Colors.grey,
+              color: themeColors.mutedText,
               height: 1.55,
             ),
           ),
@@ -70,10 +73,11 @@ class AbaVisaoGeral extends StatelessWidget {
     );
   }
 
-  Widget _buildAreaInvestidor() {
+  Widget _buildAreaInvestidor(BuildContext context) {
     final sId = startupId;
     if (sId == null) {
       return _buildCard(
+        context: context,
         temTokens: false,
         mensagemBloqueio:
             'Não foi possível verificar sua participação porque a startup não possui identificador.',
@@ -85,40 +89,49 @@ class AbaVisaoGeral extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _buildCard(
+            context: context,
             temTokens: false,
             mensagemBloqueio:
                 'Não foi possível verificar sua carteira neste momento.',
           );
         }
         if (!snapshot.hasData) {
-          return _buildCard(temTokens: false, carregando: true);
+          return _buildCard(
+            context: context,
+            temTokens: false,
+            carregando: true,
+          );
         }
-        return _buildCard(temTokens: snapshot.data ?? false);
+        return _buildCard(context: context, temTokens: snapshot.data ?? false);
       },
     );
   }
 
   Widget _buildCard({
+    required BuildContext context,
     required bool temTokens,
     bool carregando = false,
     String? mensagemBloqueio,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBEDF8),
+        color: themeColors.subtleSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Área do Investidor',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 10),
@@ -130,9 +143,9 @@ class AbaVisaoGeral extends StatelessWidget {
                 : 'Se você já é investidor, poderá acessar o balcão completo para comprar e vender tokens. '
                       'Caso ainda não tenha investido nesta startup, você poderá iniciar sua participação adquirindo '
                       'seus primeiros tokens e desbloqueando recursos exclusivos para investidores.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: Colors.black54,
+              color: themeColors.mutedText,
               height: 1.55,
             ),
           ),
@@ -141,7 +154,7 @@ class AbaVisaoGeral extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: themeColors.elevatedSurface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -159,9 +172,9 @@ class AbaVisaoGeral extends StatelessWidget {
                           'No momento, você ainda não possui participação nesta startup. '
                               'Para desbloquear recursos de compra e venda avançados, é necessário '
                               'realizar seu primeiro investimento.',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.black54,
+                        color: themeColors.mutedText,
                         height: 1.5,
                       ),
                     ),
@@ -180,9 +193,7 @@ class AbaVisaoGeral extends StatelessWidget {
                   ? onAbrirBalcao
                   : onAbrirOfertasDaStartup,
               style: ElevatedButton.styleFrom(
-                backgroundColor: temTokens
-                    ? const Color(0xFF2C3680)
-                    : kVgAzul,
+                backgroundColor: temTokens ? const Color(0xFF2C3680) : kVgAzul,
                 disabledBackgroundColor: kVgAzul.withValues(alpha: 0.35),
                 elevation: 0,
                 shape: RoundedRectangleBorder(

@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
 class AbaAtualizacoes extends StatelessWidget {
@@ -15,6 +16,7 @@ class AbaAtualizacoes extends StatelessWidget {
 
     if (sId == null) {
       return _buildEstado(
+        context,
         'Startup sem identificador para carregar as atualizações.',
       );
     }
@@ -27,8 +29,14 @@ class AbaAtualizacoes extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return _buildEstado('Não foi possível carregar as atualizações.');
+          return _buildEstado(
+            context,
+            'Não foi possível carregar as atualizações.',
+          );
         }
+
+        final colorScheme = Theme.of(context).colorScheme;
+        final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
         final carregando = !snapshot.hasData;
         final atualizacoes = snapshot.data == null
@@ -42,18 +50,18 @@ class AbaAtualizacoes extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Atualizações da empresa',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Acompanhe comunicados, notícias e marcos recentes da startup',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: themeColors.faintText),
               ),
               const SizedBox(height: 16),
               if (carregando)
@@ -65,6 +73,7 @@ class AbaAtualizacoes extends StatelessWidget {
                 )
               else if (atualizacoes.isEmpty)
                 _buildMensagem(
+                  context,
                   'Ainda não há atualizações cadastradas para esta startup.',
                 )
               else
@@ -73,7 +82,7 @@ class AbaAtualizacoes extends StatelessWidget {
                     padding: EdgeInsets.only(
                       bottom: i < atualizacoes.length - 1 ? 12 : 0,
                     ),
-                    child: _buildItem(atualizacoes[i]),
+                    child: _buildItem(context, atualizacoes[i]),
                   );
                 }),
             ],
@@ -83,7 +92,9 @@ class AbaAtualizacoes extends StatelessWidget {
     );
   }
 
-  Widget _buildItem(AtualizacaoStartup at) {
+  Widget _buildItem(BuildContext context, AtualizacaoStartup at) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final cor = _cor(at.tipo);
     final dataExibida = at.createdAt == null
         ? 'Data não informada'
@@ -93,7 +104,7 @@ class AbaAtualizacoes extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -138,25 +149,28 @@ class AbaAtualizacoes extends StatelessWidget {
                     ),
                     Text(
                       dataExibida,
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(
+                        color: themeColors.faintText,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   at.titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   at.conteudo,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: themeColors.mutedText,
                     height: 1.45,
                   ),
                 ),
@@ -179,31 +193,35 @@ class AbaAtualizacoes extends StatelessWidget {
     });
   }
 
-  Widget _buildEstado(String mensagem) {
+  Widget _buildEstado(BuildContext context, String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 13),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 13),
         ),
       ),
     );
   }
 
-  Widget _buildMensagem(String mensagem) {
+  Widget _buildMensagem(BuildContext context, String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         mensagem,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: themeColors.mutedText, fontSize: 12),
       ),
     );
   }

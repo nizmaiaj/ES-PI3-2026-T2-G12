@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'no_animation_route.dart';
@@ -22,8 +23,6 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   static const _rosaVenda = Color(0xFFC928B8);
   static const _verdeConcluido = Color(0xFF73CF4A);
   static const _laranjaStatus = Color(0xFFC98E16);
-  static const _fundo = Colors.white;
-  static const _textoEscuro = Color(0xFF111111);
 
   final BalcaoService _balcaoService = BalcaoService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,7 +46,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
     final uid = _uid;
 
     return Scaffold(
-      backgroundColor: _fundo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -128,7 +127,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
       bottomNavigationBar: AppBottomNav(
         selectedIndex: 2,
         onItemSelected: _selecionarNav,
-        backgroundColor: _fundo,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -172,6 +171,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   }
 
   Widget _buildConteudo(List<_OrdemUsuario> ordens) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final abertas = ordens.where((ordem) => ordem.estaAberta).toList();
     final concluidas = ordens.where((ordem) => ordem.estaConcluida).toList();
 
@@ -184,9 +184,9 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
           const SizedBox(height: 30),
           _buildTituloSecao('Minhas ordens abertas'),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'Acompanhe suas ordens de compra e venda',
-            style: TextStyle(color: Colors.black, fontSize: 11),
+            style: TextStyle(color: themeColors.mutedText, fontSize: 11),
           ),
           const SizedBox(height: 18),
           if (abertas.isEmpty)
@@ -249,8 +249,8 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   Widget _buildTituloSecao(String texto) {
     return Text(
       texto,
-      style: const TextStyle(
-        color: _textoEscuro,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 16,
         fontWeight: FontWeight.w800,
       ),
@@ -258,28 +258,32 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
   }
 
   Widget _buildMensagemLista(String texto) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         texto,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: themeColors.mutedText, fontSize: 12),
       ),
     );
   }
 
   Widget _buildEstadoCentral(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 14),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 14),
         ),
       ),
     );
@@ -341,6 +345,8 @@ class _SwitchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = Theme.of(context).colorScheme.onSurface;
+
     return SizedBox(
       height: 32,
       child: OutlinedButton(
@@ -349,9 +355,7 @@ class _SwitchButton extends StatelessWidget {
           backgroundColor: ativo
               ? _BalcaoMinhasOrdensState._azulPrimario
               : Colors.transparent,
-          foregroundColor: ativo
-              ? Colors.white
-              : _BalcaoMinhasOrdensState._textoEscuro,
+          foregroundColor: ativo ? Colors.white : inactiveColor,
           side: const BorderSide(color: _BalcaoMinhasOrdensState._azulPrimario),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -382,22 +386,25 @@ class _OrdemCard extends StatelessWidget {
         : _BalcaoMinhasOrdensState._azulPrimario;
 
     if (concluida) {
-      return _buildCardConcluido(corTipo);
+      return _buildCardConcluido(context, corTipo);
     }
 
-    return _buildCardAberto(corTipo);
+    return _buildCardAberto(context, corTipo);
   }
 
-  Widget _buildCardAberto(Color corTipo) {
+  Widget _buildCardAberto(BuildContext context, Color corTipo) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
+            color: themeColors.shadow,
             blurRadius: 5,
             offset: const Offset(0, 3),
           ),
@@ -410,10 +417,10 @@ class _OrdemCard extends StatelessWidget {
             ordem.nomeStartup,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
@@ -428,7 +435,7 @@ class _OrdemCard extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             'Criada em ${_formatarData(ordem.dataOperacao)}',
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(fontSize: 11, color: themeColors.mutedText),
           ),
           const SizedBox(height: 14),
           Row(
@@ -485,16 +492,19 @@ class _OrdemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCardConcluido(Color corTipo) {
+  Widget _buildCardConcluido(BuildContext context, Color corTipo) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
+            color: themeColors.shadow,
             blurRadius: 5,
             offset: const Offset(0, 3),
           ),
@@ -511,10 +521,10 @@ class _OrdemCard extends StatelessWidget {
                   ordem.nomeStartup,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -541,7 +551,7 @@ class _OrdemCard extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             'Concluída em ${_formatarData(ordem.dataOperacao)}',
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(fontSize: 11, color: themeColors.mutedText),
           ),
           const SizedBox(height: 14),
           Row(
@@ -582,6 +592,9 @@ class _ResumoConcluido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -589,16 +602,16 @@ class _ResumoConcluido extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 10, color: Colors.black54),
+          style: TextStyle(fontSize: 10, color: themeColors.mutedText),
         ),
         const SizedBox(height: 5),
         Text(
           valor,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: Colors.black,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w800,
           ),
         ),

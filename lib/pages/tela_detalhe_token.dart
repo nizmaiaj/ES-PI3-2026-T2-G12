@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
 class TelaDetalheToken extends StatefulWidget {
@@ -29,7 +30,6 @@ class TelaDetalheToken extends StatefulWidget {
 
 class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   static const _azulPrimario = Color(0xFF3F51B5);
-  static const _fundo = Colors.white;
   static const _verde = Color(0xFF1B8F4B);
   static const _vermelho = Color(0xFFD04444);
 
@@ -59,7 +59,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
             );
 
         return Scaffold(
-          backgroundColor: _fundo,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             top: false,
             bottom: false,
@@ -73,7 +73,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
           bottomNavigationBar: AppBottomNav(
             selectedIndex: 0,
             onItemSelected: _selecionarNav,
-            backgroundColor: _fundo,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           ),
         );
       },
@@ -286,6 +286,8 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     AsyncSnapshot<_TokenDetalheDados> snapshot,
     _TokenDetalheDados dados,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(
         child: CircularProgressIndicator(color: _azulPrimario),
@@ -310,11 +312,11 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Valorização do Token',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
@@ -390,6 +392,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   }
 
   Widget _buildResumoVariacao(double variacao, Color cor) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final prefixo = variacao >= 0 ? '+' : '';
 
     return Row(
@@ -412,20 +415,23 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         const SizedBox(width: 10),
         Text(
           'no período selecionado',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 12),
         ),
       ],
     );
   }
 
   Widget _buildResumoSemHistorico() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Text(
       'Ainda não há transações suficientes para calcular a variação.',
-      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+      style: TextStyle(color: themeColors.mutedText, fontSize: 12),
     );
   }
 
   Widget _buildResumoCarteira(double precoAtual) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final valorAtual = widget.quantidade * precoAtual;
     final valorInvestido = widget.quantidade * widget.precoMedioCompra;
     final resultado = valorAtual - valorInvestido;
@@ -444,7 +450,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F1F6),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -472,9 +478,9 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(height: 1, color: Color(0xFFD8D8E2)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: themeColors.panelBorder),
           ),
           Row(
             children: [
@@ -507,13 +513,15 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   }
 
   Widget _buildEstadoCentral(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 14),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 14),
         ),
       ),
     );
@@ -667,6 +675,8 @@ class _GraficoPreco extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     if (pontos.length < 2) {
       return AspectRatio(
         aspectRatio: 0.78,
@@ -674,14 +684,14 @@ class _GraficoPreco extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
+              color: themeColors.elevatedSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: themeColors.panelBorder),
             ),
-            child: const Text(
+            child: Text(
               'Histórico insuficiente',
               style: TextStyle(
-                color: Colors.black54,
+                color: themeColors.mutedText,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -717,20 +727,16 @@ class _GraficoPreco extends StatelessWidget {
             drawVerticalLine: true,
             horizontalInterval: intervalY,
             verticalInterval: xInterval,
-            getDrawingHorizontalLine: (_) => FlLine(
-              color: Colors.black.withValues(alpha: 0.08),
-              strokeWidth: 0.8,
-            ),
-            getDrawingVerticalLine: (_) => FlLine(
-              color: Colors.black.withValues(alpha: 0.08),
-              strokeWidth: 0.8,
-            ),
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: themeColors.panelBorder, strokeWidth: 0.8),
+            getDrawingVerticalLine: (_) =>
+                FlLine(color: themeColors.panelBorder, strokeWidth: 0.8),
           ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               axisNameWidget: Text(
                 'Valor (R\$)',
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 10, color: themeColors.faintText),
               ),
               axisNameSize: 16,
               sideTitles: SideTitles(
@@ -741,10 +747,7 @@ class _GraficoPreco extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 4),
                   child: Text(
                     _formatarNumeroCurto(val),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF888888),
-                    ),
+                    style: TextStyle(fontSize: 9, color: themeColors.faintText),
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -753,7 +756,7 @@ class _GraficoPreco extends StatelessWidget {
             bottomTitles: AxisTitles(
               axisNameWidget: Text(
                 periodo.eixoX,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 10, color: themeColors.faintText),
               ),
               axisNameSize: 16,
               sideTitles: SideTitles(
@@ -770,9 +773,9 @@ class _GraficoPreco extends StatelessWidget {
                     space: 4,
                     child: Text(
                       _formatarData(pontos[i].data, periodo),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9,
-                        color: Color(0xFF888888),
+                        color: themeColors.faintText,
                       ),
                     ),
                   );
@@ -788,7 +791,7 @@ class _GraficoPreco extends StatelessWidget {
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
+            border: Border.all(color: themeColors.panelBorder),
           ),
           minY: minY,
           maxY: maxY,
@@ -842,6 +845,9 @@ class _ResumoCarteiraItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: alignRight
           ? CrossAxisAlignment.end
@@ -851,7 +857,7 @@ class _ResumoCarteiraItem extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 11),
         ),
         const SizedBox(height: 6),
         Text(
@@ -859,7 +865,7 @@ class _ResumoCarteiraItem extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: valueColor ?? Colors.black87,
+            color: valueColor ?? colorScheme.onSurface,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),

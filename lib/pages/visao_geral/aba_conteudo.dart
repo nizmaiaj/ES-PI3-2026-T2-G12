@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
 class VideoThumbnailCache extends ChangeNotifier {
@@ -402,47 +403,50 @@ class _AbaConteudoState extends State<AbaConteudo> {
   }
 
   Widget _buildVideosCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Vídeos de apresentação',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Conheça mais sobre a startup através de conteúdos selecionados',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
+            style: TextStyle(fontSize: 11, color: themeColors.faintText),
           ),
           const SizedBox(height: 16),
           if (_isVideoLoading)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
               child: LinearProgressIndicator(
-                backgroundColor: Color(0xFFE0E0E0),
-                color: Color(0xFF1A1A2E),
+                backgroundColor: themeColors.panelBorder,
+                color: kVgAzul,
               ),
             ),
           if (_videos.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
                   'Nenhum vídeo disponível para esta startup.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: themeColors.faintText,
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
@@ -470,6 +474,9 @@ class _AbaConteudoState extends State<AbaConteudo> {
   }
 
   Widget _buildVideoItem(String titulo, String descricao, String url) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Row(
       children: [
         _buildVideoThumbnail(url),
@@ -480,9 +487,10 @@ class _AbaConteudoState extends State<AbaConteudo> {
             children: [
               Text(
                 titulo,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
@@ -490,7 +498,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
                 descricao,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: themeColors.faintText),
               ),
             ],
           ),
@@ -563,34 +571,37 @@ class _AbaConteudoState extends State<AbaConteudo> {
   }
 
   Widget _buildDocumentosCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Documentos',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 14),
           if (_documentos.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
                   'Nenhum documento disponível para esta startup.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: themeColors.faintText,
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
@@ -602,9 +613,9 @@ class _AbaConteudoState extends State<AbaConteudo> {
               children: [
                 _buildDocumentoItem(_documentos[i]),
                 if (i < _documentos.length - 1)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, color: themeColors.panelBorder),
                   ),
               ],
             );
@@ -615,6 +626,8 @@ class _AbaConteudoState extends State<AbaConteudo> {
   }
 
   Widget _buildDocumentoItem(DocumentoStartup documento) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final carregando = _documentoEmAcao == documento.chave;
 
     return Row(
@@ -639,9 +652,10 @@ class _AbaConteudoState extends State<AbaConteudo> {
             children: [
               Text(
                 documento.titulo,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 3),
@@ -649,7 +663,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
                 documento.detalheExibido,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: themeColors.faintText),
               ),
             ],
           ),

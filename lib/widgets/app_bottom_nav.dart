@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
@@ -16,17 +18,19 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       color: backgroundColor,
       padding: const EdgeInsets.fromLTRB(40, 0, 40, 25),
       child: Container(
         height: 70,
         decoration: BoxDecoration(
-          color: const Color(0xFFEDEDED),
+          color: themeColors.navSurface,
           borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: themeColors.shadow.withValues(alpha: 0.45),
               blurRadius: 10,
             ),
           ],
@@ -74,7 +78,9 @@ class _AppBottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppBottomNav._primaryColor : Colors.black87;
+    final color = selected
+        ? AppBottomNav._primaryColor
+        : Theme.of(context).colorScheme.onSurface;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

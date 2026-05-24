@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'tela_visao_geral.dart';
@@ -35,8 +36,12 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final themeColors = theme.extension<AppThemeColors>()!;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           // HEADER AZUL (Topo Inteiro)
@@ -114,8 +119,9 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                     onSelected: (val) => setState(() => _filtroAtivo = filtro),
                     selectedColor: const Color(0xFF3F51B5),
                     labelStyle: TextStyle(
-                      color: selecionado ? Colors.white : Colors.black,
+                      color: selecionado ? Colors.white : colorScheme.onSurface,
                     ),
+                    backgroundColor: themeColors.subtleSurface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -188,7 +194,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
           ? AppBottomNav(
               selectedIndex: 1,
               onItemSelected: _selecionarNav,
-              backgroundColor: const Color(0xFFF8F9FE),
+              backgroundColor: theme.scaffoldBackgroundColor,
             )
           : null,
     );
@@ -237,11 +243,14 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   }
 
   Widget _buildStartupCard(Map<String, String> item) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F1F1),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(25),
       ),
       child: Column(
@@ -264,9 +273,10 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                       item['nome']!.isEmpty
                           ? 'Startup sem nome'
                           : item['nome']!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     Text(
@@ -275,7 +285,10 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                           : item['desc']!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        color: themeColors.mutedText,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -289,14 +302,15 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color.fromARGB(115, 14, 13, 13),
-                      ),
+                      border: Border.all(color: themeColors.panelBorder),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       item['status']!.isEmpty ? 'Sem estágio' : item['status']!,
-                      style: const TextStyle(fontSize: 9),
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -347,10 +361,11 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   }
 
   Widget _buildStartupLogo(String imagem, String logoStoragePath) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final fallback = Container(
       width: 60,
       height: 60,
-      color: Colors.white,
+      color: themeColors.subtleSurface,
       child: const Icon(Icons.business, color: Color(0xFF3F51B5)),
     );
 
@@ -408,13 +423,15 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   }
 
   Widget _buildEstadoLista(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 14),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 14),
         ),
       ),
     );
@@ -446,13 +463,23 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   }
 
   Widget _buildInfoCol(IconData icon, String label, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       children: [
-        Icon(icon, size: 20, color: Colors.black54),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Icon(icon, size: 20, color: themeColors.mutedText),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: themeColors.faintText),
+        ),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+            color: colorScheme.onSurface,
+          ),
         ),
       ],
     );

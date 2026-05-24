@@ -8,6 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'balcao_ofertas_da_satartup.dart';
@@ -118,8 +119,10 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           _buildHeader(),
@@ -131,7 +134,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
       bottomNavigationBar: AppBottomNav(
         selectedIndex: 1,
         onItemSelected: _selecionarNav,
-        backgroundColor: const Color(0xFFF8F9FE),
+        backgroundColor: theme.scaffoldBackgroundColor,
       ),
     );
   }
@@ -162,8 +165,13 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           nomeUsuario: _nomeUsuario,
         );
       default:
-        return const Center(
-          child: Text('Em construção', style: TextStyle(color: Colors.grey)),
+        return Center(
+          child: Text(
+            'Em construção',
+            style: TextStyle(
+              color: Theme.of(context).extension<AppThemeColors>()!.mutedText,
+            ),
+          ),
         );
     }
   }
@@ -278,15 +286,17 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   // ── STATS CARD ────────────────────────────────────────────────────────────
 
   Widget _buildStatsCard() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: themeColors.shadow.withValues(alpha: 0.45),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -313,6 +323,9 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   }
 
   Widget _buildStatItem(IconData icon, String label, String valor) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Expanded(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -322,16 +335,16 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 9, color: Colors.grey),
+            style: TextStyle(fontSize: 9, color: themeColors.faintText),
           ),
           const SizedBox(height: 3),
           Text(
             valor,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
         ],
@@ -339,16 +352,21 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
-  Widget _buildDivisor() =>
-      Container(width: 1, height: 44, color: const Color(0xFFE0E0E0));
+  Widget _buildDivisor() => Container(
+    width: 1,
+    height: 44,
+    color: Theme.of(context).extension<AppThemeColors>()!.panelBorder,
+  );
 
   // ── TABS ──────────────────────────────────────────────────────────────────
 
   Widget _buildTabs() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.only(top: 14),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: themeColors.panelBorder)),
       ),
       child: Row(
         children: _tabs.map((tab) {
@@ -374,7 +392,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
-                      color: ativo ? _azulPrimario : Colors.grey,
+                      color: ativo ? _azulPrimario : themeColors.faintText,
                     ),
                   ),
                 ),

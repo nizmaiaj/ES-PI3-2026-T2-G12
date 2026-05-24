@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 import 'balcao_ofertas_da_satartup.dart';
 import 'balcao_minhasordens.dart';
 import 'balcao_venda.dart';
@@ -22,8 +23,6 @@ class BalcaoNegociacao extends StatefulWidget {
 class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _rosaVenda = Color(0xFFC928B8);
-  static const _fundo = Colors.white;
-  static const _textoEscuro = Color(0xFF111111);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final BalcaoService _balcaoService = BalcaoService();
@@ -51,7 +50,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     final uid = _uid;
 
     return Scaffold(
-      backgroundColor: _fundo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -332,8 +331,8 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   Widget _buildTituloSecao(String texto) {
     return Text(
       texto,
-      style: const TextStyle(
-        color: _textoEscuro,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 16,
         fontWeight: FontWeight.w800,
       ),
@@ -341,28 +340,32 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   }
 
   Widget _buildMensagemLista(String texto) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         texto,
-        style: const TextStyle(color: Colors.black54, fontSize: 12),
+        style: TextStyle(color: themeColors.mutedText, fontSize: 12),
       ),
     );
   }
 
   Widget _buildEstadoCentral(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54, fontSize: 14),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 14),
         ),
       ),
     );
@@ -504,15 +507,18 @@ class _OfertaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       margin: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
       padding: const EdgeInsets.fromLTRB(20, 9, 12, 9),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
+            color: themeColors.shadow,
             blurRadius: 5,
             offset: const Offset(0, 3),
           ),
@@ -529,10 +535,10 @@ class _OfertaCard extends StatelessWidget {
                   nome,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 7),
@@ -540,7 +546,7 @@ class _OfertaCard extends StatelessWidget {
                   'Qtd de tokens: $quantidade',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 8, color: Colors.black54),
+                  style: TextStyle(fontSize: 8, color: themeColors.mutedText),
                 ),
               ],
             ),
@@ -555,16 +561,16 @@ class _OfertaCard extends StatelessWidget {
                   _formatarMoeda(valorToken),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 7),
-                const Text(
+                Text(
                   '/Token',
-                  style: TextStyle(fontSize: 8, color: Colors.black54),
+                  style: TextStyle(fontSize: 8, color: themeColors.mutedText),
                 ),
               ],
             ),
@@ -609,6 +615,8 @@ class _SwitchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = Theme.of(context).colorScheme.onSurface;
+
     return SizedBox(
       height: 32,
       child: OutlinedButton(
@@ -617,9 +625,7 @@ class _SwitchButton extends StatelessWidget {
           backgroundColor: ativo
               ? _BalcaoNegociacaoState._azulPrimario
               : Colors.transparent,
-          foregroundColor: ativo
-              ? Colors.white
-              : _BalcaoNegociacaoState._textoEscuro,
+          foregroundColor: ativo ? Colors.white : inactiveColor,
           side: const BorderSide(color: _BalcaoNegociacaoState._azulPrimario),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),

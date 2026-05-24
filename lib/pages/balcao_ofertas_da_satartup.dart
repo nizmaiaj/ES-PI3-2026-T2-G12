@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_venda.dart';
 import 'tela_balcao_compra.dart';
@@ -25,9 +26,6 @@ class BalcaoOfertasDaStartup extends StatefulWidget {
 class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _rosaVenda = Color(0xFFC928B8);
-  static const _fundo = Color(0xFFF8F9FE);
-  static const _cardTabela = Color(0xFFD9D9D9);
-  static const _textoEscuro = Color(0xFF111111);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final BalcaoService _balcaoService = BalcaoService();
@@ -65,9 +63,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     final batch = _firestore.batch();
     for (final o in ofertas) {
       final ref = _firestore.collection('orders').doc();
-      final precoOferta = double.parse(
-        (preco * o.fator).toStringAsFixed(2),
-      );
+      final precoOferta = double.parse((preco * o.fator).toStringAsFixed(2));
       batch.set(ref, {
         'tipo': 'ofertacompra',
         'startupId': startupId,
@@ -105,7 +101,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _fundo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -134,7 +130,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       bottomNavigationBar: AppBottomNav(
         selectedIndex: 2,
         onItemSelected: _selecionarNav,
-        backgroundColor: _fundo,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -172,18 +168,21 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   }
 
   Widget _buildPrecoAtual() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Preço atual:',
-          style: TextStyle(color: Colors.black54, fontSize: 10),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 10),
         ),
         const SizedBox(height: 18),
         Text(
           _formatarMoeda(_precoAtual, comEspaco: true),
-          style: const TextStyle(
-            color: _textoEscuro,
+          style: TextStyle(
+            color: colorScheme.onSurface,
             fontSize: 19,
             fontWeight: FontWeight.w800,
           ),
@@ -196,10 +195,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     final startupId = _startupId;
 
     if (startupId == null) {
-      return _buildSecaoOfertasVazia(
-        'Ofertas de Compras',
-        'Startup inválida.',
-      );
+      return _buildSecaoOfertasVazia('Ofertas de Compras', 'Startup inválida.');
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -218,12 +214,13 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
           );
         }
 
-        final ofertas = snapshot.data!.docs
-            .map(_OfertaCompraSistema.tryFromDoc)
-            .whereType<_OfertaCompraSistema>()
-            .where((o) => o.startupId == startupId && o.estaDisponivel)
-            .toList()
-          ..sort((a, b) => a.preco.compareTo(b.preco));
+        final ofertas =
+            snapshot.data!.docs
+                .map(_OfertaCompraSistema.tryFromDoc)
+                .whereType<_OfertaCompraSistema>()
+                .where((o) => o.startupId == startupId && o.estaDisponivel)
+                .toList()
+              ..sort((a, b) => a.preco.compareTo(b.preco));
 
         if (ofertas.isEmpty) {
           return _buildSecaoOfertasVazia(
@@ -235,10 +232,10 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Ofertas de Compras',
               style: TextStyle(
-                color: _textoEscuro,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -250,11 +247,15 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: _cardTabela,
+                color: Theme.of(
+                  context,
+                ).extension<AppThemeColors>()!.elevatedSurface,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
+                    color: Theme.of(
+                      context,
+                    ).extension<AppThemeColors>()!.shadow,
                     blurRadius: 5,
                     offset: const Offset(0, 3),
                   ),
@@ -338,8 +339,8 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       children: [
         Text(
           titulo,
-          style: const TextStyle(
-            color: _textoEscuro,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
@@ -351,11 +352,13 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: _cardTabela,
+            color: Theme.of(
+              context,
+            ).extension<AppThemeColors>()!.elevatedSurface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.16),
+                color: Theme.of(context).extension<AppThemeColors>()!.shadow,
                 blurRadius: 5,
                 offset: const Offset(0, 3),
               ),
@@ -378,13 +381,15 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
   }
 
   Widget _buildSecaoOfertasVazia(String titulo, String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           titulo,
-          style: const TextStyle(
-            color: _textoEscuro,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
@@ -394,12 +399,12 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           decoration: BoxDecoration(
-            color: _cardTabela,
+            color: themeColors.elevatedSurface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             mensagem,
-            style: const TextStyle(color: Colors.black54, fontSize: 10),
+            style: TextStyle(color: themeColors.mutedText, fontSize: 10),
           ),
         ),
       ],
@@ -667,10 +672,7 @@ class _TabelaHeader extends StatelessWidget {
 }
 
 class _OfertaCompraLinha extends StatelessWidget {
-  const _OfertaCompraLinha({
-    required this.oferta,
-    required this.onComprar,
-  });
+  const _OfertaCompraLinha({required this.oferta, required this.onComprar});
 
   final _OfertaCompraSistema oferta;
   final VoidCallback onComprar;
@@ -778,21 +780,27 @@ class _OfertaVendaLinha extends StatelessWidget {
 class _TabelaCelula extends StatelessWidget {
   const _TabelaCelula(
     this.texto, {
-    this.color = Colors.black87,
+    this.color,
     this.fontWeight = FontWeight.w400,
   });
 
   final String texto;
-  final Color color;
+  final Color? color;
   final FontWeight fontWeight;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedColor = color ?? Theme.of(context).colorScheme.onSurface;
+
     return Expanded(
       child: Text(
         texto,
         textAlign: TextAlign.center,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: fontWeight),
+        style: TextStyle(
+          color: resolvedColor,
+          fontSize: 10,
+          fontWeight: fontWeight,
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
 class TelaBalcaoCompra extends StatefulWidget {
@@ -30,8 +31,6 @@ class TelaBalcaoCompra extends StatefulWidget {
 
 class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   static const _azulPrimario = Color(0xFF3F51B5);
-  static const _fundo = Color(0xFFF8F9FE);
-  static const _cinza = Color(0xFFEEEEF5);
 
   final _quantidadeController = TextEditingController();
   final _balcaoService = BalcaoService();
@@ -111,7 +110,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     final bool exibirAvisoSaldo = _totalEstimado > 0 && !saldoSuficiente;
 
     return Scaffold(
-      backgroundColor: _fundo,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -152,7 +151,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
           widget.onNavigate(index);
           Navigator.popUntil(context, (route) => route.isFirst);
         },
-        backgroundColor: _fundo,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -192,11 +191,14 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildCardToken() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _cinza,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -207,10 +209,10 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
             children: [
               Text(
                 _nomeStartup,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: Colors.black87,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
@@ -218,7 +220,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                 widget.ofertaMaxQtd != null
                     ? 'Disponível: ${widget.ofertaMaxQtd} tokens'
                     : 'Qtd de tokens:',
-                style: const TextStyle(color: Colors.black54, fontSize: 12),
+                style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
             ],
           ),
@@ -227,16 +229,16 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
             children: [
               Text(
                 'R\$ ${_formatarNumero(_preco)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Colors.black87,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 '/Token',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
+                style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
             ],
           ),
@@ -246,25 +248,31 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildCampoPreco() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Preço (R\$)',
-          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: themeColors.mutedText,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 8),
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: _cinza,
+            color: themeColors.elevatedSurface,
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.centerLeft,
           child: Text(
             'R\$ ${_formatarNumero(_preco)}',
-            style: const TextStyle(color: Colors.black87),
+            style: TextStyle(color: colorScheme.onSurface),
           ),
         ),
       ],
@@ -272,12 +280,18 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildCampoQuantidade() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quantidade (tokens) *',
-          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: themeColors.mutedText,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 8),
         Row(
@@ -288,8 +302,9 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
               child: TextField(
                 controller: _quantidadeController,
                 keyboardType: TextInputType.number,
+                style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  fillColor: _cinza,
+                  fillColor: themeColors.elevatedSurface,
                   filled: true,
                   hintText: widget.ofertaMaxQtd != null
                       ? 'Máx: ${widget.ofertaMaxQtd}'
@@ -318,8 +333,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                         widget.ofertaMaxQtd != null
                             ? 'Máximo disponível: ${widget.ofertaMaxQtd} tokens'
                             : 'Informe uma quantidade válida de tokens',
-                        style: const TextStyle(
-                          color: Colors.black87,
+                        style: TextStyle(
+                          color: themeColors.mutedText,
                           fontSize: 12,
                         ),
                       ),
@@ -335,10 +350,12 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildTotalEstimado() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Total estimado', style: TextStyle(color: Colors.black54)),
+        Text('Total estimado', style: TextStyle(color: themeColors.mutedText)),
         Text(
           'R\$ ${_formatarNumero(_totalEstimado)}',
           style: const TextStyle(
@@ -352,25 +369,28 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildCardSaldo(double saldo) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: _cinza,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Saldo Disponível',
-            style: TextStyle(color: Colors.black54),
+            style: TextStyle(color: themeColors.mutedText),
           ),
           Text(
             'R\$ ${_formatarNumero(saldo)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: colorScheme.onSurface,
             ),
           ),
         ],
@@ -379,15 +399,21 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   }
 
   Widget _buildAvisoSaldo() {
-    return const Row(
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.error_outline, color: Colors.red, size: 22),
-        SizedBox(width: 8),
+        const Icon(Icons.error_outline, color: Colors.red, size: 22),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             'Você não possui saldo suficiente para concluir esta compra. Adicione créditos à sua carteira para continuar.',
-            style: TextStyle(color: Colors.black87, fontSize: 13, height: 1.3),
+            style: TextStyle(
+              color: themeColors.mutedText,
+              fontSize: 13,
+              height: 1.3,
+            ),
           ),
         ),
       ],
@@ -445,6 +471,9 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final colorScheme = Theme.of(context).colorScheme;
+            final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
             Future<void> finalizarCompra() async {
               if (_processandoCompra) return;
 
@@ -509,7 +538,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD3D3D3),
+                  color: themeColors.elevatedSurface,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: SingleChildScrollView(
@@ -529,40 +558,51 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: themeColors.subtleSurface,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text(
+                            child: Text(
                               'X',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Confirme sua identidade para concluir a compra',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'Por segurança, informe sua senha para finalizar a transação e confirmar a aquisição dos tokens.',
-                        style: TextStyle(color: Colors.black87, fontSize: 13),
+                        style: TextStyle(
+                          color: themeColors.mutedText,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         'Digite a sua senha',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: senhaController,
                         obscureText: true,
                         enabled: !_processandoCompra,
+                        style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
-                          fillColor: Colors.white,
+                          fillColor: colorScheme.surface,
                           filled: true,
                           hintText: '••••••',
                           border: OutlineInputBorder(

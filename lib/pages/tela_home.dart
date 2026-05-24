@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../services/auth_session.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'tela_adicionar_credito.dart';
 import 'tela_catalogo.dart';
@@ -88,8 +90,12 @@ class _TelaHomeState extends State<TelaHome> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final themeColors = theme.extension<AppThemeColors>()!;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -129,10 +135,10 @@ class _TelaHomeState extends State<TelaHome> {
                                       _recarregarHome();
                                     }
                                   },
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.account_circle_outlined,
                                     size: 38,
-                                    color: Colors.black87,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -140,9 +146,10 @@ class _TelaHomeState extends State<TelaHome> {
                                   child: Text(
                                     'Olá, $nomeUsuario',
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
+                                      color: colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
@@ -152,7 +159,7 @@ class _TelaHomeState extends State<TelaHome> {
                                   height: 42,
                                   decoration: BoxDecoration(
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
+                                      color: themeColors.panelBorder,
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -187,7 +194,8 @@ class _TelaHomeState extends State<TelaHome> {
                                                   ),
                                                   shape: BoxShape.circle,
                                                   border: Border.all(
-                                                    color: Colors.white,
+                                                    color: themeColors
+                                                        .elevatedSurface,
                                                     width: 1.5,
                                                   ),
                                                 ),
@@ -460,12 +468,12 @@ class _TelaHomeState extends State<TelaHome> {
                                 const SizedBox(height: 24),
                                 _buildGraficoInvestimentos(),
                                 const SizedBox(height: 24),
-                                const Text(
+                                Text(
                                   'Meus Tokens',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -489,14 +497,14 @@ class _TelaHomeState extends State<TelaHome> {
                                       vertical: 18,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEEEEF5),
+                                      color: themeColors.subtleSurface,
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: Text(
                                       'Não foi possível carregar seus tokens.',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: Colors.grey.shade600,
+                                        color: themeColors.mutedText,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -509,14 +517,14 @@ class _TelaHomeState extends State<TelaHome> {
                                       vertical: 18,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEEEEF5),
+                                      color: themeColors.subtleSurface,
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: Text(
                                       'Você não possui tokens no momento',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: Colors.grey.shade600,
+                                        color: themeColors.mutedText,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -535,7 +543,7 @@ class _TelaHomeState extends State<TelaHome> {
                                           vertical: 10,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFEEEEF5),
+                                          color: themeColors.subtleSurface,
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
@@ -551,17 +559,19 @@ class _TelaHomeState extends State<TelaHome> {
                                                 children: [
                                                   Text(
                                                     token.nome,
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       fontSize: 14,
+                                                      color:
+                                                          colorScheme.onSurface,
                                                     ),
                                                   ),
                                                   Text(
                                                     '${_formatarQuantidade(token.quantidade)} tokens',
                                                     style: TextStyle(
                                                       color:
-                                                          Colors.grey.shade500,
+                                                          themeColors.faintText,
                                                       fontSize: 12,
                                                     ),
                                                   ),
@@ -576,9 +586,11 @@ class _TelaHomeState extends State<TelaHome> {
                                                   _formatarMoeda(
                                                     token.valorTotal,
                                                   ),
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
+                                                    color:
+                                                        colorScheme.onSurface,
                                                   ),
                                                 ),
                                                 Text(
@@ -629,84 +641,16 @@ class _TelaHomeState extends State<TelaHome> {
             // ----------------------------------------------------
             // MENU INFERIOR PERSONALIZADO (INTEGRADO NO BUILD)
             // ----------------------------------------------------
-            Container(
-              margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDEDED),
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // BOTÃO HOME
-                  GestureDetector(
-                    onTap: _mostrarHome,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.home_outlined,
-                          color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Home",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 0 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // BOTÃO CATÁLOGO
-                  GestureDetector(
-                    onTap: () => _selecionarAba(1),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.menu_book_outlined,
-                          color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Catálogo",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 1 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // BOTÃO BALCÃO
-                  GestureDetector(
-                    onTap: () => _selecionarAba(2),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.swap_horiz,
-                          color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                        ),
-                        Text(
-                          "Balcão",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: _selectedIndex == 2 ? _roxo : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            AppBottomNav(
+              selectedIndex: _selectedIndex,
+              onItemSelected: (index) {
+                if (index == 0) {
+                  _mostrarHome();
+                } else {
+                  _selecionarAba(index);
+                }
+              },
+              backgroundColor: theme.scaffoldBackgroundColor,
             ),
           ],
         ),
@@ -926,13 +870,15 @@ class _TelaHomeState extends State<TelaHome> {
   ) {
     final altura = MediaQuery.of(context).size.height * 0.82;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
     return SizedBox(
       height: altura,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF5F5FA),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
@@ -941,7 +887,7 @@ class _TelaHomeState extends State<TelaHome> {
               width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: themeColors.panelBorder,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -962,7 +908,7 @@ class _TelaHomeState extends State<TelaHome> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -971,13 +917,16 @@ class _TelaHomeState extends State<TelaHome> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Vendas concluídas e atualizações das suas empresas',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: themeColors.faintText,
+                          ),
                         ),
                       ],
                     ),
@@ -1028,19 +977,23 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Widget _buildEstadoNotificacoes(String mensagem) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Text(
           mensagem,
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          style: TextStyle(color: themeColors.mutedText, fontSize: 13),
         ),
       ),
     );
   }
 
   Widget _buildNotificacaoItem(_NotificacaoHome notificacao) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final cor = notificacao.tipo == _TipoNotificacaoHome.venda
         ? const Color(0xFF059669)
         : _corTipoAtualizacao(notificacao.categoria);
@@ -1052,9 +1005,9 @@ class _TelaHomeState extends State<TelaHome> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        border: Border.all(color: themeColors.panelBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1100,24 +1053,27 @@ class _TelaHomeState extends State<TelaHome> {
                     ),
                     Text(
                       dataExibida,
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(
+                        color: themeColors.faintText,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
                   notificacao.titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   notificacao.startupNome,
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: themeColors.mutedText,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1125,9 +1081,9 @@ class _TelaHomeState extends State<TelaHome> {
                 const SizedBox(height: 6),
                 Text(
                   notificacao.mensagem,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: themeColors.mutedText,
                     height: 1.4,
                   ),
                 ),
@@ -1489,11 +1445,12 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Widget _buildTokenLogo(_TokenResumo token) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final fallback = Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: Colors.grey.shade300,
+        color: themeColors.panelBorder,
         borderRadius: BorderRadius.circular(10),
       ),
       child: const Icon(Icons.business, color: _roxo, size: 24),
@@ -1719,22 +1676,25 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Widget _buildGraficoInvestimentos() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Evolução dos Investimentos',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 10),
@@ -1762,7 +1722,7 @@ class _TelaHomeState extends State<TelaHome> {
                     child: Text(
                       'Nenhuma movimentação no período.',
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: themeColors.faintText,
                         fontSize: 12,
                       ),
                     ),
@@ -1782,6 +1742,7 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Widget _buildFiltrosGrafico() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     const filtros = [
       ('D', 'Diário'),
       ('Se', 'Semanal'),
@@ -1807,14 +1768,14 @@ class _TelaHomeState extends State<TelaHome> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: ativo ? _roxo : const Color(0xFFF0F0F5),
+                color: ativo ? _roxo : themeColors.subtleSurface,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 f.$2,
                 style: TextStyle(
                   fontSize: 11,
-                  color: ativo ? Colors.white : Colors.grey,
+                  color: ativo ? Colors.white : themeColors.faintText,
                   fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -1826,6 +1787,7 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   LineChartData _buildLineChartData(List<_PontoGrafico> pontos) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final spots = List.generate(
       pontos.length,
       (i) => FlSpot(i.toDouble(), pontos[i].valor),
@@ -1839,10 +1801,8 @@ class _TelaHomeState extends State<TelaHome> {
         show: true,
         drawVerticalLine: false,
         horizontalInterval: interval,
-        getDrawingHorizontalLine: (_) => const FlLine(
-          color: Color(0xFFEEEEEE),
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (_) =>
+            FlLine(color: themeColors.panelBorder, strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -1852,7 +1812,7 @@ class _TelaHomeState extends State<TelaHome> {
             interval: interval,
             getTitlesWidget: (val, _) => Text(
               'R\$${_compactarValor(val)}',
-              style: const TextStyle(fontSize: 8, color: Color(0xFFAAAAAA)),
+              style: TextStyle(fontSize: 8, color: themeColors.faintText),
             ),
           ),
         ),
@@ -1872,10 +1832,7 @@ class _TelaHomeState extends State<TelaHome> {
                 space: 4,
                 child: Text(
                   _labelEixoX(pontos[i].data),
-                  style: const TextStyle(
-                    fontSize: 8,
-                    color: Color(0xFF888888),
-                  ),
+                  style: TextStyle(fontSize: 8, color: themeColors.faintText),
                 ),
               );
             },
@@ -1884,9 +1841,7 @@ class _TelaHomeState extends State<TelaHome> {
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
         ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       ),
       borderData: FlBorderData(show: false),
       minY: 0,
@@ -1980,36 +1935,57 @@ class _TelaHomeState extends State<TelaHome> {
       case 'D':
         for (var h = 0; h <= agora.hour; h++) {
           final dt = DateTime(agora.year, agora.month, agora.day, h);
-          pontos.add(_PontoGrafico(dt, buckets[h.toString().padLeft(2, '0')] ?? 0));
+          pontos.add(
+            _PontoGrafico(dt, buckets[h.toString().padLeft(2, '0')] ?? 0),
+          );
         }
         break;
       case 'Se':
         for (var i = 6; i >= 0; i--) {
-          final dt = DateTime(agora.year, agora.month, agora.day)
-              .subtract(Duration(days: i));
-          final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+          final dt = DateTime(
+            agora.year,
+            agora.month,
+            agora.day,
+          ).subtract(Duration(days: i));
+          final key =
+              '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
           pontos.add(_PontoGrafico(dt, buckets[key] ?? 0));
         }
         break;
       case 'M':
         for (var d = 1; d <= agora.day; d++) {
           final dt = DateTime(agora.year, agora.month, d);
-          pontos.add(_PontoGrafico(dt, buckets[d.toString().padLeft(2, '0')] ?? 0));
+          pontos.add(
+            _PontoGrafico(dt, buckets[d.toString().padLeft(2, '0')] ?? 0),
+          );
         }
         break;
       case 'S':
         for (var i = 5; i >= 0; i--) {
           var m = agora.month - i;
           var y = agora.year;
-          if (m <= 0) { m += 12; y--; }
+          if (m <= 0) {
+            m += 12;
+            y--;
+          }
           final dt = DateTime(y, m, 1);
-          pontos.add(_PontoGrafico(dt, buckets['$y-${m.toString().padLeft(2, '0')}'] ?? 0));
+          pontos.add(
+            _PontoGrafico(
+              dt,
+              buckets['$y-${m.toString().padLeft(2, '0')}'] ?? 0,
+            ),
+          );
         }
         break;
       case 'A':
         for (var m = 1; m <= agora.month; m++) {
           final dt = DateTime(agora.year, m, 1);
-          pontos.add(_PontoGrafico(dt, buckets['${agora.year}-${m.toString().padLeft(2, '0')}'] ?? 0));
+          pontos.add(
+            _PontoGrafico(
+              dt,
+              buckets['${agora.year}-${m.toString().padLeft(2, '0')}'] ?? 0,
+            ),
+          );
         }
         break;
     }
@@ -2019,28 +1995,47 @@ class _TelaHomeState extends State<TelaHome> {
 
   String _bucketKey(DateTime dt, String filtro) {
     switch (filtro) {
-      case 'D':  return dt.hour.toString().padLeft(2, '0');
-      case 'Se': return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      case 'M':  return dt.day.toString().padLeft(2, '0');
-      default:   return '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
+      case 'D':
+        return dt.hour.toString().padLeft(2, '0');
+      case 'Se':
+        return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      case 'M':
+        return dt.day.toString().padLeft(2, '0');
+      default:
+        return '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
     }
   }
 
   String _labelEixoX(DateTime dt) {
     switch (_filtroGrafico) {
-      case 'D':  return '${dt.hour}h';
+      case 'D':
+        return '${dt.hour}h';
       case 'Se':
-        const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
         return dias[dt.weekday % 7];
-      case 'M':  return dt.day.toString().padLeft(2, '0');
+      case 'M':
+        return dt.day.toString().padLeft(2, '0');
       default:
-        const m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const m = [
+          'Jan',
+          'Fev',
+          'Mar',
+          'Abr',
+          'Mai',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Set',
+          'Out',
+          'Nov',
+          'Dez',
+        ];
         return m[dt.month - 1];
     }
   }
 
   double _intervaloXLabel(int count) {
-    if (count <= 7)  return 1;
+    if (count <= 7) return 1;
     if (count <= 14) return 2;
     if (count <= 21) return 3;
     return (count / 5).ceilToDouble();
@@ -2138,7 +2133,6 @@ class _StartupResumo {
   final String logoUrl;
   final String logoStoragePath;
 }
-
 
 class _PontoGrafico {
   const _PontoGrafico(this.data, this.valor);

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'pages/tela_inicial.dart';
+import 'services/app_theme_controller.dart';
+import 'theme/app_theme.dart';
 
 // import 'pages/tela_balcao_compra.dart';
 // import 'pages/tela_home.dart';
@@ -16,6 +18,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await AppThemeController.instance.load();
 
   if (!kIsWeb &&
       kDebugMode &&
@@ -33,15 +36,19 @@ class MeuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false, // Tira a faixa de "DEBUG" da tela
-      title: 'Mescla invest',
-      scrollBehavior: const _SemOverscrollElastic(),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true, // Usa o design mais recente do Google
-      ),
-      home: const TelaInicial(),
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false, // Tira a faixa de "DEBUG" da tela
+          title: 'Mescla invest',
+          scrollBehavior: const _SemOverscrollElastic(),
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: AppThemeController.instance.themeMode,
+          home: const TelaInicial(),
+        );
+      },
     );
   }
 }

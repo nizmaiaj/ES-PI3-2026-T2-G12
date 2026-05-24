@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 
 class TelaEsqueciSenha extends StatefulWidget {
   const TelaEsqueciSenha({super.key});
@@ -50,13 +51,19 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
+            colors: isDark
+                ? const [Color(0xFF101116), Color(0xFF1C2030)]
+                : const [Color(0xFFF0F0F7), Color(0xFFC2CEF5)],
           ),
         ),
         child: SafeArea(
@@ -80,38 +87,40 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                       const SizedBox(height: 4),
                       Image.asset('assets/logo_mescla.png', height: 70),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'MesclaInvest',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 24),
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECEDF5),
+                          color: themeColors.subtleSurface,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             children: [
-                              const Text(
+                              Text(
                                 'Esqueci a senha',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              const Text(
+                              Text(
                                 'Digite seu e-mail para receber o link de recuperação',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.black54,
+                                  color: themeColors.mutedText,
                                 ),
                               ),
                               const SizedBox(height: 24),
@@ -153,8 +162,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
-                                  onPressed:
-                                      _carregando ? null : _enviarEmail,
+                                  onPressed: _carregando ? null : _enviarEmail,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF4C3BCF),
                                     shape: RoundedRectangleBorder(
@@ -169,8 +177,8 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
                                             strokeWidth: 2.5,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : const Text(
@@ -216,10 +224,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(
-            message,
-            style: TextStyle(color: color, fontSize: 13),
-          ),
+          child: Text(message, style: TextStyle(color: color, fontSize: 13)),
         ),
       ],
     );
@@ -232,15 +237,17 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
     TextInputType? keyboard,
     String? Function(String?)? validator,
   }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 6),
@@ -249,9 +256,9 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
           keyboardType: keyboard,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.grey),
+            hintStyle: TextStyle(color: themeColors.faintText),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).colorScheme.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 20,
               vertical: 16,
@@ -266,7 +273,10 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFF4C3BCF), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF4C3BCF),
+                width: 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
