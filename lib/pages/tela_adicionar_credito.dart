@@ -6,6 +6,7 @@ import 'package:flutter/services.dart'
 import 'tela_home.dart';
 import '../services/auth_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_bottom_nav.dart';
 
 class TelaAdicionarCredito extends StatefulWidget {
   const TelaAdicionarCredito({super.key});
@@ -74,7 +75,12 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
                         fontWeight: FontWeight.bold,
                       ),
                       decoration: InputDecoration(
+                        labelText: 'Valor do depósito',
                         hintText: 'R\$ 0,00',
+                        labelStyle: TextStyle(
+                          color: themeColors.mutedText,
+                          fontSize: 13,
+                        ),
                         hintStyle: TextStyle(
                           color: themeColors.faintText,
                           fontSize: 26,
@@ -138,7 +144,8 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
         children: [
           IconButton(
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            tooltip: 'Voltar',
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
             iconSize: 24,
             onPressed: () => Navigator.pop(context),
@@ -160,34 +167,51 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
   }
 
   Widget _buildConfirmarButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(60, 0, 60, 76),
-      child: SizedBox(
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return SafeArea(
+      top: false,
+      child: Container(
         width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          onPressed: _salvandoCredito ? null : _adicionarCredito,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _roxo,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+        decoration: BoxDecoration(
+          color: themeColors.elevatedSurface,
+          border: Border(top: BorderSide(color: themeColors.panelBorder)),
+          boxShadow: [
+            BoxShadow(
+              color: themeColors.shadow.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
             ),
-          ),
-          child: _salvandoCredito
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _salvandoCredito ? null : _adicionarCredito,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _roxo,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _salvandoCredito
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Confirmar depósito',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
-                )
-              : const Text(
-                  'Confirmar depósito',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
+          ),
         ),
       ),
     );
@@ -336,63 +360,12 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
   }
 
   Widget _buildBottomNav(BuildContext context) {
-    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
-    final inactiveColor = Theme.of(context).colorScheme.onSurface;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(40, 0, 40, 25),
-      height: 70,
-      decoration: BoxDecoration(
-        color: themeColors.navSurface,
-        borderRadius: BorderRadius.circular(35),
-        boxShadow: [
-          BoxShadow(
-            color: themeColors.shadow.withValues(alpha: 0.45),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.home_outlined, color: _roxo),
-                Text("Home", style: TextStyle(fontSize: 10, color: _roxo)),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.menu_book_outlined, color: inactiveColor),
-                Text(
-                  "Catálogo",
-                  style: TextStyle(fontSize: 10, color: inactiveColor),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.swap_horiz, color: inactiveColor),
-                Text(
-                  "Balcão",
-                  style: TextStyle(fontSize: 10, color: inactiveColor),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return AppBottomNav(
+      selectedIndex: 0,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      onItemSelected: (index) {
+        if (index == 0) Navigator.pop(context);
+      },
     );
   }
 }

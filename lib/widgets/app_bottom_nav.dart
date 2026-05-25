@@ -19,12 +19,13 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return Container(
       color: backgroundColor,
-      padding: const EdgeInsets.fromLTRB(40, 0, 40, 25),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, 14 + bottomPadding),
       child: Container(
-        height: 70,
+        constraints: const BoxConstraints(minHeight: 72),
         decoration: BoxDecoration(
           color: themeColors.navSurface,
           borderRadius: BorderRadius.circular(35),
@@ -82,17 +83,39 @@ class _AppBottomNavItem extends StatelessWidget {
         ? AppBottomNav._primaryColor
         : Theme.of(context).colorScheme.onSurface;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color),
-            Text(label, style: TextStyle(fontSize: 10, color: color)),
-          ],
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 72, minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

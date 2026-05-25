@@ -32,9 +32,12 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
   final VideoThumbnailCache _thumbnailCache = VideoThumbnailCache();
   final Map<String, Future<String?>> _logoUrlFutures = {};
+  final ScrollController _tabsScrollController = ScrollController();
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoPreloadSubscription;
   int _conteudoPreloadVersao = 0;
+  bool _tabsPodeRolarInicio = false;
+  bool _tabsPodeRolarFim = false;
 
   static const _azulPrimario = Color(0xFF3F51B5);
 
@@ -65,6 +68,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   @override
   void initState() {
     super.initState();
+    _tabsScrollController.addListener(_atualizarIndicadoresTabs);
     _iniciarPreloadConteudo();
   }
 
@@ -79,8 +83,42 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   @override
   void dispose() {
     _conteudoPreloadSubscription?.cancel();
+    _tabsScrollController.dispose();
     _thumbnailCache.dispose();
     super.dispose();
+  }
+
+  void _atualizarIndicadoresTabs() {
+    if (!mounted || !_tabsScrollController.hasClients) return;
+
+    final position = _tabsScrollController.position;
+    final podeRolarInicio = position.pixels > 1;
+    final podeRolarFim = position.pixels < position.maxScrollExtent - 1;
+
+    if (_tabsPodeRolarInicio == podeRolarInicio &&
+        _tabsPodeRolarFim == podeRolarFim) {
+      return;
+    }
+
+    setState(() {
+      _tabsPodeRolarInicio = podeRolarInicio;
+      _tabsPodeRolarFim = podeRolarFim;
+    });
+  }
+
+  void _rolarTabs(int direcao) {
+    if (!_tabsScrollController.hasClients) return;
+
+    final position = _tabsScrollController.position;
+    final destino = (position.pixels + (direcao * 140))
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+
+    _tabsScrollController.animateTo(
+      destino,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _iniciarPreloadConteudo() {
@@ -193,7 +231,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         children: [
           IconButton(
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            tooltip: 'Voltar',
             icon: const Icon(
               Icons.arrow_back_ios,
               color: Colors.white,
@@ -221,6 +260,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           Expanded(
             child: Text(
               widget.startup['nome'] ?? 'Nome da Startup',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -287,10 +328,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   Widget _buildStatsCard() {
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final precoToken = _formatarPrecoToken();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
         color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(18),
@@ -302,47 +344,110 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          _buildStatItem(Icons.sell_outlined, 'Preço do Token', 'R\$ 50,00'),
-          _buildDivisor(),
-          _buildStatItem(
-            Icons.toll_outlined,
-            'Tokens emitidos',
-            widget.startup['tokens'] ?? '1.700',
-          ),
-          _buildDivisor(),
-          _buildStatItem(
-            Icons.account_balance_outlined,
-            'Capital aportado',
-            'R\$ ${widget.startup['capital'] ?? '10.000,00'}',
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compacto = constraints.maxWidth < 360;
+
+          if (!compacto) {
+            return Row(
+              children: [
+                _buildStatItem(
+                  Icons.sell_outlined,
+                  'Preço do Token',
+                  precoToken,
+                ),
+                _buildDivisor(),
+                _buildStatItem(
+                  Icons.toll_outlined,
+                  'Tokens emitidos',
+                  widget.startup['tokens'] ?? 'Não informado',
+                ),
+                _buildDivisor(),
+                _buildStatItem(
+                  Icons.account_balance_outlined,
+                  'Capital aportado',
+                  'R\$ ${widget.startup['capital'] ?? '0,00'}',
+                ),
+              ],
+            );
+          }
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 116,
+                  child: _buildStatItem(
+                    Icons.sell_outlined,
+                    'Preço do Token',
+                    precoToken,
+                    expanded: false,
+                  ),
+                ),
+                _buildDivisor(),
+                SizedBox(
+                  width: 116,
+                  child: _buildStatItem(
+                    Icons.toll_outlined,
+                    'Tokens emitidos',
+                    widget.startup['tokens'] ?? 'Não informado',
+                    expanded: false,
+                  ),
+                ),
+                _buildDivisor(),
+                SizedBox(
+                  width: 130,
+                  child: _buildStatItem(
+                    Icons.account_balance_outlined,
+                    'Capital aportado',
+                    'R\$ ${widget.startup['capital'] ?? '0,00'}',
+                    expanded: false,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatItem(IconData icon, String label, String valor) {
+  Widget _buildStatItem(
+    IconData icon,
+    String label,
+    String valor, {
+    bool expanded = true,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
-    return Expanded(
+    final content = Semantics(
+      label: '$label: $valor',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: _azulPrimario, size: 22),
+          ExcludeSemantics(child: Icon(icon, color: _azulPrimario, size: 22)),
           const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 9, color: themeColors.faintText),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: themeColors.mutedText,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
             valor,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: colorScheme.onSurface,
             ),
@@ -350,6 +455,8 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         ],
       ),
     );
+
+    return expanded ? Expanded(child: content) : content;
   }
 
   Widget _buildDivisor() => Container(
@@ -363,43 +470,117 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   Widget _buildTabs() {
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _atualizarIndicadoresTabs();
+    });
+
     return Container(
       margin: const EdgeInsets.only(top: 14),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: themeColors.panelBorder)),
       ),
-      child: Row(
-        children: _tabs.map((tab) {
-          final ativo = _tabAtiva == tab;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _tabAtiva = tab),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: ativo ? _azulPrimario : Colors.transparent,
-                      width: 2.5,
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            controller: _tabsScrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: _tabs.map((tab) {
+                final ativo = _tabAtiva == tab;
+                return Semantics(
+                  button: true,
+                  selected: ativo,
+                  label: 'Aba $tab',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => setState(() => _tabAtiva = tab),
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 108,
+                          minHeight: 48,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: ativo ? _azulPrimario : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          tab,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: ativo
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: ativo
+                                ? _azulPrimario
+                                : themeColors.mutedText,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    tab,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: ativo ? FontWeight.bold : FontWeight.normal,
-                      color: ativo ? _azulPrimario : themeColors.faintText,
-                    ),
-                  ),
-                ),
+                );
+              }).toList(),
+            ),
+          ),
+          if (_tabsPodeRolarInicio) _buildIndicadorRolarTabs(esquerda: true),
+          if (_tabsPodeRolarFim) _buildIndicadorRolarTabs(esquerda: false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIndicadorRolarTabs({required bool esquerda}) {
+    final background = Theme.of(context).scaffoldBackgroundColor;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      left: esquerda ? 0 : null,
+      right: esquerda ? null : 0,
+      child: Container(
+        width: 52,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: esquerda ? Alignment.centerLeft : Alignment.centerRight,
+            end: esquerda ? Alignment.centerRight : Alignment.centerLeft,
+            colors: [
+              background.withValues(alpha: 0.98),
+              background.withValues(alpha: 0),
+            ],
+          ),
+        ),
+        alignment: esquerda ? Alignment.centerLeft : Alignment.centerRight,
+        child: Tooltip(
+          message: esquerda ? 'Ver abas anteriores' : 'Ver mais abas',
+          child: IconButton(
+            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+            padding: EdgeInsets.zero,
+            iconSize: 22,
+            onPressed: () => _rolarTabs(esquerda ? -1 : 1),
+            style: IconButton.styleFrom(
+              backgroundColor: themeColors.elevatedSurface,
+              foregroundColor: _azulPrimario,
+              side: BorderSide(color: themeColors.panelBorder),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
               ),
             ),
-          );
-        }).toList(),
+            icon: Icon(esquerda ? Icons.chevron_left : Icons.chevron_right),
+          ),
+        ),
       ),
     );
   }
@@ -436,5 +617,45 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
         ),
       ),
     );
+  }
+
+  String _formatarPrecoToken() {
+    final preco = _numero(
+      widget.startup['valorToken'] ??
+          widget.startup['precoToken'] ??
+          widget.startup['preco'],
+    );
+
+    if (preco <= 0) return 'Não informado';
+    return _formatarMoeda(preco);
+  }
+
+  double _numero(String? value) {
+    if (value == null) return 0;
+
+    final text = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
+    if (text.isEmpty) return 0;
+
+    final normalized = text.contains(',')
+        ? text.replaceAll('.', '').replaceAll(',', '.')
+        : text;
+    return double.tryParse(normalized) ?? 0;
+  }
+
+  String _formatarMoeda(double valor) {
+    final partes = valor.toStringAsFixed(2).split('.');
+    final reais = partes.first;
+    final centavos = partes.last;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < reais.length; i++) {
+      final posicaoRestante = reais.length - i;
+      buffer.write(reais[i]);
+      if (posicaoRestante > 1 && posicaoRestante % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+
+    return 'R\$ ${buffer.toString()},$centavos';
   }
 }

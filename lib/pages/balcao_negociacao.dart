@@ -10,6 +10,8 @@ import 'balcao_minhasordens.dart';
 import 'balcao_venda.dart';
 import 'no_animation_route.dart';
 
+enum _BalcaoSecao { compras, vendas, meusTokens }
+
 class BalcaoNegociacao extends StatefulWidget {
   final Function(int)? onNavigate;
   final VoidCallback? onCarteiraAlterada;
@@ -27,6 +29,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final BalcaoService _balcaoService = BalcaoService();
   bool _processando = false;
+  _BalcaoSecao _secaoAtiva = _BalcaoSecao.compras;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -191,67 +194,196 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSwitchBalcao(),
-          const SizedBox(height: 30),
-          _buildTituloSecao('Ofertas de Compras Abertas'),
-          const SizedBox(height: 20),
-          if (startups.isEmpty)
-            _buildMensagemLista('Nenhuma startup disponível para compra.')
-          else
-            ...startups.map(
-              (startup) => _OfertaCard(
-                nome: startup.nome,
-                quantidade: startup.quantidadeDisponivel,
-                valorToken: startup.valorToken,
-                botaoTexto: 'Comprar',
-                botaoCor: _azulPrimario,
-                bloqueado: _processando,
-                onPressed: () => _abrirOfertasDaStartup(
-                  startup,
-                  tokensCarteira: holdings[startup.id]?.quantidade ?? 0,
-                ),
-              ),
-            ),
-          const SizedBox(height: 50),
-          _buildTituloSecao('Ofertas de Vendas Abertas'),
-          const SizedBox(height: 26),
-          if (ofertasVenda.isEmpty)
-            _buildMensagemLista('Nenhuma oferta de venda aberta no momento.')
-          else
-            ...ofertasVenda.map(
-              (ordem) => _OfertaCard(
-                nome: ordem.nomeStartup,
-                quantidade: ordem.quantidadeRestante,
-                valorToken: ordem.preco,
-                botaoTexto: 'Comprar',
-                botaoCor: _azulPrimario,
-                bloqueado: _processando,
-                onPressed: () => _confirmarCompraOrdemVenda(uid, ordem),
-              ),
-            ),
-          const SizedBox(height: 50),
-          _buildTituloSecao('Meus tokens disponíveis para venda'),
-          const SizedBox(height: 26),
-          if (tokensParaVenda.isEmpty)
-            _buildMensagemLista(
-              'Você não possui tokens disponíveis para venda.',
-            )
-          else
-            ...tokensParaVenda.map((startup) {
-              final holding = holdings[startup.id]!;
-
-              return _OfertaCard(
-                nome: startup.nome,
-                quantidade: holding.quantidade,
-                valorToken: startup.valorToken,
-                botaoTexto: 'Vender',
-                botaoCor: _rosaVenda,
-                bloqueado: _processando,
-                onPressed: () =>
-                    _abrirVenda(startup, tokensDisponiveis: holding.quantidade),
-              );
-            }),
+          const SizedBox(height: 24),
+          _buildFiltroSecoes(
+            compras: startups.length,
+            vendas: ofertasVenda.length,
+            meusTokens: tokensParaVenda.length,
+          ),
+          const SizedBox(height: 24),
+          _buildSecaoSelecionada(
+            uid: uid,
+            startups: startups,
+            holdings: holdings,
+            ofertasVenda: ofertasVenda,
+            tokensParaVenda: tokensParaVenda,
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFiltroSecoes({
+    required int compras,
+    required int vendas,
+    required int meusTokens,
+  }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Escolha uma lista',
+          style: TextStyle(
+            color: themeColors.mutedText,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<_BalcaoSecao>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: _BalcaoSecao.compras,
+                label: Text('Compras ($compras)'),
+                icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+              ),
+              ButtonSegment(
+                value: _BalcaoSecao.vendas,
+                label: Text('Vendas ($vendas)'),
+                icon: const Icon(Icons.sell_outlined, size: 18),
+              ),
+              ButtonSegment(
+                value: _BalcaoSecao.meusTokens,
+                label: Text('Meus tokens ($meusTokens)'),
+                icon: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 18,
+                ),
+              ),
+            ],
+            selected: {_secaoAtiva},
+            onSelectionChanged: (selection) {
+              setState(() => _secaoAtiva = selection.first);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecaoSelecionada({
+    required String uid,
+    required List<_StartupOferta> startups,
+    required Map<String, _HoldingToken> holdings,
+    required List<_OrdemVendaAberta> ofertasVenda,
+    required List<_StartupOferta> tokensParaVenda,
+  }) {
+    switch (_secaoAtiva) {
+      case _BalcaoSecao.compras:
+        return _buildSecaoCompras(startups, holdings);
+      case _BalcaoSecao.vendas:
+        return _buildSecaoVendas(uid, ofertasVenda);
+      case _BalcaoSecao.meusTokens:
+        return _buildSecaoMeusTokens(tokensParaVenda, holdings);
+    }
+  }
+
+  Widget _buildSecaoCompras(
+    List<_StartupOferta> startups,
+    Map<String, _HoldingToken> holdings,
+  ) {
+    return _buildSecaoLista(
+      titulo: 'Ofertas de compras abertas',
+      subtitulo: 'Startups disponíveis para compra direta de tokens.',
+      vazio: 'Nenhuma startup disponível para compra.',
+      temItens: startups.isNotEmpty,
+      children: startups
+          .map(
+            (startup) => _OfertaCard(
+              nome: startup.nome,
+              quantidade: startup.quantidadeDisponivel,
+              valorToken: startup.valorToken,
+              botaoTexto: 'Comprar',
+              botaoCor: _azulPrimario,
+              bloqueado: _processando,
+              onPressed: () => _abrirOfertasDaStartup(
+                startup,
+                tokensCarteira: holdings[startup.id]?.quantidade ?? 0,
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSecaoVendas(String uid, List<_OrdemVendaAberta> ofertasVenda) {
+    return _buildSecaoLista(
+      titulo: 'Ofertas de vendas abertas',
+      subtitulo: 'Ordens publicadas por outros investidores no balcão.',
+      vazio: 'Nenhuma oferta de venda aberta no momento.',
+      temItens: ofertasVenda.isNotEmpty,
+      children: ofertasVenda
+          .map(
+            (ordem) => _OfertaCard(
+              nome: ordem.nomeStartup,
+              quantidade: ordem.quantidadeRestante,
+              valorToken: ordem.preco,
+              botaoTexto: 'Comprar',
+              botaoCor: _azulPrimario,
+              bloqueado: _processando,
+              onPressed: () => _confirmarCompraOrdemVenda(uid, ordem),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSecaoMeusTokens(
+    List<_StartupOferta> tokensParaVenda,
+    Map<String, _HoldingToken> holdings,
+  ) {
+    return _buildSecaoLista(
+      titulo: 'Meus tokens disponíveis para venda',
+      subtitulo: 'Tokens da sua carteira que podem virar uma ordem de venda.',
+      vazio: 'Você não possui tokens disponíveis para venda.',
+      temItens: tokensParaVenda.isNotEmpty,
+      children: tokensParaVenda.map((startup) {
+        final holding = holdings[startup.id]!;
+
+        return _OfertaCard(
+          nome: startup.nome,
+          quantidade: holding.quantidade,
+          valorToken: startup.valorToken,
+          botaoTexto: 'Vender',
+          botaoCor: _rosaVenda,
+          bloqueado: _processando,
+          onPressed: () =>
+              _abrirVenda(startup, tokensDisponiveis: holding.quantidade),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSecaoLista({
+    required String titulo,
+    required String subtitulo,
+    required String vazio,
+    required bool temItens,
+    required List<Widget> children,
+  }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTituloSecao(titulo),
+        const SizedBox(height: 6),
+        Text(
+          subtitulo,
+          style: TextStyle(
+            color: themeColors.mutedText,
+            fontSize: 12,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 18),
+        if (!temItens) _buildMensagemLista(vazio) else ...children,
+      ],
     );
   }
 
@@ -509,95 +641,162 @@ class _OfertaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final total = valorToken * quantidade;
 
     return Container(
-      margin: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-      padding: const EdgeInsets.fromLTRB(20, 9, 12, 9),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 112),
       decoration: BoxDecoration(
         color: themeColors.elevatedSurface,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: themeColors.panelBorder),
         boxShadow: [
           BoxShadow(
-            color: themeColors.shadow,
-            blurRadius: 5,
+            color: themeColors.shadow.withValues(alpha: 0.35),
+            blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 8,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compacto = constraints.maxWidth < 340;
+          final info = Semantics(
+            label:
+                '$nome, $quantidade tokens, preço por token ${_formatarMoeda(valorToken)}',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   nome,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 15,
+                    height: 1.2,
                     fontWeight: FontWeight.w800,
                     color: colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  'Qtd de tokens: $quantidade',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 8, color: themeColors.mutedText),
+                const SizedBox(height: 12),
+                _OfertaInfoLinha(
+                  label: 'Quantidade',
+                  valor: '$quantidade tokens',
+                ),
+                const SizedBox(height: 6),
+                _OfertaInfoLinha(
+                  label: 'Preço por token',
+                  valor: _formatarMoeda(valorToken),
+                ),
+                const SizedBox(height: 6),
+                _OfertaInfoLinha(
+                  label: 'Total estimado',
+                  valor: _formatarMoeda(total),
+                  destaque: true,
+                  destaqueCor: botaoCor,
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _formatarMoeda(valorToken),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '/Token',
-                  style: TextStyle(fontSize: 8, color: themeColors.mutedText),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 65,
-            height: 31,
+          );
+          final acao = SizedBox(
+            width: compacto ? double.infinity : 124,
+            height: 48,
             child: ElevatedButton(
               onPressed: bloqueado ? null : onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: botaoCor,
                 disabledBackgroundColor: botaoCor.withValues(alpha: 0.45),
+                foregroundColor: Colors.white,
                 elevation: 0,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: Text(
                 botaoTexto,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
-        ],
+          );
+
+          if (compacto) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [info, const SizedBox(height: 14), acao],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: info),
+              const SizedBox(width: 16),
+              acao,
+            ],
+          );
+        },
       ),
+    );
+  }
+}
+
+class _OfertaInfoLinha extends StatelessWidget {
+  const _OfertaInfoLinha({
+    required this.label,
+    required this.valor,
+    this.destaque = false,
+    this.destaqueCor,
+  });
+
+  final String label;
+  final String valor;
+  final bool destaque;
+  final Color? destaqueCor;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: themeColors.mutedText,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            valor,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: destaque ? 14 : 13,
+              fontWeight: destaque ? FontWeight.w800 : FontWeight.w700,
+              color: destaque
+                  ? destaqueCor ?? colorScheme.primary
+                  : colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

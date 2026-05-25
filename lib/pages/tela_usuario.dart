@@ -311,57 +311,41 @@ class _TelaUsuarioState extends State<TelaUsuario> {
                   child: ThemeModeSelector(),
                 ),
                 const SizedBox(height: 26),
-                Text(
-                  'Verificação em duas etapas',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.onSurface,
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Adicione uma camada extra de segurança à sua conta.',
-                  style: TextStyle(fontSize: 12, color: themeColors.mutedText),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Ao ativar a verificação em duas etapas (2FA), será necessário confirmar sua identidade durante o login utilizando um código de verificação.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: themeColors.mutedText,
-                    height: 1.25,
+                  tileColor: themeColors.subtleSurface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: themeColors.panelBorder),
                   ),
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Ativar Verificação em Duas Etapas',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurface,
-                        ),
+                  secondary: const Icon(Icons.security_outlined, color: _roxo),
+                  title: Text(
+                    'Verificação em duas etapas',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Código por SMS para confirmar sua identidade durante o login.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: themeColors.mutedText,
+                        height: 1.35,
                       ),
                     ),
-                    Switch(
-                      value: mfaHabilitado,
-                      thumbColor: WidgetStateProperty.resolveWith((states) {
-                        return Colors.white;
-                      }),
-                      trackColor: WidgetStateProperty.resolveWith((states) {
-                        if (states.contains(WidgetState.selected)) {
-                          return _roxo;
-                        }
-                        return Colors.grey.shade400;
-                      }),
-                      // Ao clicar, grava o novo valor do 2FA no Firestore.
-                      onChanged: _salvandoMfa
-                          ? null
-                          : (value) => _alterarMfa(value, telefone),
-                    ),
-                  ],
+                  ),
+                  value: mfaHabilitado,
+                  activeThumbColor: _roxo,
+                  onChanged: _salvandoMfa
+                      ? null
+                      : (value) => _alterarMfa(value, telefone),
                 ),
                 if (_erro != null) ...[
                   const SizedBox(height: 12),

@@ -135,13 +135,12 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                       const SizedBox(height: 16),
                       _buildAvisoSaldo(),
                     ],
-                    const SizedBox(height: 32),
-                    _buildBotaoComprar(podeComprar, qtd, saldo),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 104),
                   ],
                 ),
               ),
             ),
+            _buildCompraFooter(podeComprar, qtd, saldo),
           ],
         ),
       ),
@@ -420,6 +419,68 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     );
   }
 
+  Widget _buildCompraFooter(bool podeComprar, int qtd, double saldo) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+        decoration: BoxDecoration(
+          color: themeColors.elevatedSurface,
+          border: Border(top: BorderSide(color: themeColors.panelBorder)),
+          boxShadow: [
+            BoxShadow(
+              color: themeColors.shadow.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                label: 'Total estimado da compra',
+                value: 'R\$ ${_formatarNumero(_totalEstimado)}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Total estimado',
+                      style: TextStyle(
+                        color: themeColors.mutedText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'R\$ ${_formatarNumero(_totalEstimado)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _azulPrimario,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            SizedBox(
+              width: 160,
+              child: _buildBotaoComprar(podeComprar, qtd, saldo),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBotaoComprar(bool podeComprar, int qtd, double saldo) {
     return SizedBox(
       width: double.infinity,
@@ -548,25 +609,16 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                     children: [
                       Align(
                         alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: _processandoCompra
+                        child: IconButton(
+                          tooltip: 'Fechar confirmação',
+                          onPressed: _processandoCompra
                               ? null
                               : () => Navigator.of(dialogContext).pop(false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: themeColors.subtleSurface,
+                          icon: Icon(Icons.close, color: colorScheme.onSurface),
+                          style: IconButton.styleFrom(
+                            backgroundColor: themeColors.subtleSurface,
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'X',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                              ),
                             ),
                           ),
                         ),
@@ -600,8 +652,11 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                         controller: senhaController,
                         obscureText: true,
                         enabled: !_processandoCompra,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => finalizarCompra(),
                         style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
+                          labelText: 'Senha',
                           fillColor: colorScheme.surface,
                           filled: true,
                           hintText: '••••••',

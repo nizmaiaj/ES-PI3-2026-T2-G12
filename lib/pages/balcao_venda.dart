@@ -104,12 +104,12 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
                     const SizedBox(height: 14),
                     if (!_temTokens || !_quantidadeDentroDaCarteira)
                       _buildAvisoSaldoInsuficiente(),
-                    const SizedBox(height: 24),
-                    _buildBotaoVender(),
+                    const SizedBox(height: 104),
                   ],
                 ),
               ),
             ),
+            _buildVendaFooter(),
           ],
         ),
       ),
@@ -343,29 +343,143 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
     );
   }
 
-  Widget _buildBotaoVender() {
-    return Center(
-      child: SizedBox(
-        width: 230,
-        height: 48,
-        child: ElevatedButton(
-          onPressed: _podeVender ? _registrarVenda : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _rosaVenda,
-            disabledBackgroundColor: _rosaVenda.withValues(alpha: 0.35),
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+  Widget _buildVendaFooter() {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+        decoration: BoxDecoration(
+          color: themeColors.elevatedSurface,
+          border: Border(top: BorderSide(color: themeColors.panelBorder)),
+          boxShadow: [
+            BoxShadow(
+              color: themeColors.shadow.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
             ),
-          ),
-          child: Text(
-            _processando ? 'Publicando...' : 'Vender',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                label: 'Total estimado da venda',
+                value: _formatarMoeda(_totalEstimado),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Total estimado',
+                      style: TextStyle(
+                        color: themeColors.mutedText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatarMoeda(_totalEstimado),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _rosaVenda,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            SizedBox(width: 160, child: _buildBotaoVender()),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildBotaoVender() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _podeVender ? _confirmarVenda : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _rosaVenda,
+          disabledBackgroundColor: _rosaVenda.withValues(alpha: 0.35),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          _processando ? 'Publicando...' : 'Vender',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmarVenda() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final colorScheme = Theme.of(dialogContext).colorScheme;
+        final themeColors = Theme.of(
+          dialogContext,
+        ).extension<AppThemeColors>()!;
+
+        return AlertDialog(
+          title: const Text('Publicar ordem de venda?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _nomeStartup,
+                style: TextStyle(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _ConfirmacaoVendaLinha(
+                label: 'Quantidade',
+                valor: '$_quantidadeInformada tokens',
+              ),
+              _ConfirmacaoVendaLinha(
+                label: 'Preço por token',
+                valor: _formatarMoeda(_precoInformado),
+              ),
+              Divider(color: themeColors.panelBorder),
+              _ConfirmacaoVendaLinha(
+                label: 'Total estimado',
+                valor: _formatarMoeda(_totalEstimado),
+                destaque: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(backgroundColor: _rosaVenda),
+              child: const Text('Publicar venda'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmado == true) {
+      await _registrarVenda();
+    }
   }
 
   Future<void> _registrarVenda() async {
@@ -432,6 +546,52 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 }
 
+class _ConfirmacaoVendaLinha extends StatelessWidget {
+  const _ConfirmacaoVendaLinha({
+    required this.label,
+    required this.valor,
+    this.destaque = false,
+  });
+
+  final String label;
+  final String valor;
+  final bool destaque;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: themeColors.mutedText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            valor,
+            style: TextStyle(
+              color: destaque
+                  ? _BalcaoVendaState._rosaVenda
+                  : colorScheme.onSurface,
+              fontSize: destaque ? 14 : 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EntradaNegociacao extends StatelessWidget {
   const _EntradaNegociacao({
     required this.controller,
@@ -449,7 +609,7 @@ class _EntradaNegociacao extends StatelessWidget {
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
     return SizedBox(
-      height: 44,
+      height: 48,
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,

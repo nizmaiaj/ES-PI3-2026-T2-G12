@@ -167,12 +167,13 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => setState(() => _chatAberto = false),
-                child: const Icon(
+              IconButton(
+                tooltip: 'Voltar para perguntas',
+                onPressed: () => setState(() => _chatAberto = false),
+                icon: const Icon(
                   Icons.arrow_back_ios,
                   color: Colors.grey,
-                  size: 16,
+                  size: 18,
                 ),
               ),
             ],
@@ -230,85 +231,94 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final expandido = _expandidas.contains(p.id);
-    return GestureDetector(
-      onTap: () => setState(() {
-        if (expandido) {
-          _expandidas.remove(p.id);
-        } else {
-          _expandidas.add(p.id);
-        }
-      }),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: themeColors.elevatedSurface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDE7F6),
-                borderRadius: BorderRadius.circular(18),
+    return Semantics(
+      button: true,
+      expanded: expandido,
+      label: 'Pergunta de ${p.nomeUsuario.isEmpty ? 'usuário' : p.nomeUsuario}',
+      child: GestureDetector(
+        onTap: () => setState(() {
+          if (expandido) {
+            _expandidas.remove(p.id);
+          } else {
+            _expandidas.add(p.id);
+          }
+        }),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: themeColors.elevatedSurface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE7F6),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: kVgAzul,
+                  size: 20,
+                ),
               ),
-              child: const Icon(Icons.person_outline, color: kVgAzul, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (p.nomeUsuario.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (p.nomeUsuario.isNotEmpty) ...[
+                      Text(
+                        p.nomeUsuario,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: themeColors.faintText,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                    ],
                     Text(
-                      p.nomeUsuario,
+                      p.texto,
                       style: TextStyle(
-                        fontSize: 11,
-                        color: themeColors.faintText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                  ],
-                  Text(
-                    p.texto,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  if (expandido) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      p.respostaExibida,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: p.foiRespondida
-                            ? themeColors.mutedText
-                            : themeColors.faintText,
-                        fontStyle: p.foiRespondida
-                            ? FontStyle.normal
-                            : FontStyle.italic,
-                        height: 1.4,
+                    if (expandido) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        p.respostaExibida,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: p.foiRespondida
+                              ? themeColors.mutedText
+                              : themeColors.faintText,
+                          fontStyle: p.foiRespondida
+                              ? FontStyle.normal
+                              : FontStyle.italic,
+                          height: 1.4,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            AnimatedRotation(
-              turns: expandido ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey,
-                size: 22,
+              const SizedBox(width: 8),
+              AnimatedRotation(
+                turns: expandido ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Colors.grey,
+                  size: 22,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -410,9 +420,16 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
               Expanded(
                 child: TextField(
                   controller: _controllerPublico,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _enviarPergunta(isPrivada: false),
                   style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
+                    labelText: 'Pergunta pública',
                     hintText: 'Digite sua pergunta...',
+                    labelStyle: TextStyle(
+                      color: themeColors.mutedText,
+                      fontSize: 12,
+                    ),
                     hintStyle: TextStyle(
                       color: themeColors.faintText,
                       fontSize: 13,
@@ -431,19 +448,18 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _enviarPergunta(isPrivada: false),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: kVgAzul,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.near_me,
-                    color: Colors.white,
-                    size: 20,
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: Tooltip(
+                  message: 'Enviar pergunta pública',
+                  child: IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: kVgAzul,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => _enviarPergunta(isPrivada: false),
+                    icon: const Icon(Icons.near_me, size: 20),
                   ),
                 ),
               ),
@@ -562,9 +578,16 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
               ),
               child: TextField(
                 controller: _controllerPrivado,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _enviarPergunta(isPrivada: true),
                 style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
+                  labelText: 'Pergunta privada',
                   hintText: 'Digite sua pergunta...',
+                  labelStyle: TextStyle(
+                    color: themeColors.mutedText,
+                    fontSize: 12,
+                  ),
                   hintStyle: TextStyle(
                     color: themeColors.faintText,
                     fontSize: 13,
@@ -576,16 +599,19 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _enviarPergunta(isPrivada: true),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                color: kVgRoxoChat,
-                shape: BoxShape.circle,
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: Tooltip(
+              message: 'Enviar pergunta privada',
+              child: IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: kVgRoxoChat,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => _enviarPergunta(isPrivada: true),
+                icon: const Icon(Icons.near_me, size: 20),
               ),
-              child: const Icon(Icons.near_me, color: Colors.white, size: 20),
             ),
           ),
         ],
