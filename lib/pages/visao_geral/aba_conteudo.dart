@@ -214,6 +214,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
   bool _isVideoLoading = false;
+  String? _videoEmExecucaoUrl;
   String? _documentoEmAcao;
 
   @override
@@ -272,19 +273,37 @@ class _AbaConteudoState extends State<AbaConteudo> {
 
   Future<void> _playVideo(String url) async {
     if (url.isEmpty) return;
+    if (_videoEmExecucaoUrl == url &&
+        (_isVideoLoading || _chewieController != null)) {
+      return;
+    }
+
     await _disposeVideoController();
 
-    setState(() => _isVideoLoading = true);
+    if (!mounted) return;
+
+    setState(() {
+      _isVideoLoading = true;
+      _videoEmExecucaoUrl = url;
+    });
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
 
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
-      await _videoPlayerController!.initialize();
+      await controller.initialize();
+
+      if (!mounted || _videoEmExecucaoUrl != url) {
+        await controller.dispose();
+        return;
+      }
+
+      _videoPlayerController = controller;
 
       _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController!,
+        videoPlayerController: controller,
         autoPlay: true,
         looping: false,
-        aspectRatio: _videoPlayerController!.value.aspectRatio,
+        aspectRatio: controller.value.aspectRatio,
         errorBuilder: (context, msg) => Center(
           child: Text(
             'Erro ao reproduzir: $msg',
@@ -294,10 +313,14 @@ class _AbaConteudoState extends State<AbaConteudo> {
       );
 
       setState(() => _isVideoLoading = false);
-
-      if (mounted) _showVideoDialog();
     } catch (_) {
-      setState(() => _isVideoLoading = false);
+      await controller.dispose();
+      if (!mounted) return;
+
+      setState(() {
+        _isVideoLoading = false;
+        _videoEmExecucaoUrl = null;
+      });
       _mostrarMensagem('Não foi possível carregar o vídeo.');
     }
   }
@@ -307,21 +330,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
     await _videoPlayerController?.dispose();
     _chewieController = null;
     _videoPlayerController = null;
-  }
-
-  void _showVideoDialog() {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.black,
-        contentPadding: EdgeInsets.zero,
-        content: AspectRatio(
-          aspectRatio: _videoPlayerController!.value.aspectRatio,
-          child: Chewie(controller: _chewieController!),
-        ),
-      ),
-    ).then((_) => _disposeVideoController());
+    _videoEmExecucaoUrl = null;
   }
 
   void _mostrarMensagem(String msg) {
@@ -430,14 +439,6 @@ class _AbaConteudoState extends State<AbaConteudo> {
             style: TextStyle(fontSize: 11, color: themeColors.faintText),
           ),
           const SizedBox(height: 16),
-          if (_isVideoLoading)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: LinearProgressIndicator(
-                backgroundColor: themeColors.panelBorder,
-                color: kVgAzul,
-              ),
-            ),
           if (_videos.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -455,17 +456,9 @@ class _AbaConteudoState extends State<AbaConteudo> {
             ),
           ...List.generate(_videos.length, (i) {
             final video = _videos[i];
-            return InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                final url = video.url;
-                if (url.isNotEmpty) {
-                  _playVideo(url);
-                } else {
-                  _mostrarMensagem('Vídeo indisponível.');
-                }
-              },
-              child: _buildVideoItem(video.titulo, video.descricao, video.url),
+            return Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 14),
+              child: _buildVideoItem(video.url),
             );
           }),
         ],
@@ -473,37 +466,59 @@ class _AbaConteudoState extends State<AbaConteudo> {
     );
   }
 
-  Widget _buildVideoItem(String titulo, String descricao, String url) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+  Widget _buildVideoItem(String url) {
+    final estaAtivo = _videoEmExecucaoUrl == url;
+    final estaCarregando = estaAtivo && _isVideoLoading;
+    final videoPlayerController = _videoPlayerController;
+    final chewieController = _chewieController;
 
-    return Row(
-      children: [
-        _buildVideoThumbnail(url),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                titulo,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+    if (estaAtivo &&
+        videoPlayerController != null &&
+        videoPlayerController.value.isInitialized &&
+        chewieController != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AspectRatio(
+          aspectRatio: videoPlayerController.value.aspectRatio,
+          child: Chewie(controller: chewieController),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          if (url.isNotEmpty) {
+            _playVideo(url);
+          } else {
+            _mostrarMensagem('Vídeo indisponível.');
+          }
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildVideoThumbnail(url),
+            if (estaCarregando)
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Color(0x66000000)),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                descricao,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: themeColors.faintText),
+            if (estaCarregando)
+              const SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
               ),
-            ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -518,52 +533,48 @@ class _AbaConteudoState extends State<AbaConteudo> {
         final larguraVideo = tamanho.width > 0 ? tamanho.width : 16.0;
         final alturaVideo = tamanho.height > 0 ? tamanho.height : 9.0;
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: 110,
-            height: 70,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (pronto)
-                  FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: larguraVideo,
-                      height: alturaVideo,
-                      child: VideoPlayer(controller),
-                    ),
-                  )
-                else
-                  const DecoratedBox(
-                    decoration: BoxDecoration(color: Color(0xFFD4D4D4)),
+        return AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (pronto)
+                FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: larguraVideo,
+                    height: alturaVideo,
+                    child: VideoPlayer(controller),
                   ),
-                if (pronto)
-                  const DecoratedBox(
-                    decoration: BoxDecoration(color: Color(0x33000000)),
-                  ),
-                if (carregando && !pronto)
-                  const Center(
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
-                else
-                  const Center(
-                    child: Icon(
-                      Icons.play_circle_outline,
+                )
+              else
+                const DecoratedBox(
+                  decoration: BoxDecoration(color: Color(0xFFD4D4D4)),
+                ),
+              if (pronto)
+                const DecoratedBox(
+                  decoration: BoxDecoration(color: Color(0x33000000)),
+                ),
+              if (carregando && !pronto)
+                const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
                       color: Colors.white,
-                      size: 38,
                     ),
                   ),
-              ],
-            ),
+                )
+              else
+                const Center(
+                  child: Icon(
+                    Icons.play_circle_outline,
+                    color: Colors.white,
+                    size: 58,
+                  ),
+                ),
+            ],
           ),
         );
       },
