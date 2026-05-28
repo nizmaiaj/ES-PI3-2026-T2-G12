@@ -105,7 +105,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
                                         doc,
                                         nomesStartups[doc
                                                 .data()['startupId']] ??
-                                            'Nome da Startup',
+                                            'Nome da startup',
                                       ),
                                     )
                                     .toList()
@@ -750,7 +750,7 @@ class _OrdemUsuario {
 String _nomeStartup(Map<String, dynamic> data) {
   return _texto(
     data['nome'] ?? data['name'] ?? data['startupName'],
-    fallback: 'Nome da Startup',
+    fallback: 'Nome da startup',
   );
 }
 

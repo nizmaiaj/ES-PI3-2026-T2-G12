@@ -38,7 +38,7 @@ async function signInWithPassword(
   const apiKey = process.env.FIREBASE_API_KEY;
 
   if (!apiKey) {
-    throw new AppError(500, 'Variavel de ambiente FIREBASE_API_KEY ausente');
+    throw new AppError(500, 'Variável de ambiente FIREBASE_API_KEY ausente');
   }
 
   const response = await fetch(`${FIREBASE_AUTH_REST_URL}?key=${apiKey}`, {
@@ -54,7 +54,7 @@ async function signInWithPassword(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new AppError(401, 'E-mail ou senha invalidos');
+    throw new AppError(401, 'E-mail ou senha inválidos');
   }
 
   return data as FirebasePasswordAuthResponse;
@@ -64,7 +64,7 @@ async function sendPasswordResetEmail(email: string): Promise<void> {
   const apiKey = process.env.FIREBASE_API_KEY;
 
   if (!apiKey) {
-    throw new AppError(500, 'Variavel de ambiente FIREBASE_API_KEY ausente');
+    throw new AppError(500, 'Variável de ambiente FIREBASE_API_KEY ausente');
   }
 
   const response = await fetch(`${FIREBASE_PASSWORD_RESET_URL}?key=${apiKey}`, {
@@ -77,7 +77,7 @@ async function sendPasswordResetEmail(email: string): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new AppError(400, 'Nao foi possivel enviar o e-mail de recuperacao de senha');
+    throw new AppError(400, 'Não foi possível enviar o e-mail de recuperação de senha');
   }
 }
 
@@ -88,19 +88,19 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
     const { email, password, nomeCompleto, cpf, telefone } = req.body as RegisterRequest;
 
     if (!email || !password || !nomeCompleto || !cpf || !telefone) {
-      throw new AppError(400, 'Campos obrigatorios ausentes');
+      throw new AppError(400, 'Campos obrigatórios ausentes');
     }
 
     if (!isValidEmail(email)) {
-      throw new AppError(400, 'Formato de e-mail invalido');
+      throw new AppError(400, 'Formato de e-mail inválido');
     }
 
     if (!isValidCPF(cpf)) {
-      throw new AppError(400, 'CPF invalido');
+      throw new AppError(400, 'CPF inválido');
     }
 
     if (!isValidPhoneNumber(telefone)) {
-      throw new AppError(400, 'Telefone invalido');
+      throw new AppError(400, 'Telefone inválido');
     }
 
     if (password.length < 6) {
@@ -108,7 +108,7 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
     }
 
     if (!process.env.FIREBASE_API_KEY) {
-      throw new AppError(500, 'Variavel de ambiente FIREBASE_API_KEY ausente');
+      throw new AppError(500, 'Variável de ambiente FIREBASE_API_KEY ausente');
     }
 
     const userRecord = await auth().createUser({
@@ -175,7 +175,7 @@ router.post('/login', async (req: Request, res: Response, next: any) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      throw new AppError(400, 'E-mail e senha sao obrigatorios');
+      throw new AppError(400, 'E-mail e senha são obrigatórios');
     }
 
     const authResult = await signInWithPassword(email, password);
@@ -197,18 +197,18 @@ router.post('/forgot-password', async (req: Request, res: Response, next: any) =
     const { email } = req.body;
 
     if (!email) {
-      throw new AppError(400, 'E-mail e obrigatorio');
+      throw new AppError(400, 'E-mail é obrigatório');
     }
 
     if (!isValidEmail(email)) {
-      throw new AppError(400, 'Formato de e-mail invalido');
+      throw new AppError(400, 'Formato de e-mail inválido');
     }
 
     try {
       await auth().getUserByEmail(email);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        throw new AppError(404, 'Usuario com este e-mail nao encontrado');
+        throw new AppError(404, 'Usuário com este e-mail não encontrado');
       }
       throw error;
     }
@@ -216,7 +216,7 @@ router.post('/forgot-password', async (req: Request, res: Response, next: any) =
     await sendPasswordResetEmail(email);
 
     res.json({
-      message: 'O link de recuperacao de senha foi enviado para o seu e-mail',
+      message: 'O link de recuperação de senha foi enviado para o seu e-mail',
       email,
     });
   } catch (error) {

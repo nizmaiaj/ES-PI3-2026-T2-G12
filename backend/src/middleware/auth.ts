@@ -15,7 +15,7 @@ export async function authMiddleware(
     const token = req.headers.authorization?.split('Bearer ')[1];
 
     if (!token) {
-      res.status(401).json({ error: 'Token de autorizacao ausente' });
+      res.status(401).json({ error: 'Token de autorização ausente' });
       return;
     }
 
@@ -23,6 +23,6 @@ export async function authMiddleware(
     (req as AuthRequest).uid = decodedToken.uid;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Token invalido ou expirado' });
+    res.status(401).json({ error: 'Token inválido ou expirado' });
   }
 }

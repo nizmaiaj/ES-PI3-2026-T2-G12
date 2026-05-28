@@ -382,7 +382,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Saldo Disponível',
+            'Saldo disponível',
             style: TextStyle(color: themeColors.mutedText),
           ),
           Text(
@@ -712,7 +712,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                                   ),
                                 )
                               : const Text(
-                                  'Finalizar Transação',
+                                  'Finalizar transação',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,

@@ -67,7 +67,7 @@ function normalizePricePeriod(periodo: unknown): PricePeriod {
 
   throw new AppError(
     400,
-    'O parametro periodo deve ser um dos valores: diario, semanal, mensal, seis_meses ou ytd'
+    'O parâmetro período deve ser um dos valores: diario, semanal, mensal, seis_meses ou ytd'
   );
 }
 
@@ -193,7 +193,7 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
     const startupDoc = await firebaseDb.collection('startups').doc(id).get();
 
     if (!startupDoc.exists) {
-      throw new AppError(404, 'Startup nao encontrada');
+      throw new AppError(404, 'Startup não encontrada');
     }
 
     res.json({
@@ -247,7 +247,7 @@ router.post('/:id/questions', async (req: Request, res: Response, next: any) => 
     const authReq = req as AuthRequest;
 
     if (!texto) {
-      throw new AppError(400, 'O texto da pergunta e obrigatorio');
+      throw new AppError(400, 'O texto da pergunta é obrigatório');
     }
 
     const firebaseDb = db();
@@ -337,7 +337,7 @@ router.get(
       const latestPrice = prices[prices.length - 1];
 
       if (!latestPrice) {
-        throw new AppError(404, 'Nao ha transacoes de preco disponiveis');
+        throw new AppError(404, 'Não há transações de preço disponíveis');
       }
 
       res.json({

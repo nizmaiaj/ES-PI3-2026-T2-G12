@@ -407,7 +407,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tem uma Pergunta?',
+            'Tem uma pergunta?',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,

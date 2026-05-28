@@ -12,7 +12,7 @@ router.get('/me', async (req: Request, res: Response, next: any) => {
     const userDoc = await firebaseDb.collection('users').doc(authReq.uid).get();
 
     if (!userDoc.exists) {
-      throw new AppError(404, 'Usuario nao encontrado');
+      throw new AppError(404, 'Usuário não encontrado');
     }
 
     res.json(userDoc.data());

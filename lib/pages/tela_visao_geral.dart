@@ -11,7 +11,7 @@ import '../services/auth_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
-import 'balcao_ofertas_da_satartup.dart';
+import 'balcao_ofertas_da_startup.dart';
 import 'visao_geral/aba_atualizacoes.dart';
 import 'visao_geral/aba_conteudo.dart';
 import 'visao_geral/aba_perguntas.dart';
@@ -259,7 +259,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              widget.startup['nome'] ?? 'Nome da Startup',
+              widget.startup['nome'] ?? 'Nome da startup',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(

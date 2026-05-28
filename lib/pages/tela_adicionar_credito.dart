@@ -153,7 +153,7 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Adicionar crédito a carteira',
+              'Adicionar crédito à carteira',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -274,7 +274,7 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
             '${_formatarMoeda(valor)} foram adicionados à sua carteira com sucesso.',
       );
       if (!mounted) return;
-      //volta para home apos adicionar o credito
+      // Volta para a home após adicionar o crédito.
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(

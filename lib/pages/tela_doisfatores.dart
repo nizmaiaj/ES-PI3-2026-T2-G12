@@ -24,10 +24,10 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
   bool _salvandoMfa = false;
   String? _erro;
 
-  // Identifica o usuario logado pelo Firebase Auth ou pela sessao salva no app.
+  // Identifica o usuário logado pelo Firebase Auth ou pela sessão salva no app.
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
-  // Referencia do documento do usuario no Firestore: users/{uid}.
+  // Referência do documento do usuário no Firestore: users/{uid}.
   DocumentReference<Map<String, dynamic>>? get _userRef {
     final uid = _uid;
     if (uid == null) return null;
@@ -166,7 +166,7 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
                   borderRadius: BorderRadius.circular(19),
                   child: ref == null
                       ? _buildEstadoMensagem('Usuário não autenticado.')
-                      // Escuta os dados do usuario em tempo real no Firestore.
+                      // Escuta os dados do usuário em tempo real no Firestore.
                       : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                           stream: ref.snapshots(),
                           builder: (context, snapshot) {
@@ -357,7 +357,7 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
     );
   }
 
-  // Cabecalho com icone do usuario, saudacao e botao X para voltar.
+  // Cabeçalho com ícone do usuário, saudação e botão X para voltar.
   Widget _buildCabecalho(String nome) {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
@@ -387,7 +387,7 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Ola, $nome',
+                'Olá, $nome',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -435,7 +435,10 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCampoDado('Email', email.isEmpty ? 'exemplo@email.com' : email),
+          _buildCampoDado(
+            'E-mail',
+            email.isEmpty ? 'exemplo@email.com' : email,
+          ),
           _buildDivisor(),
           _buildCampoDado('CPF', cpf),
           _buildDivisor(),

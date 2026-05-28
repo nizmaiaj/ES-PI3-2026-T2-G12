@@ -44,7 +44,7 @@ function getOrderStatus(executed: number, total: number): OrderStatus {
 
 function assertIntegerTokenValue(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
-    throw new AppError(400, `${fieldName} deve ser um numero inteiro positivo`);
+    throw new AppError(400, `${fieldName} deve ser um número inteiro positivo`);
   }
 
   return value;
@@ -52,7 +52,7 @@ function assertIntegerTokenValue(value: unknown, fieldName: string): number {
 
 function assertPositiveMoneyValue(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || value <= 0) {
-    throw new AppError(400, `${fieldName} deve ser um numero positivo`);
+    throw new AppError(400, `${fieldName} deve ser um número positivo`);
   }
 
   return value;
@@ -66,7 +66,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
     const authReq = req as AuthRequest;
 
     if (!startupId || !tipo) {
-      throw new AppError(400, 'Campos obrigatorios ausentes');
+      throw new AppError(400, 'Campos obrigatórios ausentes');
     }
 
     if (!['compra', 'venda'].includes(tipo)) {
@@ -82,7 +82,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
       const startupDoc = await transaction.get(startupRef);
 
       if (!startupDoc.exists) {
-        throw new AppError(404, 'Startup nao encontrada');
+        throw new AppError(404, 'Startup não encontrada');
       }
 
       if (tipo === 'venda') {
@@ -186,7 +186,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
         const walletDoc = await transaction.get(ref);
 
         if (!walletDoc.exists) {
-          throw new AppError(404, `Carteira nao encontrada para o usuario ${userId}`);
+          throw new AppError(404, `Carteira não encontrada para o usuário ${userId}`);
         }
 
         walletBalances.set(userId, walletDoc.data()?.saldoReais || 0);
@@ -399,13 +399,13 @@ router.delete('/:id', async (req: Request, res: Response, next: any) => {
       const orderDoc = await transaction.get(orderRef);
 
       if (!orderDoc.exists) {
-        throw new AppError(404, 'Ordem nao encontrada');
+        throw new AppError(404, 'Ordem não encontrada');
       }
 
       const order = orderDoc.data() as OrderData;
 
       if (order.userId !== authReq.uid) {
-        throw new AppError(403, 'Voce nao tem permissao para cancelar esta ordem');
+        throw new AppError(403, 'Você não tem permissão para cancelar esta ordem');
       }
 
       if (!['aberta', 'parcial'].includes(order.status)) {

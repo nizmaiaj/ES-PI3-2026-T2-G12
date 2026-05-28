@@ -220,7 +220,7 @@ class _AbaSociedadeState extends State<AbaSociedade> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Apresentação dos Sócios',
+                'Apresentação dos Sócios Majoritários',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -327,7 +327,7 @@ class _AbaSociedadeState extends State<AbaSociedade> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Apresentação dos Sócios',
+                    'Apresentação dos Sócios Majoritários',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

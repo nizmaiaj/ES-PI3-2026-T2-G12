@@ -12,7 +12,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
     const walletDoc = await firebaseDb.collection('wallets').doc(authReq.uid).get();
 
     if (!walletDoc.exists) {
-      throw new AppError(404, 'Carteira nao encontrada');
+      throw new AppError(404, 'Carteira não encontrada');
     }
 
     res.json(walletDoc.data());
@@ -27,7 +27,7 @@ router.post('/credit', async (req: Request, res: Response, next: any) => {
     const authReq = req as AuthRequest;
 
     if (typeof valor !== 'number' || valor <= 0) {
-      throw new AppError(400, 'Valor deve ser um numero positivo');
+      throw new AppError(400, 'Valor deve ser um número positivo');
     }
 
     const firebaseDb = db();
@@ -37,7 +37,7 @@ router.post('/credit', async (req: Request, res: Response, next: any) => {
       const walletDoc = await transaction.get(walletRef);
 
       if (!walletDoc.exists) {
-        throw new AppError(404, 'Carteira nao encontrada');
+        throw new AppError(404, 'Carteira não encontrada');
       }
 
       const currentBalance = walletDoc.data()?.saldoReais || 0;
@@ -53,7 +53,7 @@ router.post('/credit', async (req: Request, res: Response, next: any) => {
         userId: authReq.uid,
         valor,
         tipo: 'deposito',
-        descricao: 'Credito ficticio adicionado a carteira',
+        descricao: 'Crédito fictício adicionado à carteira',
         createdAt: FieldValue.serverTimestamp(),
       });
 

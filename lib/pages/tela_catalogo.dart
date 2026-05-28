@@ -44,7 +44,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
-          // HEADER AZUL (Topo Inteiro)
+          // Header azul (topo inteiro).
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
@@ -66,7 +66,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  "Catálogo de Startup",
+                  "Catálogo de startups",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -79,10 +79,10 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
-                  //executa sempre que algo for digitado
+                  // Executa sempre que algo for digitado.
                   onChanged: (value) {
                     setState(() {
-                      busca = value; //salva o texto digitado
+                      busca = value; // Salva o texto digitado.
                     });
                   },
                   decoration: InputDecoration(

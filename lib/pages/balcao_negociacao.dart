@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
 import '../theme/app_theme.dart';
-import 'balcao_ofertas_da_satartup.dart';
+import 'balcao_ofertas_da_startup.dart';
 import 'balcao_minhasordens.dart';
 import 'balcao_venda.dart';
 import 'no_animation_route.dart';
@@ -25,11 +25,15 @@ class BalcaoNegociacao extends StatefulWidget {
 class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   static const _azulPrimario = Color(0xFF3F51B5);
   static const _rosaVenda = Color(0xFFC928B8);
+  static const _itensPorPagina = 5;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final BalcaoService _balcaoService = BalcaoService();
   bool _processando = false;
   _BalcaoSecao _secaoAtiva = _BalcaoSecao.compras;
+  int _paginaCompras = 0;
+  int _paginaVendas = 0;
+  int _paginaMeusTokens = 0;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -288,10 +292,12 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     Map<String, _HoldingToken> holdings,
   ) {
     return _buildSecaoLista(
-      titulo: 'Ofertas de compras abertas',
+      titulo: 'Ofertas de compra abertas',
       subtitulo: 'Startups disponíveis para compra direta de tokens.',
       vazio: 'Nenhuma startup disponível para compra.',
       temItens: startups.isNotEmpty,
+      paginaAtual: _paginaCompras,
+      onPaginaSelecionada: (pagina) => setState(() => _paginaCompras = pagina),
       children: startups
           .map(
             (startup) => _OfertaCard(
@@ -317,6 +323,8 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
       subtitulo: 'Ordens publicadas por outros investidores no balcão.',
       vazio: 'Nenhuma oferta de venda aberta no momento.',
       temItens: ofertasVenda.isNotEmpty,
+      paginaAtual: _paginaVendas,
+      onPaginaSelecionada: (pagina) => setState(() => _paginaVendas = pagina),
       children: ofertasVenda
           .map(
             (ordem) => _OfertaCard(
@@ -342,6 +350,9 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
       subtitulo: 'Tokens da sua carteira que podem virar uma ordem de venda.',
       vazio: 'Você não possui tokens disponíveis para venda.',
       temItens: tokensParaVenda.isNotEmpty,
+      paginaAtual: _paginaMeusTokens,
+      onPaginaSelecionada: (pagina) =>
+          setState(() => _paginaMeusTokens = pagina),
       children: tokensParaVenda.map((startup) {
         final holding = holdings[startup.id]!;
 
@@ -364,9 +375,26 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     required String subtitulo,
     required String vazio,
     required bool temItens,
+    required int paginaAtual,
+    required ValueChanged<int> onPaginaSelecionada,
     required List<Widget> children,
   }) {
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final totalPaginas = children.isEmpty
+        ? 0
+        : ((children.length - 1) ~/ _itensPorPagina) + 1;
+    final paginaSegura = totalPaginas == 0
+        ? 0
+        : paginaAtual < 0
+        ? 0
+        : paginaAtual >= totalPaginas
+        ? totalPaginas - 1
+        : paginaAtual;
+    final inicio = paginaSegura * _itensPorPagina;
+    final fim = inicio + _itensPorPagina > children.length
+        ? children.length
+        : inicio + _itensPorPagina;
+    final childrenPagina = temItens ? children.sublist(inicio, fim) : children;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,8 +410,115 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
           ),
         ),
         const SizedBox(height: 18),
-        if (!temItens) _buildMensagemLista(vazio) else ...children,
+        if (!temItens)
+          _buildMensagemLista(vazio)
+        else ...[
+          if (totalPaginas > 1) ...[
+            _buildPaginacao(
+              paginaAtual: paginaSegura,
+              totalPaginas: totalPaginas,
+              totalItens: children.length,
+              inicio: inicio,
+              fim: fim,
+              onPaginaSelecionada: onPaginaSelecionada,
+            ),
+            const SizedBox(height: 14),
+          ],
+          ...childrenPagina,
+          if (totalPaginas > 1)
+            _buildPaginacao(
+              paginaAtual: paginaSegura,
+              totalPaginas: totalPaginas,
+              totalItens: children.length,
+              inicio: inicio,
+              fim: fim,
+              onPaginaSelecionada: onPaginaSelecionada,
+            ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildPaginacao({
+    required int paginaAtual,
+    required int totalPaginas,
+    required int totalItens,
+    required int inicio,
+    required int fim,
+    required ValueChanged<int> onPaginaSelecionada,
+  }) {
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mostrando ${inicio + 1}-$fim de $totalItens',
+            style: TextStyle(
+              color: themeColors.mutedText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(totalPaginas, (index) {
+                final selecionada = index == paginaAtual;
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                    right: index == totalPaginas - 1 ? 0 : 8,
+                  ),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Semantics(
+                      button: true,
+                      selected: selecionada,
+                      label: 'Página ${index + 1}',
+                      child: OutlinedButton(
+                        onPressed: selecionada
+                            ? null
+                            : () => onPaginaSelecionada(index),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: selecionada
+                              ? _azulPrimario
+                              : themeColors.elevatedSurface,
+                          foregroundColor: selecionada
+                              ? Colors.white
+                              : colorScheme.onSurface,
+                          disabledForegroundColor: Colors.white,
+                          side: BorderSide(
+                            color: selecionada
+                                ? _azulPrimario
+                                : themeColors.panelBorder,
+                          ),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -938,7 +1073,7 @@ class _OrdemVendaAberta {
     return _OrdemVendaAberta(
       id: doc.id,
       vendedorId: _texto(data['sellerId'] ?? data['userId']),
-      nomeStartup: startup?.nome ?? 'Nome da Startup',
+      nomeStartup: startup?.nome ?? 'Nome da startup',
       quantidadeRestante: quantidadeRestante,
       preco: preco,
       status: _texto(data['status']).toLowerCase(),

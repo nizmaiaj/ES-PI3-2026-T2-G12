@@ -195,7 +195,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     final startupId = _startupId;
 
     if (startupId == null) {
-      return _buildSecaoOfertasVazia('Ofertas de Compras', 'Startup inválida.');
+      return _buildSecaoOfertasVazia('Ofertas de compra', 'Startup inválida.');
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -203,7 +203,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _buildSecaoOfertasVazia(
-            'Ofertas de Compras',
+            'Ofertas de compra',
             'Não foi possível carregar as ofertas de compra.',
           );
         }
@@ -224,7 +224,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
 
         if (ofertas.isEmpty) {
           return _buildSecaoOfertasVazia(
-            'Ofertas de Compras',
+            'Ofertas de compra',
             'Nenhuma oferta de compra disponível para esta startup.',
           );
         }
@@ -233,7 +233,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ofertas de Compras',
+              'Ofertas de compra',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 13,

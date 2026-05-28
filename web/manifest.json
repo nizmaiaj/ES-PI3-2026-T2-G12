@@ -1,11 +1,11 @@
 {
-    "name": "es_pi3_2026_t2_g12",
-    "short_name": "es_pi3_2026_t2_g12",
+    "name": "MesclaInvest",
+    "short_name": "MesclaInvest",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Simulação acadêmica de investimentos em startups.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
