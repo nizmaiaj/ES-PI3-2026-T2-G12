@@ -1,3 +1,5 @@
+// Eduarda Prado Deiró - RA: 25004440
+
 import 'dart:async';
 
 import 'package:chewie/chewie.dart';

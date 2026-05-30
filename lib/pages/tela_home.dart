@@ -1748,7 +1748,7 @@ class _TelaHomeState extends State<TelaHome> {
       ('Se', 'Semanal'),
       ('M', 'Mensal'),
       ('S', 'Semestral'),
-      ('A', 'Anual'),
+      ('A', 'YTD'),
     ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
