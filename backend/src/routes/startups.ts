@@ -227,8 +227,6 @@ router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
     const firebaseDb = db();
     const authReq = req as AuthRequest;
 
-    const userHasTokens = await userHasStartupTokens(firebaseDb, authReq.uid, id);
-
     const questionsSnapshot = await firebaseDb
       .collection('startups')
       .doc(id)
@@ -241,7 +239,7 @@ router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
         id: doc.id,
         ...doc.data(),
       }))
-      .filter((q: any) => !q.isPrivada || userHasTokens);
+      .filter((q: any) => !q.isPrivada || q.userId === authReq.uid);
 
     res.json(questions);
   } catch (error) {

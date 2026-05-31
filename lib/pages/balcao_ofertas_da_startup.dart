@@ -66,7 +66,10 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       _numero(widget.startup['valorToken'], fallback: 1.45);
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream() {
-    return _firestore.collection('orders').snapshots();
+    return _firestore
+        .collection('orders')
+        .where('status', whereIn: ['aberta', 'parcial'])
+        .snapshots();
   }
 
   @override

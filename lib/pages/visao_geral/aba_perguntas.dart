@@ -626,12 +626,18 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
     String startupId, {
     required bool isPrivada,
   }) {
-    return FirebaseFirestore.instance
+    final query = FirebaseFirestore.instance
         .collection('startups')
         .doc(startupId)
         .collection('questions')
-        .where('isPrivada', isEqualTo: isPrivada)
-        .snapshots();
+        .where('isPrivada', isEqualTo: isPrivada);
+
+    if (!isPrivada) return query.snapshots();
+
+    final uid = widget.uid;
+    if (uid == null) return const Stream.empty();
+
+    return query.where('userId', isEqualTo: uid).snapshots();
   }
 
   Future<bool> _usuarioTemTokens(String startupId) async {
