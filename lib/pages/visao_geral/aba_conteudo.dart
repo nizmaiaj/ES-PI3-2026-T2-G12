@@ -669,6 +669,8 @@ class _AbaConteudoState extends State<AbaConteudo> {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
     final carregando = _documentoEmAcao == documento.chave;
+    final tipoDocumento = _tipoDocumento(documento);
+    final corDocumento = _corDocumento(tipoDocumento);
 
     return Row(
       children: [
@@ -676,13 +678,13 @@ class _AbaConteudoState extends State<AbaConteudo> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFFEBEDF8),
+            color: corDocumento.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(
-            Icons.insert_drive_file_outlined,
-            color: kVgAzul,
-            size: 22,
+          child: Icon(
+            _iconeDocumento(tipoDocumento),
+            color: corDocumento,
+            size: 27,
           ),
         ),
         const SizedBox(width: 14),
@@ -746,4 +748,98 @@ class _AbaConteudoState extends State<AbaConteudo> {
       ],
     );
   }
+
+  _TipoDocumento _tipoDocumento(DocumentoStartup documento) {
+    final referencia = [
+      documento.tipo,
+      documento.nomeArquivo,
+      documento.storagePath,
+      documento.url,
+    ].join(' ').toLowerCase();
+
+    if (_possuiFormato(referencia, const ['pdf'])) {
+      return _TipoDocumento.pdf;
+    }
+    if (_possuiFormato(referencia, const ['xls', 'xlsx', 'ods', 'csv']) ||
+        referencia.contains('spreadsheet') ||
+        referencia.contains('ms-excel')) {
+      return _TipoDocumento.planilha;
+    }
+    if (_possuiFormato(referencia, const ['ppt', 'pptx', 'odp']) ||
+        referencia.contains('presentation') ||
+        referencia.contains('ms-powerpoint')) {
+      return _TipoDocumento.apresentacao;
+    }
+    if (_possuiFormato(referencia, const [
+          'doc',
+          'docx',
+          'odt',
+          'rtf',
+          'txt',
+        ]) ||
+        referencia.contains('wordprocessing') ||
+        referencia.contains('msword') ||
+        referencia.contains('text/')) {
+      return _TipoDocumento.texto;
+    }
+    if (_possuiFormato(referencia, const [
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'webp',
+          'svg',
+          'bmp',
+        ]) ||
+        referencia.contains('image/')) {
+      return _TipoDocumento.imagem;
+    }
+    if (_possuiFormato(referencia, const ['zip', 'rar', '7z', 'gz', 'tar'])) {
+      return _TipoDocumento.compactado;
+    }
+
+    return _TipoDocumento.generico;
+  }
+
+  IconData _iconeDocumento(_TipoDocumento tipo) {
+    return switch (tipo) {
+      _TipoDocumento.pdf => Icons.picture_as_pdf_outlined,
+      _TipoDocumento.planilha => Icons.table_chart_outlined,
+      _TipoDocumento.apresentacao => Icons.slideshow_outlined,
+      _TipoDocumento.texto => Icons.description_outlined,
+      _TipoDocumento.imagem => Icons.image_outlined,
+      _TipoDocumento.compactado => Icons.archive_outlined,
+      _TipoDocumento.generico => Icons.insert_drive_file_outlined,
+    };
+  }
+
+  Color _corDocumento(_TipoDocumento tipo) {
+    return switch (tipo) {
+      _TipoDocumento.pdf => const Color(0xFFD32F2F),
+      _TipoDocumento.planilha => const Color(0xFF188038),
+      _TipoDocumento.apresentacao => const Color(0xFFF57C00),
+      _TipoDocumento.texto => const Color(0xFF2563EB),
+      _TipoDocumento.imagem => const Color(0xFF7C3AED),
+      _TipoDocumento.compactado => const Color(0xFFD97706),
+      _TipoDocumento.generico => kVgAzul,
+    };
+  }
+
+  bool _possuiFormato(String referencia, List<String> formatos) {
+    return formatos.any(
+      (formato) => RegExp(
+        '(?:^|[./_-])${RegExp.escape(formato)}(?:\$|[?&#;\\s])',
+      ).hasMatch(referencia),
+    );
+  }
+}
+
+enum _TipoDocumento {
+  pdf,
+  planilha,
+  apresentacao,
+  texto,
+  imagem,
+  compactado,
+  generico,
 }
