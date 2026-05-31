@@ -147,14 +147,18 @@ Ou rode em um emulador/dispositivo Android:
 flutter run -d android
 ```
 
-As escritas usam Functions HTTP. Para executar no Chrome com o emulador local:
+As escritas usam Functions HTTP. Por padrão, o app usa as Cloud Functions
+publicadas. Para executar no Chrome com o emulador local:
 
 ```bash
 flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:5001/bd-pi3-1808d/us-central1
 ```
 
-O valor padrão de `API_BASE_URL` usa `10.0.2.2`, apropriado para o emulador
-Android. Em produção, informe a URL-base das Cloud Functions publicadas.
+No emulador Android, use:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5001/bd-pi3-1808d/us-central1
+```
 
 Para usar o 2FA por SMS em Android/Web, confirme no Firebase Console se Phone
 Auth, domínios autorizados e configurações exigidas pela plataforma estão
