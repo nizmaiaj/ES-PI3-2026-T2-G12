@@ -5,14 +5,29 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
-class AbaAtualizacoes extends StatelessWidget {
+class AbaAtualizacoes extends StatefulWidget {
   const AbaAtualizacoes({super.key, required this.startupId});
 
   final String? startupId;
 
   @override
+  State<AbaAtualizacoes> createState() => _AbaAtualizacoesState();
+}
+
+class _AbaAtualizacoesState extends State<AbaAtualizacoes> {
+  static const _todosOsFiltros = [
+    'Todas',
+    'Produto',
+    'Notícia',
+    'Evento',
+    'Financeiro',
+  ];
+
+  String _filtroAtivo = 'Todas';
+
+  @override
   Widget build(BuildContext context) {
-    final sId = startupId;
+    final sId = widget.startupId;
 
     if (sId == null) {
       return _buildEstado(
@@ -39,11 +54,12 @@ class AbaAtualizacoes extends StatelessWidget {
         final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
         final carregando = !snapshot.hasData;
-        final atualizacoes = snapshot.data == null
+        final todasAsAtualizacoes = snapshot.data == null
             ? <AtualizacaoStartup>[]
             : _ordenar(
                 snapshot.data!.docs.map(AtualizacaoStartup.fromDoc).toList(),
               );
+        final atualizacoes = _filtrar(todasAsAtualizacoes);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -64,6 +80,8 @@ class AbaAtualizacoes extends StatelessWidget {
                 style: TextStyle(fontSize: 12, color: themeColors.faintText),
               ),
               const SizedBox(height: 16),
+              _buildFiltros(context),
+              const SizedBox(height: 16),
               if (carregando)
                 const Center(
                   child: Padding(
@@ -71,10 +89,15 @@ class AbaAtualizacoes extends StatelessWidget {
                     child: CircularProgressIndicator(color: kVgAzul),
                   ),
                 )
-              else if (atualizacoes.isEmpty)
+              else if (todasAsAtualizacoes.isEmpty)
                 _buildMensagem(
                   context,
                   'Ainda não há atualizações cadastradas para esta startup.',
+                )
+              else if (atualizacoes.isEmpty)
+                _buildMensagem(
+                  context,
+                  'Não há atualizações do tipo $_filtroAtivo.',
                 )
               else
                 ...List.generate(atualizacoes.length, (i) {
@@ -180,6 +203,49 @@ class AbaAtualizacoes extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildFiltros(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _todosOsFiltros.map((filtro) {
+          final selecionado = filtro == _filtroAtivo;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              right: filtro == _todosOsFiltros.last ? 0 : 8,
+            ),
+            child: ChoiceChip(
+              label: Text(filtro),
+              selected: selecionado,
+              onSelected: (_) => setState(() => _filtroAtivo = filtro),
+              selectedColor: kVgAzul,
+              backgroundColor: themeColors.subtleSurface,
+              labelStyle: TextStyle(
+                color: selecionado ? Colors.white : colorScheme.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  List<AtualizacaoStartup> _filtrar(List<AtualizacaoStartup> atualizacoes) {
+    if (_filtroAtivo == 'Todas') return atualizacoes;
+
+    return atualizacoes
+        .where((atualizacao) => atualizacao.tipoExibido == _filtroAtivo)
+        .toList();
   }
 
   List<AtualizacaoStartup> _ordenar(List<AtualizacaoStartup> lista) {
