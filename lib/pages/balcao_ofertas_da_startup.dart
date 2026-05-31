@@ -8,6 +8,7 @@ import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/password_confirmation_dialog.dart';
 import 'balcao_venda.dart';
 import 'tela_balcao_compra.dart';
 
@@ -495,7 +496,11 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
       ),
     );
 
-    if (quantidade == null || quantidade <= 0) return;
+    if (quantidade == null || quantidade <= 0 || !mounted) return;
+
+    final confirmado = await showPasswordConfirmationDialog(context: context);
+
+    if (!confirmado) return;
 
     if (_processandoCompra) return;
 

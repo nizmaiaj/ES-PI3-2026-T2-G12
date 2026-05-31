@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../services/password_reauthentication_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
@@ -766,14 +767,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     required int quantidade,
     required String senha,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.email != null) {
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: senha,
-      );
-      await user.reauthenticateWithCredential(credential);
-    }
+    await reauthenticateCurrentUserWithPassword(senha);
 
     final ofertaId = widget.ofertaId;
     if (ofertaId != null) {

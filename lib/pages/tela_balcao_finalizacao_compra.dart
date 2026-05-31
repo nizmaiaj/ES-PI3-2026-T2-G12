@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
+import '../services/password_reauthentication_service.dart';
 import '../theme/app_theme.dart';
 
 class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
@@ -407,15 +408,7 @@ class _TelaBalcaoFinalizacaoCompraState
     });
 
     try {
-      // Reautenticação com a senha informada
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null && user.email != null) {
-        final credential = EmailAuthProvider.credential(
-          email: user.email!,
-          password: _senhaController.text,
-        );
-        await user.reauthenticateWithCredential(credential);
-      }
+      await reauthenticateCurrentUserWithPassword(_senhaController.text);
 
       // Usa comprarDeOferta quando veio de uma oferta específica,
       // senão comprarDiretamente ao preço atual da startup

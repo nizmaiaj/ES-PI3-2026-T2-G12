@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/password_confirmation_dialog.dart';
 import 'balcao_ofertas_da_startup.dart';
 import 'balcao_minhasordens.dart';
 import 'balcao_venda.dart';
@@ -661,7 +662,11 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
       ),
     );
 
-    if (quantidade == null || quantidade <= 0) return;
+    if (quantidade == null || quantidade <= 0 || !mounted) return;
+
+    final confirmado = await showPasswordConfirmationDialog(context: context);
+
+    if (!confirmado) return;
 
     await _executarComFeedback(() async {
       await _balcaoService.comprarOrdemVenda(

@@ -7,6 +7,7 @@ import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/password_confirmation_dialog.dart';
 
 class BalcaoVenda extends StatefulWidget {
   const BalcaoVenda({
@@ -426,60 +427,48 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
   }
 
   Future<void> _confirmarVenda() async {
-    final confirmado = await showDialog<bool>(
+    final confirmado = await showPasswordConfirmationDialog(
       context: context,
-      builder: (dialogContext) {
-        final colorScheme = Theme.of(dialogContext).colorScheme;
-        final themeColors = Theme.of(
-          dialogContext,
-        ).extension<AppThemeColors>()!;
-
-        return AlertDialog(
-          title: const Text('Publicar ordem de venda?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _nomeStartup,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _ConfirmacaoVendaLinha(
-                label: 'Quantidade',
-                valor: '$_quantidadeInformada tokens',
-              ),
-              _ConfirmacaoVendaLinha(
-                label: 'Preço por token',
-                valor: _formatarMoeda(_precoInformado),
-              ),
-              Divider(color: themeColors.panelBorder),
-              _ConfirmacaoVendaLinha(
-                label: 'Total estimado',
-                valor: _formatarMoeda(_totalEstimado),
-                destaque: true,
-              ),
-            ],
+      title: 'Confirme sua identidade para publicar a venda',
+      description:
+          'Por segurança, informe sua senha para publicar a ordem de venda dos tokens.',
+      confirmButtonLabel: 'Publicar venda',
+      emptyPasswordMessage: 'Informe sua senha para publicar a venda.',
+      invalidPasswordMessage:
+          'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a venda dos tokens não foi publicada. Verifique sua senha e tente novamente.',
+      details: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _nomeStartup,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: FilledButton.styleFrom(backgroundColor: _rosaVenda),
-              child: const Text('Publicar venda'),
-            ),
-          ],
-        );
-      },
+          const SizedBox(height: 14),
+          _ConfirmacaoVendaLinha(
+            label: 'Quantidade',
+            valor: '$_quantidadeInformada tokens',
+          ),
+          _ConfirmacaoVendaLinha(
+            label: 'Preço por token',
+            valor: _formatarMoeda(_precoInformado),
+          ),
+          Divider(
+            color: Theme.of(context).extension<AppThemeColors>()!.panelBorder,
+          ),
+          _ConfirmacaoVendaLinha(
+            label: 'Total estimado',
+            valor: _formatarMoeda(_totalEstimado),
+            destaque: true,
+          ),
+        ],
+      ),
     );
 
-    if (confirmado == true) {
+    if (confirmado) {
       await _registrarVenda();
     }
   }
