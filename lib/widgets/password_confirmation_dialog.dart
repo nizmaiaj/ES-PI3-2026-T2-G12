@@ -18,6 +18,7 @@ Future<bool> showPasswordConfirmationDialog({
   final passwordController = TextEditingController();
   var processing = false;
   var hasError = false;
+  var passwordVisible = false;
   String? errorMessage;
 
   final confirmed = await showDialog<bool>(
@@ -132,7 +133,7 @@ Future<bool> showPasswordConfirmationDialog({
                     const SizedBox(height: 8),
                     TextField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: !passwordVisible,
                       enabled: !processing,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => confirm(),
@@ -145,6 +146,17 @@ Future<bool> showPasswordConfirmationDialog({
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25),
                           borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            passwordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: themeColors.mutedText,
+                          ),
+                          onPressed: () => setDialogState(
+                            () => passwordVisible = !passwordVisible,
+                          ),
                         ),
                       ),
                     ),
