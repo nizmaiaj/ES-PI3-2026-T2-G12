@@ -55,6 +55,22 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       widget.ofertaPreco ??
       _numero(widget.startup['valorToken'], fallback: 1.45);
 
+  int? get _tokensEmitidos => _quantidadeTokens(widget.startup['tokens']);
+
+  int? get _limiteCompra {
+    final tokensEmitidos = _tokensEmitidos;
+    final ofertaMaxQtd = widget.ofertaMaxQtd;
+
+    if (tokensEmitidos == null) return ofertaMaxQtd;
+    if (ofertaMaxQtd == null) return tokensEmitidos;
+    return tokensEmitidos < ofertaMaxQtd ? tokensEmitidos : ofertaMaxQtd;
+  }
+
+  bool _quantidadeAcimaDosTokensEmitidos(int quantidade) {
+    final tokensEmitidos = _tokensEmitidos;
+    return tokensEmitidos != null && quantidade > tokensEmitidos;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -69,12 +85,12 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
 
   void _calcularTotal() {
     final qtd = int.tryParse(_quantidadeController.text.trim()) ?? 0;
-    final max = widget.ofertaMaxQtd;
+    final limiteCompra = _limiteCompra;
     setState(() {
       _totalEstimado = qtd * _preco;
       _erroQuantidade =
           _quantidadeController.text.isNotEmpty &&
-          (qtd <= 0 || (max != null && qtd > max));
+          (qtd <= 0 || (limiteCompra != null && qtd > limiteCompra));
     });
   }
 
@@ -101,8 +117,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
   Widget _buildTela(double saldo) {
     final int qtd = int.tryParse(_quantidadeController.text.trim()) ?? 0;
     final bool saldoSuficiente = saldo >= _totalEstimado;
-    final bool dentroDoLimite =
-        widget.ofertaMaxQtd == null || qtd <= widget.ofertaMaxQtd!;
+    final limiteCompra = _limiteCompra;
+    final bool dentroDoLimite = limiteCompra == null || qtd <= limiteCompra;
     final bool podeComprar =
         qtd > 0 &&
         !_erroQuantidade &&
@@ -221,6 +237,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
               Text(
                 widget.ofertaMaxQtd != null
                     ? 'Disponível: ${widget.ofertaMaxQtd} tokens'
+                    : _tokensEmitidos != null
+                    ? 'Emitidos: $_tokensEmitidos tokens'
                     : 'Qtd de tokens:',
                 style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
@@ -308,8 +326,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                 decoration: InputDecoration(
                   fillColor: themeColors.elevatedSurface,
                   filled: true,
-                  hintText: widget.ofertaMaxQtd != null
-                      ? 'Máx: ${widget.ofertaMaxQtd}'
+                  hintText: _limiteCompra != null
+                      ? 'Máx: $_limiteCompra'
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -332,9 +350,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        widget.ofertaMaxQtd != null
-                            ? 'Máximo disponível: ${widget.ofertaMaxQtd} tokens'
-                            : 'Informe uma quantidade válida de tokens',
+                        _mensagemErroQuantidade(),
                         style: TextStyle(
                           color: themeColors.mutedText,
                           fontSize: 12,
@@ -522,6 +538,11 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
 
     if (uid == null || startupId == null) {
       _mostrarMensagem('Dados inválidos. Tente novamente.');
+      return;
+    }
+
+    if (_quantidadeAcimaDosTokensEmitidos(quantidade)) {
+      _mostrarMensagem(_mensagemErroQuantidade());
       return;
     }
 
@@ -793,6 +814,22 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       SnackBar(content: Text(mensagem), behavior: SnackBarBehavior.floating),
     );
   }
+
+  String _mensagemErroQuantidade() {
+    final quantidade = int.tryParse(_quantidadeController.text.trim()) ?? 0;
+    final tokensEmitidos = _tokensEmitidos;
+
+    if (tokensEmitidos != null && quantidade > tokensEmitidos) {
+      return 'A quantidade desejada é maior que os $tokensEmitidos tokens emitidos pela startup.';
+    }
+
+    final ofertaMaxQtd = widget.ofertaMaxQtd;
+    if (ofertaMaxQtd != null && quantidade > ofertaMaxQtd) {
+      return 'Máximo disponível nesta oferta: $ofertaMaxQtd tokens';
+    }
+
+    return 'Informe uma quantidade válida de tokens';
+  }
 }
 
 String _formatarNumero(double value) =>
@@ -808,4 +845,22 @@ double _numero(dynamic value, {double fallback = 0}) {
     return double.tryParse(n) ?? fallback;
   }
   return fallback;
+}
+
+int? _quantidadeTokens(dynamic value) {
+  if (value is num) return value.toInt();
+  if (value is! String) return null;
+
+  final texto = value.replaceAll(RegExp(r'[^\d,.-]'), '').trim();
+  if (texto.isEmpty) return null;
+
+  final temSeparadorDeMilhar =
+      !texto.contains(',') && RegExp(r'^-?\d{1,3}(\.\d{3})+$').hasMatch(texto);
+  final normalizado = texto.contains(',')
+      ? texto.replaceAll('.', '').replaceAll(',', '.')
+      : temSeparadorDeMilhar
+      ? texto.replaceAll('.', '')
+      : texto;
+
+  return num.tryParse(normalizado)?.toInt();
 }

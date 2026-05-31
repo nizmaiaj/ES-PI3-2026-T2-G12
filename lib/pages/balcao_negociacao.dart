@@ -1111,11 +1111,11 @@ class _StartupOferta {
   factory _StartupOferta.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     final quantidadeCampo = _primeiroCampoNumerico(data, const [
+      'totalTokens',
+      'tokensEmitidos',
       'tokensDisponiveis',
       'quantidadeTokens',
       'tokens',
-      'tokensEmitidos',
-      'totalTokens',
     ]);
 
     return _StartupOferta(

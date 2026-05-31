@@ -55,6 +55,30 @@ function parseNumber(value: unknown): number {
   return 0;
 }
 
+function assertWithinIssuedTokenLimit(
+  startup: FirebaseFirestore.DocumentData,
+  quantidade: number
+): void {
+  const tokensEmitidos = parseNumber(
+    startup.totalTokens ??
+      startup.tokensEmitidos ??
+      startup.tokensDisponiveis ??
+      startup.quantidadeTokens ??
+      startup.tokens
+  );
+
+  if (!Number.isFinite(tokensEmitidos) || tokensEmitidos < 0) {
+    throw new AppError(400, 'Startup sem quantidade de tokens emitidos válida');
+  }
+
+  if (quantidade > tokensEmitidos) {
+    throw new AppError(
+      400,
+      `A quantidade desejada é maior que os ${tokensEmitidos} tokens emitidos pela startup`
+    );
+  }
+}
+
 function remainingQuantity(order: FirebaseFirestore.DocumentData): number {
   const explicitRemaining = parseNumber(order.quantidadeRestante);
   if (explicitRemaining > 0) return explicitRemaining;
@@ -308,9 +332,14 @@ router.post('/buy-sell-order', async (req: Request, res: Response, next: any) =>
 
     await firebaseDb.runTransaction(async (transaction) => {
       const orderDoc = await transaction.get(orderRef);
+      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
 
       if (!orderDoc.exists) {
         throw new AppError(404, 'Oferta não encontrada');
+      }
+
+      if (!startupDoc.exists) {
+        throw new AppError(404, 'Startup não encontrada');
       }
 
       const order = orderDoc.data() || {};
@@ -334,6 +363,8 @@ router.post('/buy-sell-order', async (req: Request, res: Response, next: any) =>
       if (remaining < quantidade) {
         throw new AppError(400, 'Quantidade indisponível nesta oferta');
       }
+
+      assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
 
       if (!buyerWalletDoc.exists) {
         throw new AppError(404, 'Carteira do comprador não encontrada');
@@ -446,12 +477,17 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
 
     await firebaseDb.runTransaction(async (transaction) => {
       const offerDoc = await transaction.get(offerRef);
+      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
       const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
       const walletDoc = await transaction.get(walletRef);
       const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
 
       if (!offerDoc.exists) {
         throw new AppError(404, 'Oferta não encontrada');
+      }
+
+      if (!startupDoc.exists) {
+        throw new AppError(404, 'Startup não encontrada');
       }
 
       const offer = offerDoc.data() || {};
@@ -469,6 +505,8 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
       if (remaining < quantidade) {
         throw new AppError(400, 'Quantidade indisponível nesta oferta');
       }
+
+      assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
 
       if (!walletDoc.exists) {
         throw new AppError(404, 'Carteira não encontrada');
@@ -574,6 +612,8 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
         startup.valorToken ?? startup.precoToken ?? startup.tokenPrecoInicial ?? startup.preco
       );
 
+      assertWithinIssuedTokenLimit(startup, quantidade);
+
       if (!Number.isFinite(price) || price <= 0) {
         throw new AppError(400, 'Startup sem preço de token válido');
       }
@@ -661,6 +701,10 @@ router.post('/', async (req: Request, res: Response, next: any) => {
 
       if (!startupDoc.exists) {
         throw new AppError(404, 'Startup não encontrada');
+      }
+
+      if (tipo === 'compra') {
+        assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
       }
 
       if (tipo === 'venda') {
