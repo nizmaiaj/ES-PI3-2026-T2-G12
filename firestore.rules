@@ -68,6 +68,11 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if false;
       }
+
+      match /priceHistory/{priceId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
     }
 
     match /{document=**} {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -34,19 +36,19 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   static const _vermelho = Color(0xFFD04444);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final Future<_TokenDetalheDados> _dadosFuture;
+  late final Stream<_TokenDetalheDados> _dadosStream;
   _PeriodoGrafico _periodo = _PeriodoGrafico.mensal;
 
   @override
   void initState() {
     super.initState();
-    _dadosFuture = _buscarDadosToken();
+    _dadosStream = _monitorarDadosToken();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_TokenDetalheDados>(
-      future: _dadosFuture,
+    return StreamBuilder<_TokenDetalheDados>(
+      stream: _dadosStream,
       builder: (context, snapshot) {
         final dados =
             snapshot.data ??
@@ -517,13 +519,79 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     );
   }
 
-  Future<_TokenDetalheDados> _buscarDadosToken() async {
+  Stream<_TokenDetalheDados> _monitorarDadosToken() {
     final startupId = widget.startupId.trim();
-    final startupDoc = startupId.isEmpty
-        ? null
-        : await _firestore.collection('startups').doc(startupId).get();
+    if (startupId.isEmpty) {
+      return Stream.value(_montarDadosToken());
+    }
 
-    final startupData = startupDoc?.data();
+    late final StreamController<_TokenDetalheDados> controller;
+    final subscriptions = <StreamSubscription<dynamic>>[];
+    Map<String, dynamic>? startupData;
+    var historicoVariacoes = <_PontoPreco>[];
+    var historicoTransacoes = <_PontoPreco>[];
+
+    void emitirDados() {
+      if (controller.isClosed) return;
+
+      controller.add(
+        _montarDadosToken(
+          startupData: startupData,
+          historico: [...historicoVariacoes, ...historicoTransacoes],
+        ),
+      );
+    }
+
+    void registrarErro(Object error) {
+      debugPrint('Não foi possível monitorar o histórico do token: $error');
+    }
+
+    controller = StreamController<_TokenDetalheDados>(
+      onListen: () {
+        subscriptions.add(
+          _firestore.collection('startups').doc(startupId).snapshots().listen((
+            snapshot,
+          ) {
+            startupData = snapshot.data();
+            emitirDados();
+          }, onError: registrarErro),
+        );
+        subscriptions.add(
+          _firestore
+              .collection('startups')
+              .doc(startupId)
+              .collection('priceHistory')
+              .snapshots()
+              .listen((snapshot) {
+                historicoVariacoes = _lerHistorico(snapshot);
+                emitirDados();
+              }, onError: registrarErro),
+        );
+        subscriptions.add(
+          _firestore
+              .collection('tokenPrices')
+              .where('startupId', isEqualTo: startupId)
+              .snapshots()
+              .listen((snapshot) {
+                historicoTransacoes = _lerHistorico(snapshot);
+                emitirDados();
+              }, onError: registrarErro),
+        );
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
+  _TokenDetalheDados _montarDadosToken({
+    Map<String, dynamic>? startupData,
+    List<_PontoPreco> historico = const [],
+  }) {
     final precoStartup = _lerPrecoStartup(startupData);
     final precoBase = _primeiroPrecoValido([
       precoStartup,
@@ -531,20 +599,19 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
       widget.precoMedioCompra,
     ]);
 
-    var historico = startupId.isEmpty
-        ? <_PontoPreco>[]
-        : await _buscarHistoricoPrecos(startupId);
+    final historicoOrdenado = [...historico]
+      ..sort((a, b) => a.data.compareTo(b.data));
 
-    // Garante que o gráfico nunca fica vazio: injeta o preço atual como ponto
-    // inicial quando não há histórico registrado ainda.
-    if (historico.isEmpty && precoBase > 0) {
-      historico = [_PontoPreco(data: DateTime.now(), preco: precoBase)];
+    // O valor da startup é atualizado pelos jobs agendados e deve prevalecer
+    // sobre um eventual último negócio antigo.
+    final precoAtual = precoBase;
+    if (precoAtual > 0 &&
+        (historicoOrdenado.isEmpty ||
+            historicoOrdenado.last.preco != precoAtual)) {
+      historicoOrdenado.add(
+        _PontoPreco(data: DateTime.now(), preco: precoAtual),
+      );
     }
-
-    final precoAtual = _primeiroPrecoValido([
-      historico.isNotEmpty ? historico.last.preco : 0.0,
-      precoBase,
-    ]);
 
     final logoUrl = _texto(
       startupData?['logoUrl'] ??
@@ -561,26 +628,19 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
     return _TokenDetalheDados(
       precoAtual: precoAtual,
-      historico: historico,
+      historico: historicoOrdenado,
       logoUrl: logoUrl,
       logoStoragePath: logoStoragePath,
     );
   }
 
-  Future<List<_PontoPreco>> _buscarHistoricoPrecos(String startupId) async {
-    final snapshot = await _firestore
-        .collection('tokenPrices')
-        .where('startupId', isEqualTo: startupId)
-        .get();
-
-    final pontos =
-        snapshot.docs
-            .map((doc) => _PontoPreco.fromMap(doc.data()))
-            .where((p) => p.preco > 0)
-            .toList()
-          ..sort((a, b) => a.data.compareTo(b.data));
-
-    return pontos;
+  List<_PontoPreco> _lerHistorico(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    return snapshot.docs
+        .map((doc) => _PontoPreco.fromMap(doc.data()))
+        .where((ponto) => ponto.preco > 0)
+        .toList();
   }
 
   List<_PontoPreco> _filtrarHistorico(List<_PontoPreco> historico) {
@@ -887,6 +947,7 @@ class _PontoPreco {
       data:
           _data(
             data['timestamp'] ??
+                data['registradoEm'] ??
                 data['createdAt'] ??
                 data['executadaEm'] ??
                 data['data'],
