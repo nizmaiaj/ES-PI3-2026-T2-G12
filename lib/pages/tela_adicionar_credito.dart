@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show TextInputFormatter, TextEditingValue, TextSelection;
 import 'tela_home.dart';
 import '../services/auth_session.dart';
+import '../services/functions_api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
@@ -240,30 +240,10 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
     setState(() => _salvandoCredito = true);
 
     try {
-      final firestore = FirebaseFirestore.instance;
-      final walletRef = firestore.collection('wallets').doc(uid);
-
-      await firestore.runTransaction((transaction) async {
-        final walletCreditRef = firestore.collection('walletCredits').doc();
-        final now = FieldValue.serverTimestamp();
-        final snapshot = await transaction.get(walletRef);
-        final dados = snapshot.data();
-        final saldoAtual = _lerNumero(dados?['saldoReais']);
-
-        transaction.set(walletRef, {
-          'userId': uid,
-          'saldoReais': saldoAtual + valor,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
-
-        transaction.set(walletCreditRef, {
-          'userId': uid,
-          'valor': valor,
-          'tipo': 'depósito',
-          'descricao': 'Depósito em carteira',
-          'createdAt': now,
-        });
-      });
+      await FunctionsApiClient.instance.post(
+        'walletAddCredit',
+        body: {'valor': valor},
+      );
 
       if (!mounted) return;
       _valorController.clear();
@@ -282,13 +262,11 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
         ),
         (route) => false,
       );
-    } on FirebaseException catch (error) {
+    } on FunctionsApiException catch (error) {
       if (!mounted) return;
       await _mostrarPopup(
         titulo: 'Erro ao adicionar créditos',
-        mensagem:
-            error.message ??
-            'Não foi possível adicionar os créditos. Tente novamente.',
+        mensagem: error.message,
       );
     } catch (_) {
       if (!mounted) return;
@@ -333,13 +311,6 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
     final centavos = int.tryParse(digits) ?? 0;
     if (centavos <= 0) return null;
     return centavos / 100;
-  }
-
-  double _lerNumero(dynamic valor) {
-    if (valor is int) return valor.toDouble();
-    if (valor is double) return valor;
-    if (valor is num) return valor.toDouble();
-    return 0;
   }
 
   String _formatarMoeda(double valor) {

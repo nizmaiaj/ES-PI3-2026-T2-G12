@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/functions_api_client.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
@@ -670,22 +671,14 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
       }
     }
     try {
-      await FirebaseFirestore.instance
-          .collection('startups')
-          .doc(sId)
-          .collection('questions')
-          .add({
-            'startupId': sId,
-            'userId': widget.uid ?? '',
-            'nomeUsuario': widget.nomeUsuario,
-            'texto': texto,
-            'resposta': null,
-            'respondidaEm': null,
-            'isPrivada': isPrivada,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+      await FunctionsApiClient.instance.post(
+        'startupsCreateQuestion',
+        body: {'startupId': sId, 'texto': texto, 'isPrivada': isPrivada},
+      );
       controller.clear();
       _mostrarMensagem('Pergunta enviada com sucesso.');
+    } on FunctionsApiException catch (error) {
+      _mostrarMensagem(error.message);
     } catch (_) {
       _mostrarMensagem('Não foi possível enviar a pergunta.');
     }

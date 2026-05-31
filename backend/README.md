@@ -1,11 +1,11 @@
 # MesclaInvest Backend API
 
-Backend API para o MesclaInvest - plataforma acadêmica de simulação de investimentos em startups. A API Express é publicada como uma Firebase Cloud Function HTTP.
+Backend API para o MesclaInvest - plataforma acadêmica de simulação de investimentos em startups. Cada operação HTTP é publicada como uma Firebase Cloud Function independente.
 
 ## Tecnologias
 
 - Firebase Cloud Functions com Node.js 20 e TypeScript
-- Express.js dentro da Function HTTP `api`
+- Express.js reutilizado pelos handlers HTTP individuais
 - Firebase Admin SDK (Firestore + Authentication)
 - Helmet para segurança
 - CORS configurado
@@ -48,10 +48,10 @@ FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_PRIVATE_KEY=your-private-key
 FIREBASE_CLIENT_EMAIL=your-client-email
 
-CORS_ORIGIN=http://localhost:5000
+CORS_ORIGIN=http://localhost:5000,http://localhost:5001
 ```
 
-**Nota**: A `FIREBASE_PRIVATE_KEY` deve ter `\n` convertidas para quebras de linha reais ou escapadas como `\\n`.
+**Nota**: A `FIREBASE_PRIVATE_KEY` deve ter `\n` convertidas para quebras de linha reais ou escapadas como `\\n`. Quando `CORS_ORIGIN` não é informado, origens HTTP são aceitas dinamicamente para facilitar o desenvolvimento local. Em produção, configure a lista separada por vírgulas.
 
 ## Desenvolvimento
 
@@ -67,7 +67,7 @@ npm run build
 npm run serve
 ```
 
-Com a configuração padrão do projeto, a API HTTP fica disponível no emulador em `http://127.0.0.1:5001/bd-pi3-1808d/us-central1/api`.
+Com a configuração padrão do projeto, cada Function HTTP fica disponível no emulador em `http://127.0.0.1:5001/bd-pi3-1808d/us-central1/{functionName}`.
 
 ### Executar o Express local
 
@@ -89,54 +89,58 @@ npm run typecheck
 npm run lint
 ```
 
-## Endpoints
+## Functions HTTP
 
 ### Autenticação
 
-- **POST** `/auth/register` - Registrar novo usuário
-- **POST** `/auth/login` - Fazer login
-- **POST** `/auth/forgot-password` - Recuperação de senha
+- `authRegister` - Registrar novo usuário
+- `authLogin` - Fazer login
+- `authForgotPassword` - Recuperação de senha
 
 ### Usuários (Requer autenticação)
 
-- **GET** `/users/me` - Dados do usuário logado
+- `usersGetMe` - Dados do usuário logado
+- `usersInitializeProfile` - Criar perfil e carteira após cadastro pelo SDK Flutter
+- `usersUpdateMfaMetadata` - Atualizar metadados do segundo fator
+- `usersMarkNotificationsViewed` - Registrar visualização de notificações
 
 ### Carteira (Requer autenticação)
 
-- **GET** `/wallet` - Saldo atual
-- **POST** `/wallet/credit` - Adicionar crédito fictício
-- **GET** `/wallet/history` - Histórico de movimentações
+- `walletGet` - Saldo atual
+- `walletAddCredit` - Adicionar crédito fictício
+- `walletListHistory` - Histórico de movimentações
 
 ### Startups (Requer autenticação)
 
-- **GET** `/startups` - Listar todas (suporta filtro `?estagio=Nova`)
-- **GET** `/startups/:id` - Detalhes de uma startup
-- **GET** `/startups/:id/questions` - Perguntas sobre a startup
-- **POST** `/startups/:id/questions` - Enviar pergunta
-- **GET** `/startups/:id/updates` - Atualizações da startup
-- **GET** `/startups/:id/orders` - Livro de ofertas abertas
-- **GET** `/startups/:id/prices?periodo=mensal` - Histórico de preços calculado pelas transações (`diario`, `semanal`, `mensal`, `seis_meses`, `ytd`)
-- **GET** `/startups/:id/prices/current` - Preço atual
+- `startupsList`, `startupsGet`
+- `startupsListQuestions`, `startupsCreateQuestion`
+- `startupsListUpdates`, `startupsListOrders`
+- `startupsGetCurrentPrice`, `startupsListPrices`
+- `startupsEnsureBuyOffers`
 
 ### Portfólio (Requer autenticação)
 
-- **GET** `/portfolio` - Tokens que o usuário possui
-- **GET** `/portfolio/:startupId` - Posição em uma startup específica
+- `portfolioList` - Tokens que o usuário possui
+- `portfolioGetHolding` - Posição em uma startup específica
 
 ### Ordens (Requer autenticação)
 
-- **POST** `/orders` - Criar nova ordem
-- **GET** `/orders` - Listar ordens do usuário
-- **DELETE** `/orders/:id` - Cancelar ordem
+- `ordersCreateSell` - Publicar venda e reservar tokens
+- `ordersBuySellOrder` - Comprar tokens de uma ordem de venda
+- `ordersBuyStartupOffer` - Comprar tokens de uma oferta inicial
+- `ordersBuyDirect` - Comprar tokens diretamente da startup
+- `ordersListMine` - Listar ordens do usuário
+- `ordersCancel` - Cancelar ordem e devolver tokens reservados
 
 ### Transações (Requer autenticação)
 
-- **GET** `/transactions` - Histórico de transações do usuário
+- `transactionsListMine` - Histórico de transações do usuário
 
 ## Segurança
 
-- Firestore Security Rules: `allow read, write: if false` (acesso negado)
-- Todas as operações passam pelo backend via Firebase Admin SDK
+- Firestore Security Rules: leituras exigem autenticação e escritas do cliente são negadas
+- Escritas de negócio passam pelo backend via Firebase Admin SDK
+- Leituras em tempo real continuam disponíveis pelo SDK Flutter
 - Middleware de autenticação valida token Firebase em cada requisição
 - Validação de dados de entrada
 - Helmet para headers de segurança
@@ -146,41 +150,12 @@ npm run lint
 
 Ver documentação detalhada em `DATAMODEL.md` (a ser criado com descrição das coleções do Firestore).
 
-## Status de Implementação
+## A Fazer
 
-### Implementado
-
-- ✅ POST /auth/register
-- ✅ POST /auth/login
-- ✅ POST /auth/forgot-password (Recuperação de senha)
-- ✅ GET /users/me
-- ✅ GET /wallet
-- ✅ POST /wallet/credit
-- ✅ GET /wallet/history
-- ✅ GET /startups
-- ✅ GET /startups/:id
-- ✅ GET /startups/:id/questions
-- ✅ POST /startups/:id/questions
-- ✅ GET /startups/:id/updates
-- ✅ GET /startups/:id/orders
-- ✅ GET /startups/:id/prices
-- ✅ GET /startups/:id/prices/current
-- ✅ GET /portfolio
-- ✅ GET /portfolio/:startupId
-- ✅ POST /orders
-- ✅ GET /orders
-- ✅ DELETE /orders/:id
-- ✅ GET /transactions
-
-### A Fazer
-
-- ⏳ Motor de matching (order matching engine)
-- ⏳ Transações com batch writes para atomicidade
-- ⏳ Testes automatizados
-- ⏳ Documentação Swagger/OpenAPI
-- ⏳ Rate limiting
-- ⏳ Logging e monitoramento
-- ⏳ MFA (TOTP) setup e validação
+- Testes automatizados do backend
+- Documentação Swagger/OpenAPI
+- Rate limiting
+- Logging e monitoramento
 
 ## Deploy
 
@@ -192,7 +167,7 @@ firebase deploy --only functions
 
 O `firebase.json` usa `backend/` como diretório de Functions e executa o build TypeScript antes do deploy.
 
-As rotas Express continuam sob o prefixo da Function HTTP `api`, por exemplo `/auth/login` e `/orders` após a URL da Function.
+Não existe uma Function agregadora `api`. Cada export de `src/index.ts` gera uma URL própria.
 
 O job de variação de preço foi migrado para quatro Functions agendadas:
 

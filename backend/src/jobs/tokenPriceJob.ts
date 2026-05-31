@@ -1,6 +1,7 @@
 //Eduarda Prado Deiró
 
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import '../config/functions';
 import { atualizarPrecosTokens } from '../services/tokenPriceService';
 
 export const updateDailyTokenPrices = onSchedule('* * * * *', () =>

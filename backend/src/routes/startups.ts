@@ -49,6 +49,22 @@ function parseNumber(value: unknown): number {
   return Number.NaN;
 }
 
+async function userHasStartupTokens(
+  firebaseDb: FirebaseFirestore.Firestore,
+  userId: string,
+  startupId: string
+): Promise<boolean> {
+  const holdingsSnapshot = await firebaseDb
+    .collection('tokenHoldings')
+    .where('userId', '==', userId)
+    .get();
+
+  return holdingsSnapshot.docs.some((doc) => {
+    const data = doc.data();
+    return data.startupId === startupId && parseNumber(data.quantidade) > 0;
+  });
+}
+
 function normalizePricePeriod(periodo: unknown): PricePeriod {
   const normalized = typeof periodo === 'string' ? periodo.toLowerCase() : 'mensal';
 
@@ -211,14 +227,7 @@ router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
     const firebaseDb = db();
     const authReq = req as AuthRequest;
 
-    const userTokensSnapshot = await firebaseDb
-      .collection('tokenHoldings')
-      .doc(`${authReq.uid}_${id}`)
-      .get();
-
-    const userHasTokens =
-      userTokensSnapshot.exists &&
-      (userTokensSnapshot.data()?.quantidade || 0) > 0;
+    const userHasTokens = await userHasStartupTokens(firebaseDb, authReq.uid, id);
 
     const questionsSnapshot = await firebaseDb
       .collection('startups')
@@ -243,14 +252,25 @@ router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
 router.post('/:id/questions', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
-    const { texto } = req.body;
+    const { texto, isPrivada = false } = req.body;
     const authReq = req as AuthRequest;
 
-    if (!texto) {
+    if (typeof texto !== 'string' || texto.trim().length === 0) {
       throw new AppError(400, 'O texto da pergunta é obrigatório');
     }
 
+    if (typeof isPrivada !== 'boolean') {
+      throw new AppError(400, 'isPrivada deve ser um booleano');
+    }
+
     const firebaseDb = db();
+
+    if (isPrivada && !(await userHasStartupTokens(firebaseDb, authReq.uid, id))) {
+      throw new AppError(
+        403,
+        'Você precisa possuir tokens desta startup para enviar perguntas privadas'
+      );
+    }
 
     const userDoc = await firebaseDb.collection('users').doc(authReq.uid).get();
     const nomeUsuario = userDoc.data()?.nomeCompleto || 'Usuário';
@@ -266,10 +286,10 @@ router.post('/:id/questions', async (req: Request, res: Response, next: any) => 
       startupId: id,
       userId: authReq.uid,
       nomeUsuario,
-      texto,
+      texto: texto.trim(),
       resposta: null,
       respondidaEm: null,
-      isPrivada: false,
+      isPrivada,
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -281,6 +301,81 @@ router.post('/:id/questions', async (req: Request, res: Response, next: any) => 
     next(error);
   }
 });
+
+router.post(
+  '/:id/ensure-buy-offers',
+  async (req: Request, res: Response, next: any) => {
+    try {
+      const { id } = req.params;
+      const firebaseDb = db();
+      const existingOrders = await firebaseDb
+        .collection('orders')
+        .where('startupId', '==', id)
+        .get();
+
+      const alreadyExists = existingOrders.docs.some(
+        (doc) => doc.data().tipo === 'ofertacompra'
+      );
+
+      if (alreadyExists) {
+        res.json({ created: false });
+        return;
+      }
+
+      const startupDoc = await firebaseDb.collection('startups').doc(id).get();
+
+      if (!startupDoc.exists) {
+        throw new AppError(404, 'Startup não encontrada');
+      }
+
+      const startup = startupDoc.data() || {};
+      const currentPrice = parseNumber(
+        startup.valorToken ??
+          startup.precoToken ??
+          startup.tokenPrecoInicial ??
+          startup.preco
+      );
+
+      if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+        throw new AppError(400, 'Startup sem preço de token válido');
+      }
+
+      const offers = [
+        { factor: 0.885, quantity: 100 },
+        { factor: 0.91, quantity: 50 },
+        { factor: 0.93, quantity: 200 },
+        { factor: 0.95, quantity: 75 },
+        { factor: 0.97, quantity: 30 },
+      ];
+      const batch = firebaseDb.batch();
+      const now = FieldValue.serverTimestamp();
+
+      offers.forEach(({ factor, quantity }, index) => {
+        const ref = firebaseDb.collection('orders').doc(`system_buy_offer_${id}_${index}`);
+        const price = Math.round(currentPrice * factor * 100) / 100;
+
+        batch.set(ref, {
+          id: ref.id,
+          tipo: 'ofertacompra',
+          startupId: id,
+          preco: price,
+          precoUnitario: price,
+          quantidade: quantity,
+          quantidadeRestante: quantity,
+          quantidadeExecutada: 0,
+          status: 'aberta',
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      await batch.commit();
+      res.status(201).json({ created: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.get('/:id/updates', async (req: Request, res: Response, next: any) => {
   try {

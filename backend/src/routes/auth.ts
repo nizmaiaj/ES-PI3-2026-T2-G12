@@ -138,7 +138,7 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
     });
 
     const walletDocRef = firebaseDb.collection('wallets').doc(userRecord.uid);
-    const INITIAL_BALANCE = 1000.0;
+    const INITIAL_BALANCE = 0.0;
     batch.set(walletDocRef, {
       userId: userRecord.uid,
       saldoReais: INITIAL_BALANCE,

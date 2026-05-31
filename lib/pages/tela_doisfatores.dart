@@ -74,11 +74,10 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
         await authService.unenrollSmsMfa();
       }
 
-      await ref.set({
-        'mfaHabilitado': habilitado,
-        'mfaTelefone': habilitado ? phoneNumber : FieldValue.delete(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await authService.updateMfaMetadata(
+        enabled: habilitado,
+        phoneNumber: phoneNumber,
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

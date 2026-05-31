@@ -7,10 +7,9 @@ venda de tokens, acompanhamento de portfólio e informações institucionais das
 empresas.
 
 O repositório contém um app Flutter e um backend Express/TypeScript publicado
-como Firebase Cloud Function. No estado atual da codebase, a maior parte das
-telas do app consome Firebase diretamente pelo SDK Flutter, enquanto o backend
-mantém uma API HTTP equivalente para autenticação, carteira, startups,
-portfólio, ordens e transações.
+como Firebase Cloud Functions individuais. O app usa o SDK Flutter para
+autenticação, Storage e leituras em tempo real do Firestore. As escritas de
+negócio passam pelas Functions HTTP autenticadas.
 
 ## Funcionalidades
 
@@ -61,15 +60,15 @@ Flutter App
   |-- Cloud Firestore
   |-- Firebase Storage
   |
-  +-- Backend HTTP opcional: Firebase Function `api`
-        |-- Express routes
+  +-- Firebase Functions HTTP individuais
+        |-- Escritas de negócio autenticadas
         |-- Firebase Admin SDK
         +-- Firestore/Auth
 ```
 
-O backend fica em `backend/` e expõe a Function HTTP `api`. O app possui o
-arquivo `lib/services/api_config.dart`, mas as telas implementadas hoje operam
-principalmente via SDK do Firebase no cliente.
+O backend fica em `backend/` e expõe uma Function HTTP para cada operação. Não
+existe uma Function agregadora `api`. Os routers Express continuam reutilizados
+para desenvolvimento local.
 
 ## Estrutura do repositório
 
@@ -148,6 +147,15 @@ Ou rode em um emulador/dispositivo Android:
 flutter run -d android
 ```
 
+As escritas usam Functions HTTP. Para executar no Chrome com o emulador local:
+
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:5001/bd-pi3-1808d/us-central1
+```
+
+O valor padrão de `API_BASE_URL` usa `10.0.2.2`, apropriado para o emulador
+Android. Em produção, informe a URL-base das Cloud Functions publicadas.
+
 Para usar o 2FA por SMS em Android/Web, confirme no Firebase Console se Phone
 Auth, domínios autorizados e configurações exigidas pela plataforma estão
 habilitados.
@@ -176,7 +184,7 @@ FIREBASE_API_KEY=
 FIREBASE_PROJECT_ID=
 FIREBASE_PRIVATE_KEY=
 FIREBASE_CLIENT_EMAIL=
-CORS_ORIGIN=http://localhost:5000
+CORS_ORIGIN=http://localhost:5000,http://localhost:5001
 ```
 
 Rode o Express local:
@@ -197,40 +205,30 @@ Emule as Cloud Functions:
 npm run serve
 ```
 
-Com a configuração atual, a API emulada fica em:
+Com a configuração atual, cada Function emulada fica sob:
 
 ```text
-http://127.0.0.1:5001/bd-pi3-1808d/us-central1/api
+http://127.0.0.1:5001/bd-pi3-1808d/us-central1/{functionName}
 ```
 
-## Rotas do backend
+Por exemplo: `http://127.0.0.1:5001/bd-pi3-1808d/us-central1/walletAddCredit`.
 
-Rotas públicas:
+## Functions HTTP
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/forgot-password`
+Functions públicas:
 
-Rotas autenticadas por Bearer token Firebase:
+- `authRegister`
+- `authLogin`
+- `authForgotPassword`
 
-- `GET /users/me`
-- `GET /wallet`
-- `POST /wallet/credit`
-- `GET /wallet/history`
-- `GET /startups`
-- `GET /startups/:id`
-- `GET /startups/:id/questions`
-- `POST /startups/:id/questions`
-- `GET /startups/:id/updates`
-- `GET /startups/:id/orders`
-- `GET /startups/:id/prices`
-- `GET /startups/:id/prices/current`
-- `GET /portfolio`
-- `GET /portfolio/:startupId`
-- `POST /orders`
-- `GET /orders`
-- `DELETE /orders/:id`
-- `GET /transactions`
+Functions autenticadas:
+
+- `usersGetMe`, `usersInitializeProfile`, `usersUpdateMfaMetadata`, `usersMarkNotificationsViewed`
+- `walletGet`, `walletAddCredit`, `walletListHistory`
+- `startupsList`, `startupsGet`, `startupsListQuestions`, `startupsCreateQuestion`, `startupsListUpdates`, `startupsListOrders`, `startupsGetCurrentPrice`, `startupsListPrices`, `startupsEnsureBuyOffers`
+- `portfolioList`, `portfolioGetHolding`
+- `ordersCreateSell`, `ordersBuySellOrder`, `ordersBuyStartupOffer`, `ordersBuyDirect`, `ordersListMine`, `ordersCancel`
+- `transactionsListMine`
 
 ## Jobs agendados
 

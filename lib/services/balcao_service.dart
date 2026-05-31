@@ -1,10 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'functions_api_client.dart';
 
 class BalcaoService {
-  BalcaoService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  BalcaoService({FunctionsApiClient? apiClient})
+    : _apiClient = apiClient ?? FunctionsApiClient.instance;
 
-  final FirebaseFirestore _firestore;
+  final FunctionsApiClient _apiClient;
 
   Future<void> criarOrdemVenda({
     required String vendedorId,
@@ -12,59 +12,23 @@ class BalcaoService {
     required int quantidade,
     required double preco,
   }) async {
+    if (vendedorId.isEmpty) {
+      throw Exception('Usuário não autenticado.');
+    }
     if (startupId.trim().isEmpty) {
       throw Exception('Startup inválida para venda.');
     }
-
     if (quantidade <= 0) {
       throw Exception('Informe uma quantidade válida de tokens.');
     }
-
     if (preco <= 0) {
       throw Exception('Informe um preço válido para venda.');
     }
 
-    final holdingRef = await _normalizarHoldingRef(vendedorId, startupId);
-    final orderRef = _firestore.collection('orders').doc();
-    final now = FieldValue.serverTimestamp();
-
-    await _firestore.runTransaction((transaction) async {
-      final holdingDoc = await transaction.get(holdingRef);
-
-      if (!holdingDoc.exists) {
-        throw Exception('Tokens não encontrados na carteira.');
-      }
-
-      final holding = holdingDoc.data();
-      final quantidadeAtual = _numero(holding?['quantidade']).toInt();
-
-      if (quantidadeAtual < quantidade) {
-        throw Exception('Tokens insuficientes para venda.');
-      }
-
-      transaction.set(holdingRef, {
-        'userId': vendedorId,
-        'startupId': startupId,
-        'quantidade': quantidadeAtual - quantidade,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
-
-      transaction.set(orderRef, {
-        'id': orderRef.id,
-        'userId': vendedorId,
-        'sellerId': vendedorId,
-        'startupId': startupId,
-        'tipo': 'venda',
-        'quantidade': quantidade,
-        'quantidadeExecutada': 0,
-        'quantidadeRestante': quantidade,
-        'preco': preco,
-        'precoUnitario': preco,
-        'status': 'aberta',
-        'createdAt': now,
-        'updatedAt': now,
-      });
-    });
+    await _apiClient.post(
+      'ordersCreateSell',
+      body: {'startupId': startupId, 'quantidade': quantidade, 'preco': preco},
+    );
   }
 
   Future<void> comprarOrdemVenda({
@@ -72,187 +36,17 @@ class BalcaoService {
     required String ordemId,
     required int quantidade,
   }) async {
+    if (compradorId.isEmpty) {
+      throw Exception('Usuário não autenticado.');
+    }
     if (quantidade <= 0) {
       throw Exception('Informe uma quantidade válida de tokens.');
     }
 
-    final orderRef = _firestore.collection('orders').doc(ordemId);
-    final orderSnapshot = await orderRef.get();
-    final orderData = orderSnapshot.data();
-
-    if (orderData == null) {
-      throw Exception('Oferta não encontrada.');
-    }
-
-    final startupId = _texto(orderData['startupId']);
-    if (startupId.isEmpty) {
-      throw Exception('Oferta inválida.');
-    }
-
-    final compradorHoldingRef = await _normalizarHoldingRef(
-      compradorId,
-      startupId,
+    await _apiClient.post(
+      'ordersBuySellOrder',
+      body: {'ordemId': ordemId, 'quantidade': quantidade},
     );
-    final now = FieldValue.serverTimestamp();
-
-    await _firestore.runTransaction((transaction) async {
-      final orderDoc = await transaction.get(orderRef);
-
-      if (!orderDoc.exists) {
-        throw Exception('Oferta não encontrada.');
-      }
-
-      final order = orderDoc.data() ?? {};
-      final tipo = _texto(order['tipo']).toLowerCase();
-      final status = _texto(order['status']).toLowerCase();
-      final vendedorId = _texto(order['sellerId'] ?? order['userId']);
-      final startupId = _texto(order['startupId']);
-      final preco = _numero(order['preco'] ?? order['precoUnitario']);
-      final quantidadeOriginal = _numero(order['quantidade']).toInt();
-      final quantidadeExecutada = _numero(order['quantidadeExecutada']).toInt();
-      final quantidadeRestante = _quantidadeRestante(order);
-
-      if (tipo != 'venda' || !_statusAberto(status)) {
-        throw Exception('Esta oferta não está mais disponível.');
-      }
-
-      if (vendedorId.isEmpty || vendedorId == compradorId) {
-        throw Exception('Não é possível comprar a própria oferta.');
-      }
-
-      if (startupId.isEmpty || preco <= 0) {
-        throw Exception('Oferta inválida.');
-      }
-
-      if (quantidadeRestante < quantidade) {
-        throw Exception('Quantidade indisponível nesta oferta.');
-      }
-
-      final vendedorWalletRef = _firestore
-          .collection('wallets')
-          .doc(vendedorId);
-      final compradorWalletRef = _firestore
-          .collection('wallets')
-          .doc(compradorId);
-
-      final compradorWalletDoc = await transaction.get(compradorWalletRef);
-      final vendedorWalletDoc = await transaction.get(vendedorWalletRef);
-      final compradorHoldingDoc = await transaction.get(compradorHoldingRef);
-
-      if (!compradorWalletDoc.exists) {
-        throw Exception('Carteira do comprador não encontrada.');
-      }
-
-      final total = preco * quantidade;
-      final saldoComprador = _numero(compradorWalletDoc.data()?['saldoReais']);
-
-      if (saldoComprador < total) {
-        throw Exception('Saldo insuficiente na carteira.');
-      }
-
-      final saldoVendedor = _numero(vendedorWalletDoc.data()?['saldoReais']);
-      final holding = compradorHoldingDoc.data();
-      final quantidadeAtualComprador = _numero(holding?['quantidade']).toInt();
-      final precoMedioAtual = _numero(holding?['precoMedioCompra']);
-      final novaQuantidadeComprador = quantidadeAtualComprador + quantidade;
-      final novoPrecoMedio =
-          ((quantidadeAtualComprador * precoMedioAtual) + total) /
-          novaQuantidadeComprador;
-      final novaExecutada = quantidadeExecutada + quantidade;
-      final novaRestante = quantidadeOriginal - novaExecutada;
-      final statusAtualizado = novaRestante <= 0 ? 'executada' : 'parcial';
-
-      final compraOrderRef = _firestore.collection('orders').doc();
-      final transactionRef = _firestore.collection('transactions').doc();
-      final tokenPriceRef = _firestore.collection('tokenPrices').doc();
-      final buyerWalletCreditRef = _firestore.collection('walletCredits').doc();
-      final sellerWalletCreditRef = _firestore
-          .collection('walletCredits')
-          .doc();
-
-      transaction.update(compradorWalletRef, {
-        'saldoReais': saldoComprador - total,
-        'updatedAt': now,
-      });
-
-      transaction.set(vendedorWalletRef, {
-        'userId': vendedorId,
-        'saldoReais': saldoVendedor + total,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
-
-      transaction.set(compradorHoldingRef, {
-        'userId': compradorId,
-        'startupId': startupId,
-        'quantidade': novaQuantidadeComprador,
-        'precoMedioCompra': novoPrecoMedio,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
-
-      transaction.update(orderRef, {
-        'quantidadeExecutada': novaExecutada,
-        'quantidadeRestante': novaRestante < 0 ? 0 : novaRestante,
-        'status': statusAtualizado,
-        'updatedAt': now,
-        if (statusAtualizado == 'executada') 'executadaEm': now,
-      });
-
-      transaction.set(compraOrderRef, {
-        'id': compraOrderRef.id,
-        'userId': compradorId,
-        'buyerId': compradorId,
-        'sellerId': vendedorId,
-        'startupId': startupId,
-        'tipo': 'compra',
-        'quantidade': quantidade,
-        'quantidadeExecutada': quantidade,
-        'quantidadeRestante': 0,
-        'preco': preco,
-        'precoUnitario': preco,
-        'status': 'executada',
-        'orderVendaId': orderRef.id,
-        'createdAt': now,
-        'updatedAt': now,
-        'executadaEm': now,
-      });
-
-      transaction.set(transactionRef, {
-        'id': transactionRef.id,
-        'startupId': startupId,
-        'buyerId': compradorId,
-        'sellerId': vendedorId,
-        'quantidade': quantidade,
-        'precoUnitario': preco,
-        'valorTotal': total,
-        'orderCompraId': compraOrderRef.id,
-        'orderVendaId': orderRef.id,
-        'executadaEm': now,
-      });
-
-      transaction.set(tokenPriceRef, {
-        'id': tokenPriceRef.id,
-        'startupId': startupId,
-        'preco': preco,
-        'volume': quantidade,
-        'timestamp': now,
-      });
-
-      transaction.set(buyerWalletCreditRef, {
-        'userId': compradorId,
-        'valor': -total,
-        'tipo': 'compra',
-        'descricao': 'Compra de $quantidade tokens',
-        'createdAt': now,
-      });
-
-      transaction.set(sellerWalletCreditRef, {
-        'userId': vendedorId,
-        'valor': total,
-        'tipo': 'venda',
-        'descricao': 'Venda de $quantidade tokens',
-        'createdAt': now,
-      });
-    });
   }
 
   Future<void> comprarDeOferta({
@@ -260,125 +54,17 @@ class BalcaoService {
     required String ofertaId,
     required int quantidade,
   }) async {
-    if (quantidade <= 0) throw Exception('Informe uma quantidade válida de tokens.');
+    if (compradorId.isEmpty) {
+      throw Exception('Usuário não autenticado.');
+    }
+    if (quantidade <= 0) {
+      throw Exception('Informe uma quantidade válida de tokens.');
+    }
 
-    final ofertaRef = _firestore.collection('orders').doc(ofertaId);
-    final ofertaSnap = await ofertaRef.get();
-    final ofertaData = ofertaSnap.data();
-    if (ofertaData == null) throw Exception('Oferta não encontrada.');
-
-    final startupId = _texto(ofertaData['startupId']);
-    if (startupId.isEmpty) throw Exception('Oferta inválida.');
-
-    final holdingRef = await _normalizarHoldingRef(compradorId, startupId);
-    final compraRef = _firestore.collection('orders').doc();
-    final txRef = _firestore.collection('transactions').doc();
-    final creditRef = _firestore.collection('walletCredits').doc();
-    final walletRef = _firestore.collection('wallets').doc(compradorId);
-    final now = FieldValue.serverTimestamp();
-
-    await _firestore.runTransaction((txn) async {
-      final ofertaDoc = await txn.get(ofertaRef);
-      if (!ofertaDoc.exists) throw Exception('Oferta não encontrada.');
-
-      final oferta = ofertaDoc.data() ?? {};
-      final tipo = _texto(oferta['tipo']).toLowerCase();
-      final status = _texto(oferta['status']).toLowerCase();
-      final preco = _numero(oferta['preco'] ?? oferta['precoUnitario']);
-      final qtdRestante = _quantidadeRestante(oferta);
-      final qtdExecutada = _numero(oferta['quantidadeExecutada']).toInt();
-      final qtdOriginal = _numero(oferta['quantidade']).toInt();
-
-      if (tipo != 'ofertacompra' || !_statusAberto(status)) {
-        throw Exception('Esta oferta não está mais disponível.');
-      }
-      if (qtdRestante < quantidade) {
-        throw Exception('Quantidade indisponível nesta oferta.');
-      }
-
-      final total = preco * quantidade;
-      final walletDoc = await txn.get(walletRef);
-      final holdingDoc = await txn.get(holdingRef);
-
-      if (!walletDoc.exists) throw Exception('Carteira não encontrada.');
-      final saldo = _numero(walletDoc.data()?['saldoReais']);
-      if (saldo < total) throw Exception('Saldo insuficiente na carteira.');
-
-      final holding = holdingDoc.data();
-      final qtdAtual = _numero(holding?['quantidade']).toInt();
-      final precoMedioAtual = _numero(holding?['precoMedioCompra']);
-      final novaQtd = qtdAtual + quantidade;
-      final novoPrecoMedio = ((qtdAtual * precoMedioAtual) + total) / novaQtd;
-
-      final novaExecutada = qtdExecutada + quantidade;
-      final novaRestante = qtdOriginal - novaExecutada;
-      final novoStatus = novaRestante <= 0 ? 'executada' : 'parcial';
-
-      txn.update(ofertaRef, {
-        'quantidadeExecutada': novaExecutada,
-        'quantidadeRestante': novaRestante < 0 ? 0 : novaRestante,
-        'status': novoStatus,
-        'updatedAt': now,
-        if (novoStatus == 'executada') 'executadaEm': now,
-      });
-
-      txn.update(walletRef, {'saldoReais': saldo - total, 'updatedAt': now});
-
-      txn.set(holdingRef, {
-        'userId': compradorId,
-        'startupId': startupId,
-        'quantidade': novaQtd,
-        'precoMedioCompra': novoPrecoMedio,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
-
-      txn.set(compraRef, {
-        'id': compraRef.id,
-        'userId': compradorId,
-        'buyerId': compradorId,
-        'startupId': startupId,
-        'tipo': 'compra',
-        'quantidade': quantidade,
-        'quantidadeExecutada': quantidade,
-        'quantidadeRestante': 0,
-        'preco': preco,
-        'precoUnitario': preco,
-        'status': 'executada',
-        'ofertaCompraId': ofertaId,
-        'createdAt': now,
-        'updatedAt': now,
-        'executadaEm': now,
-      });
-
-      txn.set(txRef, {
-        'id': txRef.id,
-        'startupId': startupId,
-        'buyerId': compradorId,
-        'quantidade': quantidade,
-        'precoUnitario': preco,
-        'valorTotal': total,
-        'orderCompraId': compraRef.id,
-        'ofertaCompraId': ofertaId,
-        'executadaEm': now,
-      });
-
-      final tokenPriceRef = _firestore.collection('tokenPrices').doc();
-      txn.set(tokenPriceRef, {
-        'id': tokenPriceRef.id,
-        'startupId': startupId,
-        'preco': preco,
-        'volume': quantidade,
-        'timestamp': now,
-      });
-
-      txn.set(creditRef, {
-        'userId': compradorId,
-        'valor': -total,
-        'tipo': 'compra',
-        'descricao': 'Compra de $quantidade tokens',
-        'createdAt': now,
-      });
-    });
+    await _apiClient.post(
+      'ordersBuyStartupOffer',
+      body: {'ofertaId': ofertaId, 'quantidade': quantidade},
+    );
   }
 
   Future<void> comprarDiretamente({
@@ -387,267 +73,41 @@ class BalcaoService {
     required int quantidade,
     required double preco,
   }) async {
-    if (quantidade <= 0) throw Exception('Informe uma quantidade válida de tokens.');
-    if (preco <= 0) throw Exception('Preço inválido.');
+    if (compradorId.isEmpty) {
+      throw Exception('Usuário não autenticado.');
+    }
+    if (quantidade <= 0) {
+      throw Exception('Informe uma quantidade válida de tokens.');
+    }
+    if (preco <= 0) {
+      throw Exception('Preço inválido.');
+    }
 
-    final holdingRef = await _normalizarHoldingRef(compradorId, startupId);
-    final compraOrderRef = _firestore.collection('orders').doc();
-    final transactionRef = _firestore.collection('transactions').doc();
-    final walletCreditRef = _firestore.collection('walletCredits').doc();
-    final compradorWalletRef = _firestore.collection('wallets').doc(compradorId);
-    final now = FieldValue.serverTimestamp();
-    final total = preco * quantidade;
-
-    await _firestore.runTransaction((txn) async {
-      final walletDoc = await txn.get(compradorWalletRef);
-      final holdingDoc = await txn.get(holdingRef);
-
-      if (!walletDoc.exists) throw Exception('Carteira não encontrada.');
-
-      final saldo = _numero(walletDoc.data()?['saldoReais']);
-      if (saldo < total) throw Exception('Saldo insuficiente na carteira.');
-
-      final holding = holdingDoc.data();
-      final qtdAtual = _numero(holding?['quantidade']).toInt();
-      final precoMedioAtual = _numero(holding?['precoMedioCompra']);
-      final novaQtd = qtdAtual + quantidade;
-      final novoPrecoMedio = ((qtdAtual * precoMedioAtual) + total) / novaQtd;
-
-      txn.update(compradorWalletRef, {
-        'saldoReais': saldo - total,
-        'updatedAt': now,
-      });
-
-      txn.set(holdingRef, {
-        'userId': compradorId,
-        'startupId': startupId,
-        'quantidade': novaQtd,
-        'precoMedioCompra': novoPrecoMedio,
-        'updatedAt': now,
-      }, SetOptions(merge: true));
-
-      txn.set(compraOrderRef, {
-        'id': compraOrderRef.id,
-        'userId': compradorId,
-        'buyerId': compradorId,
-        'startupId': startupId,
-        'tipo': 'compra',
-        'quantidade': quantidade,
-        'quantidadeExecutada': quantidade,
-        'quantidadeRestante': 0,
-        'preco': preco,
-        'precoUnitario': preco,
-        'status': 'executada',
-        'createdAt': now,
-        'updatedAt': now,
-        'executadaEm': now,
-      });
-
-      txn.set(transactionRef, {
-        'id': transactionRef.id,
-        'startupId': startupId,
-        'buyerId': compradorId,
-        'quantidade': quantidade,
-        'precoUnitario': preco,
-        'valorTotal': total,
-        'orderCompraId': compraOrderRef.id,
-        'executadaEm': now,
-      });
-
-      final tokenPriceRef = _firestore.collection('tokenPrices').doc();
-      txn.set(tokenPriceRef, {
-        'id': tokenPriceRef.id,
-        'startupId': startupId,
-        'preco': preco,
-        'volume': quantidade,
-        'timestamp': now,
-      });
-
-      txn.set(walletCreditRef, {
-        'userId': compradorId,
-        'valor': -total,
-        'tipo': 'compra',
-        'descricao': 'Compra de $quantidade tokens',
-        'createdAt': now,
-      });
-    });
+    await _apiClient.post(
+      'ordersBuyDirect',
+      body: {'startupId': startupId, 'quantidade': quantidade},
+    );
   }
 
   Future<void> cancelarOrdem({
     required String usuarioId,
     required String ordemId,
   }) async {
-    final orderRef = _firestore.collection('orders').doc(ordemId);
-    final orderSnapshot = await orderRef.get();
-    final orderData = orderSnapshot.data();
-
-    if (orderData == null) {
-      throw Exception('Ordem não encontrada.');
+    if (usuarioId.isEmpty) {
+      throw Exception('Usuário não autenticado.');
     }
 
-    final startupId = _texto(orderData['startupId']);
-    if (startupId.isEmpty) {
-      throw Exception('Ordem inválida.');
+    await _apiClient.delete('ordersCancel', queryParameters: {'id': ordemId});
+  }
+
+  Future<void> garantirOfertasCompra(String startupId) async {
+    if (startupId.trim().isEmpty) {
+      return;
     }
 
-    final holdingRef = await _normalizarHoldingRef(usuarioId, startupId);
-    final now = FieldValue.serverTimestamp();
-
-    await _firestore.runTransaction((transaction) async {
-      final orderDoc = await transaction.get(orderRef);
-
-      if (!orderDoc.exists) {
-        throw Exception('Ordem não encontrada.');
-      }
-
-      final order = orderDoc.data() ?? {};
-      final donoId = _texto(order['userId'] ?? order['sellerId']);
-      final tipo = _texto(order['tipo']).toLowerCase();
-      final status = _texto(order['status']).toLowerCase();
-      final quantidadeRestante = _quantidadeRestante(order);
-
-      if (donoId != usuarioId) {
-        throw Exception('Você não pode cancelar esta ordem.');
-      }
-
-      if (!_statusAberto(status)) {
-        throw Exception('Esta ordem não está aberta.');
-      }
-
-      if (tipo == 'venda' && quantidadeRestante > 0) {
-        final holdingDoc = await transaction.get(holdingRef);
-        final holding = holdingDoc.data();
-        final quantidadeAtual = _numero(holding?['quantidade']).toInt();
-
-        transaction.set(holdingRef, {
-          'userId': usuarioId,
-          'startupId': startupId,
-          'quantidade': quantidadeAtual + quantidadeRestante,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
-      }
-
-      transaction.update(orderRef, {
-        'status': 'cancelada',
-        'updatedAt': now,
-        'canceladaEm': now,
-      });
-    });
+    await _apiClient.post(
+      'startupsEnsureBuyOffers',
+      body: {'startupId': startupId},
+    );
   }
-
-  Future<DocumentReference<Map<String, dynamic>>> _normalizarHoldingRef(
-    String uid,
-    String startupId,
-  ) async {
-    final canonicalRef = _firestore
-        .collection('tokenHoldings')
-        .doc(_holdingDocId(uid, startupId));
-    final docs = await _buscarHoldingDocs(uid, startupId);
-    final refs = <DocumentReference<Map<String, dynamic>>>[
-      canonicalRef,
-      for (final doc in docs)
-        if (doc.reference.path != canonicalRef.path) doc.reference,
-    ];
-
-    if (docs.length == 1 && docs.first.reference.path == canonicalRef.path) {
-      return canonicalRef;
-    }
-
-    await _firestore.runTransaction((transaction) async {
-      final snapshots = <DocumentSnapshot<Map<String, dynamic>>>[];
-
-      for (final ref in refs) {
-        snapshots.add(await transaction.get(ref));
-      }
-
-      var quantidadeTotal = 0;
-      var custoTotal = 0.0;
-
-      for (final snapshot in snapshots) {
-        final data = snapshot.data();
-        if (data == null) continue;
-
-        final quantidade = _numero(data['quantidade']).toInt();
-        final precoMedioCompra = _numero(data['precoMedioCompra']);
-
-        quantidadeTotal += quantidade;
-        custoTotal += quantidade * precoMedioCompra;
-      }
-
-      if (quantidadeTotal > 0) {
-        transaction.set(canonicalRef, {
-          'userId': uid,
-          'startupId': startupId,
-          'quantidade': quantidadeTotal,
-          'precoMedioCompra': custoTotal / quantidadeTotal,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      for (final snapshot in snapshots) {
-        if (snapshot.reference.path != canonicalRef.path && snapshot.exists) {
-          transaction.delete(snapshot.reference);
-        }
-      }
-    });
-
-    return canonicalRef;
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _buscarHoldingDocs(
-    String uid,
-    String startupId,
-  ) async {
-    final snapshot = await _firestore
-        .collection('tokenHoldings')
-        .where('userId', isEqualTo: uid)
-        .get();
-
-    return snapshot.docs
-        .where((doc) => _texto(doc.data()['startupId']) == startupId)
-        .toList();
-  }
-
-  String _holdingDocId(String uid, String startupId) => '${uid}_$startupId';
-}
-
-bool _statusAberto(String status) {
-  return status == 'aberta' ||
-      status == 'parcial' ||
-      status == 'pendente' ||
-      status.contains('aguardando');
-}
-
-int _quantidadeRestante(Map<String, dynamic> order) {
-  final restante = _numero(order['quantidadeRestante']).toInt();
-  if (restante > 0) return restante;
-
-  final quantidade = _numero(order['quantidade']).toInt();
-  final executada = _numero(order['quantidadeExecutada']).toInt();
-  final calculada = quantidade - executada;
-  return calculada < 0 ? 0 : calculada;
-}
-
-String _texto(dynamic value, {String fallback = ''}) {
-  if (value == null) return fallback;
-
-  final texto = value.toString().trim();
-  return texto.isEmpty ? fallback : texto;
-}
-
-double _numero(dynamic value, {double fallback = 0}) {
-  if (value is int) return value.toDouble();
-  if (value is double) return value;
-  if (value is num) return value.toDouble();
-
-  if (value is String) {
-    final texto = value.replaceAll('R\$', '').replaceAll(' ', '').trim();
-    final normalizado = texto.contains(',')
-        ? texto.replaceAll('.', '').replaceAll(',', '.')
-        : texto;
-
-    return double.tryParse(normalizado) ?? fallback;
-  }
-
-  return fallback;
 }

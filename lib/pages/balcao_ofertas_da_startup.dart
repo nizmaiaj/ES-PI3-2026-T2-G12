@@ -43,42 +43,11 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     final startupId = _startupId;
     if (startupId == null) return;
 
-    final snap = await _firestore
-        .collection('orders')
-        .where('startupId', isEqualTo: startupId)
-        .get();
-
-    final jaExiste = snap.docs.any(
-      (d) => _texto(d.data()['tipo']).toLowerCase() == 'ofertacompra',
-    );
-    if (jaExiste) return;
-
-    final preco = _precoAtual;
-    final ofertas = [
-      (fator: 0.885, quantidade: 100),
-      (fator: 0.910, quantidade: 50),
-      (fator: 0.930, quantidade: 200),
-      (fator: 0.950, quantidade: 75),
-      (fator: 0.970, quantidade: 30),
-    ];
-
-    final batch = _firestore.batch();
-    for (final o in ofertas) {
-      final ref = _firestore.collection('orders').doc();
-      final precoOferta = double.parse((preco * o.fator).toStringAsFixed(2));
-      batch.set(ref, {
-        'tipo': 'ofertacompra',
-        'startupId': startupId,
-        'preco': precoOferta,
-        'precoUnitario': precoOferta,
-        'quantidade': o.quantidade,
-        'quantidadeRestante': o.quantidade,
-        'quantidadeExecutada': 0,
-        'status': 'aberta',
-        'criadoEm': FieldValue.serverTimestamp(),
-      });
+    try {
+      await _balcaoService.garantirOfertasCompra(startupId);
+    } catch (_) {
+      // A tela continua funcional mesmo se a inicialização das ofertas falhar.
     }
-    await batch.commit();
   }
 
   String get _nomeStartup => widget.startup['nome'] ?? 'Nome da startup';

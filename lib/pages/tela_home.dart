@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../services/auth_session.dart';
+import '../services/functions_api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
@@ -846,7 +847,7 @@ class _TelaHomeState extends State<TelaHome> {
     unawaited(
       notificacoesFuture
           .then((notificacoes) {
-            return _marcarNotificacoesComoVistas(uid, notificacoes);
+            return _marcarNotificacoesComoVistas(notificacoes);
           })
           .catchError((Object error) {
             debugPrint(
@@ -1127,7 +1128,6 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Future<void> _marcarNotificacoesComoVistas(
-    String uid,
     List<_NotificacaoHome> notificacoes,
   ) async {
     final ultimaNotificacao = _dataMaisRecente(
@@ -1140,9 +1140,10 @@ class _TelaHomeState extends State<TelaHome> {
       return;
     }
 
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'notificacoesVistasEm': Timestamp.fromDate(ultimaNotificacao),
-    }, SetOptions(merge: true));
+    await FunctionsApiClient.instance.patch(
+      'usersMarkNotificationsViewed',
+      body: {'viewedAt': ultimaNotificacao.toIso8601String()},
+    );
   }
 
   Future<List<_NotificacaoHome>> _buscarNotificacoesDeVendas(

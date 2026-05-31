@@ -36,6 +36,171 @@ interface MatchData {
   sellerOrderTotal: number;
 }
 
+interface HoldingData {
+  quantidade: number;
+  precoMedioCompra: number;
+}
+
+function parseNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const text = value.replace('R$', '').replace(/\s/g, '');
+    const normalized = text.includes(',')
+      ? text.replace(/\./g, '').replace(',', '.')
+      : text;
+
+    return Number(normalized);
+  }
+
+  return 0;
+}
+
+function remainingQuantity(order: FirebaseFirestore.DocumentData): number {
+  const explicitRemaining = parseNumber(order.quantidadeRestante);
+  if (explicitRemaining > 0) return explicitRemaining;
+
+  return Math.max(0, parseNumber(order.quantidade) - parseNumber(order.quantidadeExecutada));
+}
+
+function isOpenStatus(status: unknown): boolean {
+  return status === 'aberta' || status === 'parcial' || status === 'pendente';
+}
+
+async function getHoldingRefs(
+  firebaseDb: FirebaseFirestore.Firestore,
+  userId: string,
+  startupId: string
+): Promise<FirebaseFirestore.DocumentReference[]> {
+  const canonicalRef = firebaseDb.collection('tokenHoldings').doc(`${userId}_${startupId}`);
+  const holdingsSnapshot = await firebaseDb
+    .collection('tokenHoldings')
+    .where('userId', '==', userId)
+    .get();
+  const legacyRefs = holdingsSnapshot.docs
+    .filter((doc) => doc.data().startupId === startupId)
+    .map((doc) => doc.ref)
+    .filter((ref) => ref.path !== canonicalRef.path);
+
+  return [canonicalRef, ...legacyRefs];
+}
+
+async function readHolding(
+  transaction: FirebaseFirestore.Transaction,
+  refs: FirebaseFirestore.DocumentReference[]
+): Promise<HoldingData> {
+  const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)));
+  let quantidade = 0;
+  let totalCost = 0;
+
+  snapshots.forEach((snapshot) => {
+    const data = snapshot.data();
+    if (!data) return;
+
+    const itemQuantity = parseNumber(data.quantidade);
+    quantidade += itemQuantity;
+    totalCost += itemQuantity * parseNumber(data.precoMedioCompra);
+  });
+
+  return {
+    quantidade,
+    precoMedioCompra: quantidade > 0 ? totalCost / quantidade : 0,
+  };
+}
+
+function writeHolding(
+  transaction: FirebaseFirestore.Transaction,
+  refs: FirebaseFirestore.DocumentReference[],
+  userId: string,
+  startupId: string,
+  holding: HoldingData,
+  now: FirebaseFirestore.FieldValue
+): void {
+  const [canonicalRef, ...legacyRefs] = refs;
+
+  transaction.set(
+    canonicalRef,
+    {
+      userId,
+      startupId,
+      quantidade: holding.quantidade,
+      precoMedioCompra: holding.precoMedioCompra,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+
+  legacyRefs.forEach((ref) => transaction.delete(ref));
+}
+
+function createTransactionRecords({
+  buyerId,
+  buyOrderId,
+  firebaseDb,
+  now,
+  preco,
+  quantidade,
+  sellerId,
+  sellOrderId,
+  startupId,
+  transaction,
+}: {
+  buyerId: string;
+  buyOrderId: string;
+  firebaseDb: FirebaseFirestore.Firestore;
+  now: FirebaseFirestore.FieldValue;
+  preco: number;
+  quantidade: number;
+  sellerId?: string;
+  sellOrderId?: string;
+  startupId: string;
+  transaction: FirebaseFirestore.Transaction;
+}): void {
+  const total = preco * quantidade;
+  const transactionRef = firebaseDb.collection('transactions').doc();
+  const tokenPriceRef = firebaseDb.collection('tokenPrices').doc();
+  const buyerCreditRef = firebaseDb.collection('walletCredits').doc();
+
+  transaction.set(transactionRef, {
+    id: transactionRef.id,
+    startupId,
+    buyerId,
+    ...(sellerId ? { sellerId } : {}),
+    quantidade,
+    precoUnitario: preco,
+    valorTotal: total,
+    orderCompraId: buyOrderId,
+    ...(sellOrderId ? { orderVendaId: sellOrderId } : {}),
+    executadaEm: now,
+  });
+
+  transaction.set(tokenPriceRef, {
+    id: tokenPriceRef.id,
+    startupId,
+    preco,
+    volume: quantidade,
+    timestamp: now,
+  });
+
+  transaction.set(buyerCreditRef, {
+    userId: buyerId,
+    valor: -total,
+    tipo: 'compra',
+    descricao: `Compra de ${quantidade} tokens`,
+    createdAt: now,
+  });
+
+  if (sellerId) {
+    const sellerCreditRef = firebaseDb.collection('walletCredits').doc();
+    transaction.set(sellerCreditRef, {
+      userId: sellerId,
+      valor: total,
+      tipo: 'venda',
+      descricao: `Venda de ${quantidade} tokens`,
+      createdAt: now,
+    });
+  }
+}
+
 function getOrderStatus(executed: number, total: number): OrderStatus {
   if (executed <= 0) return 'aberta';
   if (executed >= total) return 'executada';
@@ -51,12 +216,425 @@ function assertIntegerTokenValue(value: unknown, fieldName: string): number {
 }
 
 function assertPositiveMoneyValue(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     throw new AppError(400, `${fieldName} deve ser um número positivo`);
   }
 
   return value;
 }
+
+router.post('/sell', async (req: Request, res: Response, next: any) => {
+  try {
+    const { startupId } = req.body;
+    const quantidade = assertIntegerTokenValue(req.body.quantidade, 'quantidade');
+    const preco = assertPositiveMoneyValue(req.body.preco, 'preco');
+    const authReq = req as AuthRequest;
+
+    if (typeof startupId !== 'string' || startupId.trim().length === 0) {
+      throw new AppError(400, 'startupId é obrigatório');
+    }
+
+    const firebaseDb = db();
+    const holdingRefs = await getHoldingRefs(firebaseDb, authReq.uid, startupId);
+    const orderRef = firebaseDb.collection('orders').doc();
+
+    await firebaseDb.runTransaction(async (transaction) => {
+      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
+      const holding = await readHolding(transaction, holdingRefs);
+
+      if (!startupDoc.exists) {
+        throw new AppError(404, 'Startup não encontrada');
+      }
+
+      if (holding.quantidade < quantidade) {
+        throw new AppError(400, 'Tokens insuficientes para venda');
+      }
+
+      const now = FieldValue.serverTimestamp();
+      writeHolding(
+        transaction,
+        holdingRefs,
+        authReq.uid,
+        startupId,
+        {
+          quantidade: holding.quantidade - quantidade,
+          precoMedioCompra: holding.precoMedioCompra,
+        },
+        now
+      );
+      transaction.set(orderRef, {
+        id: orderRef.id,
+        userId: authReq.uid,
+        sellerId: authReq.uid,
+        startupId,
+        tipo: 'venda',
+        quantidade,
+        quantidadeExecutada: 0,
+        quantidadeRestante: quantidade,
+        preco,
+        precoUnitario: preco,
+        status: 'aberta',
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    res.status(201).json({ id: orderRef.id, message: 'Ordem de venda criada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/buy-sell-order', async (req: Request, res: Response, next: any) => {
+  try {
+    const { ordemId } = req.body;
+    const quantidade = assertIntegerTokenValue(req.body.quantidade, 'quantidade');
+    const authReq = req as AuthRequest;
+
+    if (typeof ordemId !== 'string' || ordemId.trim().length === 0) {
+      throw new AppError(400, 'ordemId é obrigatório');
+    }
+
+    const firebaseDb = db();
+    const orderRef = firebaseDb.collection('orders').doc(ordemId);
+    const orderSnapshot = await orderRef.get();
+    const startupId = orderSnapshot.data()?.startupId;
+
+    if (typeof startupId !== 'string' || startupId.length === 0) {
+      throw new AppError(404, 'Oferta não encontrada');
+    }
+
+    const buyerHoldingRefs = await getHoldingRefs(firebaseDb, authReq.uid, startupId);
+
+    await firebaseDb.runTransaction(async (transaction) => {
+      const orderDoc = await transaction.get(orderRef);
+
+      if (!orderDoc.exists) {
+        throw new AppError(404, 'Oferta não encontrada');
+      }
+
+      const order = orderDoc.data() || {};
+      const sellerId = String(order.sellerId ?? order.userId ?? '');
+      const price = parseNumber(order.preco ?? order.precoUnitario);
+      const remaining = remainingQuantity(order);
+      const buyerWalletRef = firebaseDb.collection('wallets').doc(authReq.uid);
+      const sellerWalletRef = firebaseDb.collection('wallets').doc(sellerId);
+      const buyerWalletDoc = await transaction.get(buyerWalletRef);
+      const sellerWalletDoc = await transaction.get(sellerWalletRef);
+      const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
+
+      if (order.tipo !== 'venda' || !isOpenStatus(order.status)) {
+        throw new AppError(400, 'Esta oferta não está mais disponível');
+      }
+
+      if (!sellerId || sellerId === authReq.uid || !Number.isFinite(price) || price <= 0) {
+        throw new AppError(400, 'Oferta inválida');
+      }
+
+      if (remaining < quantidade) {
+        throw new AppError(400, 'Quantidade indisponível nesta oferta');
+      }
+
+      if (!buyerWalletDoc.exists) {
+        throw new AppError(404, 'Carteira do comprador não encontrada');
+      }
+
+      const total = price * quantidade;
+      const buyerBalance = parseNumber(buyerWalletDoc.data()?.saldoReais);
+      const sellerBalance = parseNumber(sellerWalletDoc.data()?.saldoReais);
+
+      if (buyerBalance < total) {
+        throw new AppError(400, 'Saldo insuficiente na carteira');
+      }
+
+      const newQuantity = buyerHolding.quantidade + quantidade;
+      const newExecuted = parseNumber(order.quantidadeExecutada) + quantidade;
+      const newRemaining = Math.max(0, parseNumber(order.quantidade) - newExecuted);
+      const now = FieldValue.serverTimestamp();
+      const buyOrderRef = firebaseDb.collection('orders').doc();
+
+      transaction.update(buyerWalletRef, {
+        saldoReais: buyerBalance - total,
+        updatedAt: now,
+      });
+      transaction.set(
+        sellerWalletRef,
+        {
+          userId: sellerId,
+          saldoReais: sellerBalance + total,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+      writeHolding(
+        transaction,
+        buyerHoldingRefs,
+        authReq.uid,
+        startupId,
+        {
+          quantidade: newQuantity,
+          precoMedioCompra:
+            (buyerHolding.quantidade * buyerHolding.precoMedioCompra + total) / newQuantity,
+        },
+        now
+      );
+      transaction.update(orderRef, {
+        quantidadeExecutada: newExecuted,
+        quantidadeRestante: newRemaining,
+        status: newRemaining === 0 ? 'executada' : 'parcial',
+        updatedAt: now,
+        ...(newRemaining === 0 ? { executadaEm: now } : {}),
+      });
+      transaction.set(buyOrderRef, {
+        id: buyOrderRef.id,
+        userId: authReq.uid,
+        buyerId: authReq.uid,
+        sellerId,
+        startupId,
+        tipo: 'compra',
+        quantidade,
+        quantidadeExecutada: quantidade,
+        quantidadeRestante: 0,
+        preco: price,
+        precoUnitario: price,
+        status: 'executada',
+        orderVendaId: orderRef.id,
+        createdAt: now,
+        updatedAt: now,
+        executadaEm: now,
+      });
+      createTransactionRecords({
+        buyerId: authReq.uid,
+        buyOrderId: buyOrderRef.id,
+        firebaseDb,
+        now,
+        preco: price,
+        quantidade,
+        sellerId,
+        sellOrderId: orderRef.id,
+        startupId,
+        transaction,
+      });
+    });
+
+    res.status(201).json({ message: 'Compra registrada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/buy-startup-offer', async (req: Request, res: Response, next: any) => {
+  try {
+    const { ofertaId } = req.body;
+    const quantidade = assertIntegerTokenValue(req.body.quantidade, 'quantidade');
+    const authReq = req as AuthRequest;
+
+    if (typeof ofertaId !== 'string' || ofertaId.trim().length === 0) {
+      throw new AppError(400, 'ofertaId é obrigatório');
+    }
+
+    const firebaseDb = db();
+    const offerRef = firebaseDb.collection('orders').doc(ofertaId);
+    const offerSnapshot = await offerRef.get();
+    const startupId = offerSnapshot.data()?.startupId;
+
+    if (typeof startupId !== 'string' || startupId.length === 0) {
+      throw new AppError(404, 'Oferta não encontrada');
+    }
+
+    const buyerHoldingRefs = await getHoldingRefs(firebaseDb, authReq.uid, startupId);
+
+    await firebaseDb.runTransaction(async (transaction) => {
+      const offerDoc = await transaction.get(offerRef);
+      const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
+      const walletDoc = await transaction.get(walletRef);
+      const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
+
+      if (!offerDoc.exists) {
+        throw new AppError(404, 'Oferta não encontrada');
+      }
+
+      const offer = offerDoc.data() || {};
+      const price = parseNumber(offer.preco ?? offer.precoUnitario);
+      const remaining = remainingQuantity(offer);
+
+      if (offer.tipo !== 'ofertacompra' || !isOpenStatus(offer.status)) {
+        throw new AppError(400, 'Esta oferta não está mais disponível');
+      }
+
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new AppError(400, 'Oferta com preço inválido');
+      }
+
+      if (remaining < quantidade) {
+        throw new AppError(400, 'Quantidade indisponível nesta oferta');
+      }
+
+      if (!walletDoc.exists) {
+        throw new AppError(404, 'Carteira não encontrada');
+      }
+
+      const balance = parseNumber(walletDoc.data()?.saldoReais);
+      const total = price * quantidade;
+
+      if (balance < total) {
+        throw new AppError(400, 'Saldo insuficiente na carteira');
+      }
+
+      const newQuantity = buyerHolding.quantidade + quantidade;
+      const newExecuted = parseNumber(offer.quantidadeExecutada) + quantidade;
+      const newRemaining = Math.max(0, parseNumber(offer.quantidade) - newExecuted);
+      const now = FieldValue.serverTimestamp();
+      const buyOrderRef = firebaseDb.collection('orders').doc();
+
+      transaction.update(offerRef, {
+        quantidadeExecutada: newExecuted,
+        quantidadeRestante: newRemaining,
+        status: newRemaining === 0 ? 'executada' : 'parcial',
+        updatedAt: now,
+        ...(newRemaining === 0 ? { executadaEm: now } : {}),
+      });
+      transaction.update(walletRef, { saldoReais: balance - total, updatedAt: now });
+      writeHolding(
+        transaction,
+        buyerHoldingRefs,
+        authReq.uid,
+        startupId,
+        {
+          quantidade: newQuantity,
+          precoMedioCompra:
+            (buyerHolding.quantidade * buyerHolding.precoMedioCompra + total) / newQuantity,
+        },
+        now
+      );
+      transaction.set(buyOrderRef, {
+        id: buyOrderRef.id,
+        userId: authReq.uid,
+        buyerId: authReq.uid,
+        startupId,
+        tipo: 'compra',
+        quantidade,
+        quantidadeExecutada: quantidade,
+        quantidadeRestante: 0,
+        preco: price,
+        precoUnitario: price,
+        status: 'executada',
+        ofertaCompraId: offerRef.id,
+        createdAt: now,
+        updatedAt: now,
+        executadaEm: now,
+      });
+      createTransactionRecords({
+        buyerId: authReq.uid,
+        buyOrderId: buyOrderRef.id,
+        firebaseDb,
+        now,
+        preco: price,
+        quantidade,
+        startupId,
+        transaction,
+      });
+    });
+
+    res.status(201).json({ message: 'Compra registrada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
+  try {
+    const { startupId } = req.body;
+    const quantidade = assertIntegerTokenValue(req.body.quantidade, 'quantidade');
+    const authReq = req as AuthRequest;
+
+    if (typeof startupId !== 'string' || startupId.trim().length === 0) {
+      throw new AppError(400, 'startupId é obrigatório');
+    }
+
+    const firebaseDb = db();
+    const buyerHoldingRefs = await getHoldingRefs(firebaseDb, authReq.uid, startupId);
+
+    await firebaseDb.runTransaction(async (transaction) => {
+      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
+      const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
+      const walletDoc = await transaction.get(walletRef);
+      const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
+
+      if (!startupDoc.exists) {
+        throw new AppError(404, 'Startup não encontrada');
+      }
+
+      if (!walletDoc.exists) {
+        throw new AppError(404, 'Carteira não encontrada');
+      }
+
+      const startup = startupDoc.data() || {};
+      const price = parseNumber(
+        startup.valorToken ?? startup.precoToken ?? startup.tokenPrecoInicial ?? startup.preco
+      );
+
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new AppError(400, 'Startup sem preço de token válido');
+      }
+
+      const balance = parseNumber(walletDoc.data()?.saldoReais);
+      const total = price * quantidade;
+
+      if (balance < total) {
+        throw new AppError(400, 'Saldo insuficiente na carteira');
+      }
+
+      const newQuantity = buyerHolding.quantidade + quantidade;
+      const now = FieldValue.serverTimestamp();
+      const buyOrderRef = firebaseDb.collection('orders').doc();
+
+      transaction.update(walletRef, { saldoReais: balance - total, updatedAt: now });
+      writeHolding(
+        transaction,
+        buyerHoldingRefs,
+        authReq.uid,
+        startupId,
+        {
+          quantidade: newQuantity,
+          precoMedioCompra:
+            (buyerHolding.quantidade * buyerHolding.precoMedioCompra + total) / newQuantity,
+        },
+        now
+      );
+      transaction.set(buyOrderRef, {
+        id: buyOrderRef.id,
+        userId: authReq.uid,
+        buyerId: authReq.uid,
+        startupId,
+        tipo: 'compra',
+        quantidade,
+        quantidadeExecutada: quantidade,
+        quantidadeRestante: 0,
+        preco: price,
+        precoUnitario: price,
+        status: 'executada',
+        createdAt: now,
+        updatedAt: now,
+        executadaEm: now,
+      });
+      createTransactionRecords({
+        buyerId: authReq.uid,
+        buyOrderId: buyOrderRef.id,
+        firebaseDb,
+        now,
+        preco: price,
+        quantidade,
+        startupId,
+        transaction,
+      });
+    });
+
+    res.status(201).json({ message: 'Compra registrada com sucesso' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post('/', async (req: Request, res: Response, next: any) => {
   try {
@@ -393,16 +971,32 @@ router.delete('/:id', async (req: Request, res: Response, next: any) => {
     const { id } = req.params;
     const firebaseDb = db();
     const authReq = req as AuthRequest;
+    const initialOrderDoc = await firebaseDb.collection('orders').doc(id).get();
+    const initialOrder = initialOrderDoc.data();
+
+    if (!initialOrderDoc.exists || !initialOrder) {
+      throw new AppError(404, 'Ordem não encontrada');
+    }
+
+    const startupId = String(initialOrder.startupId ?? '');
+    const holdingRefs =
+      initialOrder.tipo === 'venda' && startupId
+        ? await getHoldingRefs(firebaseDb, authReq.uid, startupId)
+        : [];
 
     await firebaseDb.runTransaction(async (transaction) => {
-      const orderRef = firebaseDb.collection('orders').doc(id);
+      const orderRef = initialOrderDoc.ref;
       const orderDoc = await transaction.get(orderRef);
 
       if (!orderDoc.exists) {
         throw new AppError(404, 'Ordem não encontrada');
       }
 
-      const order = orderDoc.data() as OrderData;
+      const order = orderDoc.data() || {};
+      const holding =
+        order.tipo === 'venda' && holdingRefs.length > 0
+          ? await readHolding(transaction, holdingRefs)
+          : null;
 
       if (order.userId !== authReq.uid) {
         throw new AppError(403, 'Você não tem permissão para cancelar esta ordem');
@@ -412,9 +1006,26 @@ router.delete('/:id', async (req: Request, res: Response, next: any) => {
         throw new AppError(400, 'Apenas ordens abertas ou parcialmente executadas podem ser canceladas');
       }
 
+      const now = FieldValue.serverTimestamp();
+
+      if (holding && startupId) {
+        writeHolding(
+          transaction,
+          holdingRefs,
+          authReq.uid,
+          startupId,
+          {
+            quantidade: holding.quantidade + remainingQuantity(order),
+            precoMedioCompra: holding.precoMedioCompra,
+          },
+          now
+        );
+      }
+
       transaction.update(orderRef, {
         status: 'cancelada',
-        updatedAt: FieldValue.serverTimestamp(),
+        updatedAt: now,
+        canceladaEm: now,
       });
     });
 

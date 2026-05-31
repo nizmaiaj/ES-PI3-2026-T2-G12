@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'auth_session.dart';
+import 'functions_api_client.dart';
 
 class AuthException implements Exception {
   AuthException(this.message);
@@ -34,12 +34,9 @@ class AuthMfaChallenge {
 }
 
 class AuthService {
-  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
-    : _auth = auth ?? FirebaseAuth.instance,
-      _firestore = firestore ?? FirebaseFirestore.instance;
+  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
 
   Future<void> login({required String email, required String password}) async {
     try {
@@ -86,37 +83,23 @@ class AuthService {
 
       await createdUser.updateDisplayName(nomeCompleto);
 
-      final batch = _firestore.batch();
-      final userRef = _firestore.collection('users').doc(createdUser.uid);
-      final walletRef = _firestore.collection('wallets').doc(createdUser.uid);
-
-      batch.set(userRef, {
-        'uid': createdUser.uid,
-        'nomeCompleto': nomeCompleto,
-        'email': email,
-        'cpf': cpf,
-        'telefone': telefone,
-        'mfaHabilitado': false,
-        'mfaSecret': null,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      batch.set(walletRef, {
-        'userId': createdUser.uid,
-        'saldoReais': 0.0,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      await batch.commit();
+      await FunctionsApiClient.instance.post(
+        'usersInitializeProfile',
+        body: {
+          'nomeCompleto': nomeCompleto,
+          'email': email,
+          'cpf': cpf,
+          'telefone': telefone,
+        },
+      );
       await _saveSession(createdUser);
     } on AuthException {
       rethrow;
     } on FirebaseAuthException catch (error) {
       throw AuthException(_authErrorMessage(error));
-    } on FirebaseException catch (error) {
+    } on FunctionsApiException catch (error) {
       await createdUser?.delete().catchError((_) {});
-      throw AuthException(_firestoreErrorMessage(error));
+      throw AuthException(error.message);
     } catch (_) {
       await createdUser?.delete().catchError((_) {});
       throw AuthException('Não foi possível criar a conta. Tente novamente.');
@@ -249,6 +232,20 @@ class AuthService {
           'Não foi possível desativar a verificação em duas etapas.',
         );
       }
+    }
+  }
+
+  Future<void> updateMfaMetadata({
+    required bool enabled,
+    String? phoneNumber,
+  }) async {
+    try {
+      await FunctionsApiClient.instance.patch(
+        'usersUpdateMfaMetadata',
+        body: {'habilitado': enabled, 'telefone': phoneNumber},
+      );
+    } on FunctionsApiException catch (error) {
+      throw AuthException(error.message);
     }
   }
 
@@ -447,18 +444,6 @@ class AuthService {
         return 'Sessão de verificação expirada. Tente novamente.';
       default:
         return error.message ?? 'Não foi possível concluir a operação';
-    }
-  }
-
-  String _firestoreErrorMessage(FirebaseException error) {
-    switch (error.code) {
-      case 'permission-denied':
-        return 'Sem permissão para salvar os dados no Firestore. Verifique as regras do Firebase.';
-      case 'unavailable':
-        return 'Firestore indisponível no momento. Tente novamente.';
-      default:
-        return error.message ??
-            'Não foi possível salvar os dados do usuário no Firestore.';
     }
   }
 }
