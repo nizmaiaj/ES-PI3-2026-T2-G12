@@ -263,9 +263,12 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   }
 
   String _logoStoragePathPadrao() {
+    final nome = widget.nome.trim();
+    if (nome.isNotEmpty) {
+      return 'startups/${nome.toLowerCase().replaceAll(' ', '-')}/logo/logo.png';
+    }
     final startupId = widget.startupId.trim();
     if (startupId.isEmpty) return '';
-
     return 'startups/$startupId/logo/logo.png';
   }
 

@@ -206,17 +206,20 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
   ) {
     final data = doc.data();
     final socios = data['socios'];
+    final nome = _texto(data['nome'] ?? data['name'] ?? data['startupName']);
 
     return {
       'id': doc.id,
-      'nome': _texto(data['nome'] ?? data['name'] ?? data['startupName']),
+      'nome': nome,
       'imagem': _texto(data['logoUrl'] ?? data['imagem'] ?? data['imageUrl']),
       'logoStoragePath': _texto(
         data['logoStoragePath'] ??
             data['logoPath'] ??
             data['caminhoLogo'] ??
             data['logoStorage'],
-        fallback: 'startups/${doc.id}/logo/logo.png',
+        fallback: nome.isNotEmpty
+            ? 'startups/${nome.toLowerCase().replaceAll(' ', '-')}/logo/logo.png'
+            : '',
       ),
       'desc': _texto(
         data['descricao'] ?? data['sumarioExecutivo'] ?? data['description'],

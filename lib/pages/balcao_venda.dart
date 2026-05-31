@@ -2,6 +2,8 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show TextInputFormatter, TextEditingValue, TextSelection;
 
 import '../services/auth_session.dart';
 import '../services/balcao_service.dart';
@@ -231,7 +233,8 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
         const SizedBox(height: 10),
         _EntradaNegociacao(
           controller: _precoController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: TextInputType.number,
+          inputFormatters: [_CurrencyInputFormatter()],
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 12),
@@ -588,11 +591,13 @@ class _EntradaNegociacao extends StatelessWidget {
     required this.controller,
     required this.keyboardType,
     required this.onChanged,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
   final TextInputType keyboardType;
   final ValueChanged<String> onChanged;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -605,6 +610,7 @@ class _EntradaNegociacao extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         onChanged: onChanged,
+        inputFormatters: inputFormatters,
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w700,
@@ -672,4 +678,38 @@ double _numero(dynamic value, {double fallback = 0}) {
 
 String _formatarMoeda(double value) {
   return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+}
+
+class _CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return newValue.copyWith(
+        text: '',
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+    final clamped =
+        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final centavos = int.parse(clamped);
+    final reais = centavos ~/ 100;
+    final cents = centavos % 100;
+    final reaisStr = reais.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < reaisStr.length; i++) {
+      final remaining = reaisStr.length - i;
+      buffer.write(reaisStr[i]);
+      if (remaining > 1 && remaining % 3 == 1) buffer.write('.');
+    }
+    final formatted =
+        'R\$ ${buffer.toString()},${cents.toString().padLeft(2, '0')}';
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
 }

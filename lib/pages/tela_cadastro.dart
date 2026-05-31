@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import 'tela_home.dart';
+import 'tela_login.dart';
 
 class CpfInputFormatter extends TextInputFormatter {
   @override
@@ -132,9 +132,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => TelaHome(nomeDigitado: _nomeController.text.trim()),
-        ),
+        MaterialPageRoute(builder: (_) => const TelaLogin()),
         (_) => false,
       );
     } on AuthException catch (error) {

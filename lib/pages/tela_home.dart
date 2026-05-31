@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../services/auth_session.dart';
-import '../services/functions_api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/authenticated_storage_image.dart';
@@ -737,6 +736,7 @@ class _TelaHomeState extends State<TelaHome> {
           ),
     );
 
+
     _notificacoesSubscriptions.add(
       firestore
           .collection('tokenHoldings')
@@ -813,7 +813,6 @@ class _TelaHomeState extends State<TelaHome> {
   void _recalcularIndicadorNotificacoes() {
     final ultimaNotificacao = _dataMaisRecente([
       _ultimaVendaEm,
-      ..._ultimaAtualizacaoPorStartup.values,
     ]);
     final temNovas =
         ultimaNotificacao != null &&
@@ -841,19 +840,26 @@ class _TelaHomeState extends State<TelaHome> {
       return;
     }
 
-    final notificacoesFuture = _buscarNotificacoesUsuario(uid);
+    final ultimaConhecida = _dataMaisRecente([
+      _ultimaVendaEm,
+    ]);
 
-    unawaited(
-      notificacoesFuture
-          .then((notificacoes) {
-            return _marcarNotificacoesComoVistas(notificacoes);
-          })
-          .catchError((Object error) {
-            debugPrint(
-              'Não foi possível marcar notificações como vistas: $error',
-            );
-          }),
-    );
+    if (ultimaConhecida != null) {
+      _notificacoesVistasEm = ultimaConhecida;
+      _recalcularIndicadorNotificacoes();
+
+      unawaited(
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({'notificacoesVistasEm': ultimaConhecida})
+            .catchError(
+              (Object e) => debugPrint('Erro ao marcar notificações: $e'),
+            ),
+      );
+    }
+
+    final notificacoesFuture = _buscarNotificacoesUsuario(uid);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1126,24 +1132,6 @@ class _TelaHomeState extends State<TelaHome> {
     return notificacoes;
   }
 
-  Future<void> _marcarNotificacoesComoVistas(
-    List<_NotificacaoHome> notificacoes,
-  ) async {
-    final ultimaNotificacao = _dataMaisRecente(
-      notificacoes.map((notificacao) => notificacao.data),
-    );
-    final vistasEm = _notificacoesVistasEm;
-
-    if (ultimaNotificacao == null ||
-        (vistasEm != null && !ultimaNotificacao.isAfter(vistasEm))) {
-      return;
-    }
-
-    await FunctionsApiClient.instance.patch(
-      'usersMarkNotificationsViewed',
-      body: {'viewedAt': ultimaNotificacao.toIso8601String()},
-    );
-  }
 
   Future<List<_NotificacaoHome>> _buscarNotificacoesDeVendas(
     FirebaseFirestore firestore,
@@ -1417,7 +1405,9 @@ class _TelaHomeState extends State<TelaHome> {
           data?['logoPath'] ??
           data?['caminhoLogo'] ??
           data?['logoStorage'],
-      fallback: 'startups/$startupId/logo/logo.png',
+      fallback: nome is String && nome.trim().isNotEmpty
+          ? 'startups/${nome.trim().toLowerCase().replaceAll(' ', '-')}/logo/logo.png'
+          : '',
     );
     final precoAtual = _lerNumero(
       data?['valorToken'] ??
@@ -1519,7 +1509,10 @@ class _TelaHomeState extends State<TelaHome> {
     final configurado = token.logoStoragePath.trim();
     if (configurado.isNotEmpty) return configurado;
 
-    return 'startups/${token.startupId}/logo/logo.png';
+    final nome = token.nome.trim();
+    return nome.isNotEmpty
+        ? 'startups/${nome.toLowerCase().replaceAll(' ', '-')}/logo/logo.png'
+        : '';
   }
 
   double _lerNumero(dynamic valor) {

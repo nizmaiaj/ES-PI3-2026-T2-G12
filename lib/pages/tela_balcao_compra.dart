@@ -549,6 +549,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     final senhaController = TextEditingController();
     var erroSenha = false;
     String? mensagemErro;
+    var senhaVisivel = false;
 
     final compraConfirmada = await showDialog<bool>(
       context: context,
@@ -674,7 +675,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: senhaController,
-                        obscureText: true,
+                        obscureText: !senhaVisivel,
                         enabled: !_processandoCompra,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => finalizarCompra(),
@@ -687,6 +688,17 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
                             borderSide: BorderSide.none,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              senhaVisivel
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: themeColors.mutedText,
+                            ),
+                            onPressed: () => setDialogState(
+                              () => senhaVisivel = !senhaVisivel,
+                            ),
                           ),
                         ),
                       ),

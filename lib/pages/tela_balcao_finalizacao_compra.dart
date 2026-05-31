@@ -45,6 +45,7 @@ class _TelaBalcaoFinalizacaoCompraState
   bool _mostrarConfirmacaoSenha = false;
   bool _erroSenha = false;
   bool _processando = false;
+  bool _senhaVisivel = false;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -328,7 +329,7 @@ class _TelaBalcaoFinalizacaoCompraState
           const SizedBox(height: 8),
           TextField(
             controller: _senhaController,
-            obscureText: true,
+            obscureText: !_senhaVisivel,
             style: TextStyle(color: colorScheme.onSurface),
             decoration: InputDecoration(
               fillColor: colorScheme.surface,
@@ -337,6 +338,13 @@ class _TelaBalcaoFinalizacaoCompraState
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25),
                 borderSide: BorderSide.none,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _senhaVisivel ? Icons.visibility : Icons.visibility_off,
+                  color: themeColors.mutedText,
+                ),
+                onPressed: () => setState(() => _senhaVisivel = !_senhaVisivel),
               ),
             ),
           ),
