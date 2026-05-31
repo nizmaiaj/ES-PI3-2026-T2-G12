@@ -55,6 +55,16 @@ function parseNumber(value: unknown): number {
   return 0;
 }
 
+function currentTokenPrice(startup: FirebaseFirestore.DocumentData): number {
+  return parseNumber(
+    startup.valorToken ??
+      startup.precoToken ??
+      startup.preco ??
+      startup.tokenPrice ??
+      startup.tokenPrecoInicial
+  );
+}
+
 function assertWithinIssuedTokenLimit(
   startup: FirebaseFirestore.DocumentData,
   quantidade: number
@@ -344,7 +354,7 @@ router.post('/buy-sell-order', async (req: Request, res: Response, next: any) =>
 
       const order = orderDoc.data() || {};
       const sellerId = String(order.sellerId ?? order.userId ?? '');
-      const price = parseNumber(order.preco ?? order.precoUnitario);
+      const price = currentTokenPrice(startupDoc.data() || {});
       const remaining = remainingQuantity(order);
       const buyerWalletRef = firebaseDb.collection('wallets').doc(authReq.uid);
       const sellerWalletRef = firebaseDb.collection('wallets').doc(sellerId);
@@ -608,9 +618,7 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
       }
 
       const startup = startupDoc.data() || {};
-      const price = parseNumber(
-        startup.valorToken ?? startup.precoToken ?? startup.tokenPrecoInicial ?? startup.preco
-      );
+      const price = currentTokenPrice(startup);
 
       assertWithinIssuedTokenLimit(startup, quantidade);
 

@@ -336,7 +336,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
             (ordem) => _OfertaCard(
               nome: ordem.nomeStartup,
               quantidade: ordem.quantidadeRestante,
-              valorToken: ordem.preco,
+              valorToken: ordem.precoAtual,
               botaoTexto: 'Comprar',
               botaoCor: _azulPrimario,
               bloqueado: _processando,
@@ -653,20 +653,33 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
       return;
     }
 
-    final quantidade = await showDialog<int>(
+    var quantidade = 1;
+    final confirmado = await showPasswordConfirmationDialog(
       context: context,
-      builder: (context) => _QuantidadeDialog(
-        titulo: 'Comprar tokens',
-        startup: ordem.nomeStartup,
-        quantidadeMaxima: ordem.quantidadeRestante,
+      title: 'Comprar tokens',
+      detailsBuilder: (processing) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(ordem.nomeStartup),
+          const SizedBox(height: 12),
+          _QuantidadeCompraField(
+            quantidadeMaxima: ordem.quantidadeRestante,
+            precoToken: ordem.precoAtual,
+            enabled: !processing,
+            onChanged: (valor) => quantidade = valor,
+          ),
+        ],
       ),
+      additionalValidation: () {
+        if (quantidade <= 0 || quantidade > ordem.quantidadeRestante) {
+          return 'Informe uma quantidade entre 1 e ${ordem.quantidadeRestante} tokens.';
+        }
+
+        return null;
+      },
     );
 
-    if (quantidade == null || quantidade <= 0 || !mounted) return;
-
-    final confirmado = await showPasswordConfirmationDialog(context: context);
-
-    if (!confirmado) return;
+    if (!confirmado || quantidade <= 0 || !mounted) return;
 
     await _executarComFeedback(() async {
       await _balcaoService.comprarOrdemVenda(
@@ -699,7 +712,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     }
 
     ordens.sort((a, b) {
-      final precoCompare = a.preco.compareTo(b.preco);
+      final precoCompare = a.precoAtual.compareTo(b.precoAtual);
       if (precoCompare != 0) return precoCompare;
       return a.nomeStartup.compareTo(b.nomeStartup);
     });
@@ -980,23 +993,26 @@ class _SwitchButton extends StatelessWidget {
   }
 }
 
-class _QuantidadeDialog extends StatefulWidget {
-  const _QuantidadeDialog({
-    required this.titulo,
-    required this.startup,
+class _QuantidadeCompraField extends StatefulWidget {
+  const _QuantidadeCompraField({
     required this.quantidadeMaxima,
+    required this.precoToken,
+    required this.enabled,
+    required this.onChanged,
   });
 
-  final String titulo;
-  final String startup;
   final int quantidadeMaxima;
+  final double precoToken;
+  final bool enabled;
+  final ValueChanged<int> onChanged;
 
   @override
-  State<_QuantidadeDialog> createState() => _QuantidadeDialogState();
+  State<_QuantidadeCompraField> createState() => _QuantidadeCompraFieldState();
 }
 
-class _QuantidadeDialogState extends State<_QuantidadeDialog> {
+class _QuantidadeCompraFieldState extends State<_QuantidadeCompraField> {
   late final TextEditingController _controller;
+  var _quantidade = 1;
 
   @override
   void initState() {
@@ -1012,40 +1028,40 @@ class _QuantidadeDialogState extends State<_QuantidadeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.titulo),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(widget.startup),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Quantidade',
-              helperText: 'Máximo: ${widget.quantidadeMaxima}',
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final quantidade = int.tryParse(_controller.text.trim()) ?? 0;
-            if (quantidade <= 0 || quantidade > widget.quantidadeMaxima) {
-              return;
-            }
+    final themeColors = Theme.of(context).extension<AppThemeColors>()!;
+    final totalEstimado = _quantidade > 0
+        ? _quantidade * widget.precoToken
+        : 0.0;
 
-            Navigator.pop(context, quantidade);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _controller,
+          enabled: widget.enabled,
+          keyboardType: TextInputType.number,
+          onChanged: (valor) {
+            final quantidade = int.tryParse(valor.trim()) ?? 0;
+            setState(() => _quantidade = quantidade);
+            widget.onChanged(quantidade);
           },
-          child: const Text('Confirmar'),
+          decoration: InputDecoration(
+            labelText: 'Quantidade',
+            helperText: 'Máximo: ${widget.quantidadeMaxima}',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _OfertaInfoLinha(
+          label: 'Preço por token',
+          valor: _formatarMoeda(widget.precoToken),
+        ),
+        Divider(color: themeColors.panelBorder),
+        _OfertaInfoLinha(
+          label: 'Total estimado',
+          valor: _formatarMoeda(totalEstimado),
+          destaque: true,
+          destaqueCor: _BalcaoNegociacaoState._azulPrimario,
         ),
       ],
     );
@@ -1058,7 +1074,7 @@ class _OrdemVendaAberta {
     required this.vendedorId,
     required this.nomeStartup,
     required this.quantidadeRestante,
-    required this.preco,
+    required this.precoAtual,
     required this.status,
   });
 
@@ -1070,12 +1086,13 @@ class _OrdemVendaAberta {
     final tipo = _texto(data['tipo']).toLowerCase();
     final startupId = _texto(data['startupId']);
     final startup = startupsPorId[startupId];
-    final preco = _numero(data['preco'] ?? data['precoUnitario']);
+    final precoAtual =
+        startup?.valorToken ?? _numero(data['preco'] ?? data['precoUnitario']);
     final quantidadeRestante = _quantidadeRestante(data);
 
     if (tipo != 'venda' ||
         startupId.isEmpty ||
-        preco <= 0 ||
+        precoAtual <= 0 ||
         quantidadeRestante <= 0) {
       return null;
     }
@@ -1085,7 +1102,7 @@ class _OrdemVendaAberta {
       vendedorId: _texto(data['sellerId'] ?? data['userId']),
       nomeStartup: startup?.nome ?? 'Nome da startup',
       quantidadeRestante: quantidadeRestante,
-      preco: preco,
+      precoAtual: precoAtual,
       status: _texto(data['status']).toLowerCase(),
     );
   }
@@ -1094,7 +1111,7 @@ class _OrdemVendaAberta {
   final String vendedorId;
   final String nomeStartup;
   final int quantidadeRestante;
-  final double preco;
+  final double precoAtual;
   final String status;
 
   bool get estaDisponivel => _statusAberto(status) && quantidadeRestante > 0;
@@ -1131,8 +1148,8 @@ class _StartupOferta {
         data['valorToken'] ??
             data['precoToken'] ??
             data['preco'] ??
-            data['tokenPrice'],
-        fallback: 480,
+            data['tokenPrice'] ??
+            data['tokenPrecoInicial'],
       ),
     );
   }

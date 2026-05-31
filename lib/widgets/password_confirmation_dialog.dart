@@ -14,8 +14,10 @@ Future<bool> showPasswordConfirmationDialog({
   String invalidPasswordMessage =
       'Senha inválida.\nNão foi possível confirmar sua identidade e, por segurança, a compra dos tokens não foi realizada. Verifique sua senha e tente novamente.',
   Widget? details,
+  Widget Function(bool processing)? detailsBuilder,
+  String? Function()? additionalValidation,
 }) async {
-  final passwordController = TextEditingController();
+  var password = '';
   var processing = false;
   var hasError = false;
   var passwordVisible = false;
@@ -33,7 +35,16 @@ Future<bool> showPasswordConfirmationDialog({
           Future<void> confirm() async {
             if (processing) return;
 
-            if (passwordController.text.isEmpty) {
+            final validationMessage = additionalValidation?.call();
+            if (validationMessage != null) {
+              setDialogState(() {
+                hasError = true;
+                errorMessage = validationMessage;
+              });
+              return;
+            }
+
+            if (password.isEmpty) {
               setDialogState(() {
                 hasError = true;
                 errorMessage = emptyPasswordMessage;
@@ -48,9 +59,7 @@ Future<bool> showPasswordConfirmationDialog({
             });
 
             try {
-              await reauthenticateCurrentUserWithPassword(
-                passwordController.text,
-              );
+              await reauthenticateCurrentUserWithPassword(password);
 
               if (!dialogContext.mounted) return;
               Navigator.of(dialogContext).pop(true);
@@ -110,9 +119,9 @@ Future<bool> showPasswordConfirmationDialog({
                         color: colorScheme.onSurface,
                       ),
                     ),
-                    if (details != null) ...[
+                    if (detailsBuilder != null || details != null) ...[
                       const SizedBox(height: 16),
-                      details,
+                      detailsBuilder?.call(processing) ?? details!,
                     ],
                     const SizedBox(height: 12),
                     Text(
@@ -132,10 +141,10 @@ Future<bool> showPasswordConfirmationDialog({
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: passwordController,
                       obscureText: !passwordVisible,
                       enabled: !processing,
                       textInputAction: TextInputAction.done,
+                      onChanged: (value) => password = value,
                       onSubmitted: (_) => confirm(),
                       style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
@@ -221,6 +230,5 @@ Future<bool> showPasswordConfirmationDialog({
     },
   );
 
-  passwordController.dispose();
   return confirmed == true;
 }
