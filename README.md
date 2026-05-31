@@ -46,7 +46,7 @@ negócio passam pelas Functions HTTP autenticadas.
 
 **Backend**
 
-- Node.js 20
+- Node.js 22
 - TypeScript
 - Express
 - Firebase Cloud Functions v2
@@ -121,7 +121,7 @@ As principais coleções esperadas pela aplicação são:
 
 - Flutter configurado com suporte ao SDK Dart indicado em `pubspec.yaml`
   (`^3.11.4`).
-- Node.js 20 e npm para o backend.
+- Node.js 22 e npm para o backend.
 - Firebase CLI para emular ou publicar Functions.
 - Projeto Firebase com Auth, Firestore e Storage habilitados.
 

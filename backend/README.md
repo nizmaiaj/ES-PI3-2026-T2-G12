@@ -4,7 +4,7 @@ Backend API para o MesclaInvest - plataforma acadêmica de simulação de invest
 
 ## Tecnologias
 
-- Firebase Cloud Functions com Node.js 20 e TypeScript
+- Firebase Cloud Functions com Node.js 22 e TypeScript
 - Express.js reutilizado pelos handlers HTTP individuais
 - Firebase Admin SDK (Firestore + Authentication)
 - Helmet para segurança
@@ -14,7 +14,7 @@ Backend API para o MesclaInvest - plataforma acadêmica de simulação de invest
 
 ### Pré-requisitos
 
-- Node.js 20
+- Node.js 22
 - npm ou yarn
 - Firebase CLI autenticado para emular ou publicar Functions
 
