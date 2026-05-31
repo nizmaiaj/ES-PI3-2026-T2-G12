@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    match /wallets/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    match /cpfRegistrations/{cpf} {
+      allow read, write: if false;
+    }
+
+    match /tokenHoldings/{holdingId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.buyerId == request.auth.uid
+          || resource.data.sellerId == request.auth.uid
+        );
+      allow write: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || resource.data.status in ['aberta', 'parcial']
+        );
+      allow write: if false;
+    }
+
+    match /tokenPrices/{priceId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /startups/{startupId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /questions/{questionId} {
+        allow read: if isSignedIn()
+          && (
+            resource.data.isPrivada == false
+            || (
+              resource.data.isPrivada == true
+              && resource.data.userId == request.auth.uid
+            )
+          );
+        allow write: if false;
+      }
+
+      match /updates/{updateId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+
+      match /priceHistory/{priceId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
