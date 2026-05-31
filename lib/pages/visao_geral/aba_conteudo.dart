@@ -445,6 +445,20 @@ class _AbaConteudoState extends State<AbaConteudo> {
         : null;
 
     if (caminhoStorage != null) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final downloadUrl = await _referenciaStorage(
+          caminhoStorage,
+        ).getDownloadURL();
+        await FileSaver.instance.downloadLink(
+          link: LinkDetails(link: downloadUrl),
+          name: nomeArquivo,
+        );
+        _mostrarMensagem(
+          'Download iniciado. O arquivo será salvo em Downloads.',
+        );
+        return;
+      }
+
       final bytes = await _buscarBytesDocumentoStorage(caminhoStorage);
       if (kIsWeb) {
         await baixarDocumentoNoNavegador(
@@ -468,7 +482,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       await FileSaver.instance.downloadLink(link: link, name: nomeArquivo);
-      _mostrarMensagem('Download iniciado.');
+      _mostrarMensagem('Download iniciado. O arquivo será salvo em Downloads.');
       return;
     }
 
