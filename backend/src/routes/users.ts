@@ -2,12 +2,11 @@ import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { initializeUserProfile } from '../services/userProfileService';
 import {
   isValidCPF,
   isValidEmail,
   isValidPhoneNumber,
-  sanitizeCPF,
-  sanitizePhoneNumber,
 } from '../utils/validation';
 
 const router = express.Router();
@@ -49,38 +48,13 @@ router.post('/initialize-profile', async (req: Request, res: Response, next: any
       throw new AppError(400, 'Telefone inválido');
     }
 
-    const firebaseDb = db();
-    const userRef = firebaseDb.collection('users').doc(authReq.uid);
-    const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
-    const walletDoc = await walletRef.get();
-    const batch = firebaseDb.batch();
-    const now = FieldValue.serverTimestamp();
-
-    batch.set(
-      userRef,
-      {
-        uid: authReq.uid,
-        nomeCompleto,
-        email,
-        cpf: sanitizeCPF(cpf),
-        telefone: sanitizePhoneNumber(telefone),
-        mfaHabilitado: false,
-        mfaSecret: null,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { merge: true }
-    );
-
-    if (!walletDoc.exists) {
-      batch.set(walletRef, {
-        userId: authReq.uid,
-        saldoReais: 0.0,
-        updatedAt: now,
-      });
-    }
-
-    await batch.commit();
+    await initializeUserProfile({
+      uid: authReq.uid,
+      nomeCompleto,
+      email,
+      cpf,
+      telefone,
+    });
     res.status(201).json({ message: 'Perfil inicializado com sucesso' });
   } catch (error) {
     next(error);

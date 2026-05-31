@@ -1,12 +1,14 @@
 import express, { Request, Response } from 'express';
-import { auth, db, FieldValue } from '../config/firebase';
+import { auth } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
+import {
+  deleteInitializedUserProfile,
+  initializeUserProfile,
+} from '../services/userProfileService';
 import {
   isValidEmail,
   isValidCPF,
   isValidPhoneNumber,
-  sanitizeCPF,
-  sanitizePhoneNumber,
 } from '../utils/validation';
 
 const router = express.Router();
@@ -118,36 +120,15 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
     });
     createdUserUid = userRecord.uid;
 
-    const sanitizedCPF = sanitizeCPF(cpf);
-    const sanitizedPhone = sanitizePhoneNumber(telefone);
+    const authResult = await signInWithPassword(email, password);
 
-    const firebaseDb = db();
-    const batch = firebaseDb.batch();
-
-    const userDocRef = firebaseDb.collection('users').doc(userRecord.uid);
-    batch.set(userDocRef, {
+    await initializeUserProfile({
       uid: userRecord.uid,
       nomeCompleto,
       email,
-      cpf: sanitizedCPF,
-      telefone: sanitizedPhone,
-      mfaHabilitado: false,
-      mfaSecret: null,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      cpf,
+      telefone,
     });
-
-    const walletDocRef = firebaseDb.collection('wallets').doc(userRecord.uid);
-    const INITIAL_BALANCE = 0.0;
-    batch.set(walletDocRef, {
-      userId: userRecord.uid,
-      saldoReais: INITIAL_BALANCE,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
-
-    const authResult = await signInWithPassword(email, password);
 
     res.status(201).json({
       uid: userRecord.uid,
@@ -158,11 +139,7 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
     });
   } catch (error) {
     if (createdUserUid) {
-      const firebaseDb = db();
-      const cleanupBatch = firebaseDb.batch();
-      cleanupBatch.delete(firebaseDb.collection('users').doc(createdUserUid));
-      cleanupBatch.delete(firebaseDb.collection('wallets').doc(createdUserUid));
-      await cleanupBatch.commit().catch(() => undefined);
+      await deleteInitializedUserProfile(createdUserUid, req.body?.cpf ?? '').catch(() => undefined);
       await auth().deleteUser(createdUserUid).catch(() => undefined);
     }
 

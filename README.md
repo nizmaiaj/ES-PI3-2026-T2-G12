@@ -101,6 +101,7 @@ para desenvolvimento local.
 As principais coleções esperadas pela aplicação são:
 
 - `users`: perfil do usuário, CPF, telefone, preferência de notificações e 2FA.
+- `cpfRegistrations`: reserva interna de CPFs para impedir contas duplicadas.
 - `wallets`: saldo fictício em reais por usuário.
 - `walletCredits`: depósitos, compras e vendas registradas na carteira.
 - `startups`: dados institucionais, preço do token, capital, sócios, vídeos,
