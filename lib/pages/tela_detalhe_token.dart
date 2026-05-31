@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/authenticated_storage_image.dart';
 
 class TelaDetalheToken extends StatefulWidget {
   const TelaDetalheToken({
@@ -34,7 +34,6 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   static const _vermelho = Color(0xFFD04444);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Map<String, Future<String?>> _logoUrlFutures = {};
   late final Future<_TokenDetalheDados> _dadosFuture;
   _PeriodoGrafico _periodo = _PeriodoGrafico.mensal;
 
@@ -197,6 +196,20 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     final imagem = logoUrl.trim();
     final storagePath = _logoStoragePath(imagem, logoStoragePath);
 
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) {
+      return frame(
+        AuthenticatedStorageImage(
+          pathOrUrl: imagem,
+          fit: BoxFit.contain,
+          fallback: const Icon(
+            Icons.business_rounded,
+            color: _azulPrimario,
+            size: 50,
+          ),
+        ),
+      );
+    }
+
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return frame(
         Image.network(
@@ -211,7 +224,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
       );
     }
 
-    if (imagem.isNotEmpty && !_pareceCaminhoStorage(imagem)) {
+    if (imagem.isNotEmpty) {
       return frame(
         Image.asset(
           imagem,
@@ -227,32 +240,21 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
     if (storagePath.isEmpty) return fallback;
 
-    return FutureBuilder<String?>(
-      future: _logoUrlFutures.putIfAbsent(
-        storagePath,
-        () => _buscarLogoUrl(storagePath),
+    return frame(
+      AuthenticatedStorageImage(
+        pathOrUrl: storagePath,
+        fit: BoxFit.contain,
+        fallback: const Icon(
+          Icons.business_rounded,
+          color: _azulPrimario,
+          size: 50,
+        ),
       ),
-      builder: (context, snapshot) {
-        final url = snapshot.data;
-        if (url == null || url.isEmpty) return fallback;
-
-        return frame(
-          Image.network(
-            url,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const Icon(
-              Icons.business_rounded,
-              color: _azulPrimario,
-              size: 50,
-            ),
-          ),
-        );
-      },
     );
   }
 
   String _logoStoragePath(String imagem, String logoStoragePath) {
-    if (_pareceCaminhoStorage(imagem)) return imagem;
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) return imagem;
 
     final configurado = logoStoragePath.trim();
     if (configurado.isNotEmpty) return configurado;
@@ -265,21 +267,6 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     if (startupId.isEmpty) return '';
 
     return 'startups/$startupId/logo/logo.png';
-  }
-
-  bool _pareceCaminhoStorage(String value) {
-    return value.startsWith('gs://') || value.startsWith('startups/');
-  }
-
-  Future<String?> _buscarLogoUrl(String storagePath) async {
-    try {
-      final ref = storagePath.startsWith('gs://')
-          ? FirebaseStorage.instance.refFromURL(storagePath)
-          : FirebaseStorage.instance.ref(storagePath);
-      return await ref.getDownloadURL();
-    } catch (_) {
-      return null;
-    }
   }
 
   Widget _buildBody(

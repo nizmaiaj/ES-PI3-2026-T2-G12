@@ -4,12 +4,12 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/authenticated_storage_image.dart';
 import 'balcao_negociacao.dart';
 import 'balcao_ofertas_da_startup.dart';
 import 'visao_geral/aba_atualizacoes.dart';
@@ -31,7 +31,6 @@ class TelaVisaoGeral extends StatefulWidget {
 class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _tabAtiva = 'Visão Geral';
   final VideoThumbnailCache _thumbnailCache = VideoThumbnailCache();
-  final Map<String, Future<String?>> _logoUrlFutures = {};
   final ScrollController _tabsScrollController = ScrollController();
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _conteudoPreloadSubscription;
@@ -277,6 +276,14 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   Widget _buildLogo(String imagem, String logoStoragePath) {
     const fallback = Icon(Icons.business, color: _azulPrimario, size: 36);
 
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) {
+      return AuthenticatedStorageImage(
+        pathOrUrl: imagem,
+        fit: BoxFit.cover,
+        fallback: fallback,
+      );
+    }
+
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return Image.network(
         imagem,
@@ -295,33 +302,11 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
     if (logoStoragePath.isEmpty) return fallback;
 
-    return FutureBuilder<String?>(
-      future: _logoUrlFutures.putIfAbsent(
-        logoStoragePath,
-        () => _buscarLogoUrl(logoStoragePath),
-      ),
-      builder: (context, snapshot) {
-        final url = snapshot.data;
-        if (url == null || url.isEmpty) return fallback;
-
-        return Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => fallback,
-        );
-      },
+    return AuthenticatedStorageImage(
+      pathOrUrl: logoStoragePath,
+      fit: BoxFit.cover,
+      fallback: fallback,
     );
-  }
-
-  Future<String?> _buscarLogoUrl(String storagePath) async {
-    try {
-      final ref = storagePath.startsWith('gs://')
-          ? FirebaseStorage.instance.refFromURL(storagePath)
-          : FirebaseStorage.instance.ref(storagePath);
-      return await ref.getDownloadURL();
-    } catch (_) {
-      return null;
-    }
   }
 
   // ── STATS CARD ────────────────────────────────────────────────────────────

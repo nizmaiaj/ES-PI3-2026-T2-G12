@@ -1,11 +1,11 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/authenticated_storage_image.dart';
 import 'balcao_negociacao.dart';
 import 'tela_visao_geral.dart';
 
@@ -28,7 +28,6 @@ class TelaCatalogo extends StatefulWidget {
 class _TelaCatalogoState extends State<TelaCatalogo> {
   String _filtroAtivo = "Todos";
   String busca = "";
-  final Map<String, Future<String?>> _logoUrlFutures = {};
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -371,6 +370,16 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       child: const Icon(Icons.business, color: Color(0xFF3F51B5)),
     );
 
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) {
+      return AuthenticatedStorageImage(
+        pathOrUrl: imagem,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        fallback: fallback,
+      );
+    }
+
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return Image.network(
         imagem,
@@ -393,35 +402,13 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
 
     if (logoStoragePath.isEmpty) return fallback;
 
-    return FutureBuilder<String?>(
-      future: _logoUrlFutures.putIfAbsent(
-        logoStoragePath,
-        () => _buscarLogoUrl(logoStoragePath),
-      ),
-      builder: (context, snapshot) {
-        final url = snapshot.data;
-        if (url == null || url.isEmpty) return fallback;
-
-        return Image.network(
-          url,
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => fallback,
-        );
-      },
+    return AuthenticatedStorageImage(
+      pathOrUrl: logoStoragePath,
+      width: 60,
+      height: 60,
+      fit: BoxFit.cover,
+      fallback: fallback,
     );
-  }
-
-  Future<String?> _buscarLogoUrl(String storagePath) async {
-    try {
-      final ref = storagePath.startsWith('gs://')
-          ? FirebaseStorage.instance.refFromURL(storagePath)
-          : FirebaseStorage.instance.ref(storagePath);
-      return await ref.getDownloadURL();
-    } catch (_) {
-      return null;
-    }
   }
 
   Widget _buildEstadoLista(String mensagem) {

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -11,6 +10,7 @@ import '../services/auth_session.dart';
 import '../services/functions_api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/authenticated_storage_image.dart';
 import 'balcao_negociacao.dart';
 import 'tela_adicionar_credito.dart';
 import 'tela_catalogo.dart';
@@ -34,7 +34,6 @@ class _TelaHomeState extends State<TelaHome> {
 
   Future<_HomeResumo>? _homeResumoFuture;
   late final Future<String> _nomeUsuarioFuture;
-  final Map<String, Future<String?>> _logoUrlFutures = {};
   final _notificacoesNovasController = StreamController<bool>.broadcast();
   final List<StreamSubscription<dynamic>> _notificacoesSubscriptions = [];
   final _updatesSubscriptions =
@@ -1464,6 +1463,18 @@ class _TelaHomeState extends State<TelaHome> {
       return ClipRRect(borderRadius: BorderRadius.circular(10), child: child);
     }
 
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) {
+      return clip(
+        AuthenticatedStorageImage(
+          pathOrUrl: imagem,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          fallback: fallback,
+        ),
+      );
+    }
+
     if (imagem.startsWith('http://') || imagem.startsWith('https://')) {
       return clip(
         Image.network(
@@ -1476,7 +1487,7 @@ class _TelaHomeState extends State<TelaHome> {
       );
     }
 
-    if (imagem.isNotEmpty && !_pareceCaminhoStorage(imagem)) {
+    if (imagem.isNotEmpty) {
       return clip(
         Image.asset(
           imagem,
@@ -1490,51 +1501,25 @@ class _TelaHomeState extends State<TelaHome> {
 
     if (storagePath.isEmpty) return fallback;
 
-    return FutureBuilder<String?>(
-      future: _logoUrlFutures.putIfAbsent(
-        storagePath,
-        () => _buscarLogoUrl(storagePath),
+    return clip(
+      AuthenticatedStorageImage(
+        pathOrUrl: storagePath,
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        fallback: fallback,
       ),
-      builder: (context, snapshot) {
-        final url = snapshot.data;
-        if (url == null || url.isEmpty) return fallback;
-
-        return clip(
-          Image.network(
-            url,
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => fallback,
-          ),
-        );
-      },
     );
   }
 
   String _logoStoragePathToken(_TokenResumo token) {
     final imagem = token.logoUrl.trim();
-    if (_pareceCaminhoStorage(imagem)) return imagem;
+    if (AuthenticatedStorageImage.isStoragePathOrUrl(imagem)) return imagem;
 
     final configurado = token.logoStoragePath.trim();
     if (configurado.isNotEmpty) return configurado;
 
     return 'startups/${token.startupId}/logo/logo.png';
-  }
-
-  bool _pareceCaminhoStorage(String value) {
-    return value.startsWith('gs://') || value.startsWith('startups/');
-  }
-
-  Future<String?> _buscarLogoUrl(String storagePath) async {
-    try {
-      final ref = storagePath.startsWith('gs://')
-          ? FirebaseStorage.instance.refFromURL(storagePath)
-          : FirebaseStorage.instance.ref(storagePath);
-      return await ref.getDownloadURL();
-    } catch (_) {
-      return null;
-    }
   }
 
   double _lerNumero(dynamic valor) {
