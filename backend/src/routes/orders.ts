@@ -58,9 +58,6 @@ function parseNumber(value: unknown): number {
 function currentTokenPrice(startup: FirebaseFirestore.DocumentData): number {
   return parseNumber(
     startup.valorToken ??
-      startup.precoToken ??
-      startup.preco ??
-      startup.tokenPrice ??
       startup.tokenPrecoInicial
   );
 }

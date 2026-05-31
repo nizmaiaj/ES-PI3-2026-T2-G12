@@ -238,10 +238,8 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       'socios': _quantidadeSocios(socios),
       'status': _texto(data['estagio'] ?? data['status']),
       'valorToken': _numero(
-        data['tokenPrecoInicial'] ??
-            data['valorToken'] ??
-            data['precoToken'] ??
-            data['preco'],
+        data['valorToken'] ??
+            data['tokenPrecoInicial'],
       ).toString(),
     };
   }

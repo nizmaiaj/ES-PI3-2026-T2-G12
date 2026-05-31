@@ -329,9 +329,7 @@ router.post(
       const startup = startupDoc.data() || {};
       const currentPrice = parseNumber(
         startup.valorToken ??
-          startup.precoToken ??
-          startup.tokenPrecoInicial ??
-          startup.preco
+          startup.tokenPrecoInicial
       );
 
       if (!Number.isFinite(currentPrice) || currentPrice <= 0) {

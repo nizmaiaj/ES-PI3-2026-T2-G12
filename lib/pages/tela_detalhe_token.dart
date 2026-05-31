@@ -686,9 +686,6 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
     return _numero(
       data['valorToken'] ??
-          data['precoToken'] ??
-          data['preco'] ??
-          data['tokenPrice'] ??
           data['tokenPrecoInicial'],
     );
   }

@@ -1146,9 +1146,6 @@ class _StartupOferta {
       ).toInt(),
       valorToken: _numero(
         data['valorToken'] ??
-            data['precoToken'] ??
-            data['preco'] ??
-            data['tokenPrice'] ??
             data['tokenPrecoInicial'],
       ),
     );

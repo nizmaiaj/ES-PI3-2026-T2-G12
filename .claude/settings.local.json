@@ -14,7 +14,13 @@
       "Bash(npm --version)",
       "Bash(flutter analyze *)",
       "Bash(dart analyze *)",
-      "Bash(dir \"c:\\\\FlutterProjects\\\\ES-PI3-2026-T2-G12\\\\lib\\\\pages\\\\visao_geral\")"
+      "Bash(dir \"c:\\\\FlutterProjects\\\\ES-PI3-2026-T2-G12\\\\lib\\\\pages\\\\visao_geral\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\eduar\\\\OneDrive\\\\Desktop\\\\Projeto apresentação\\\\ES-PI3-2026-T2-G12\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-List)",
+      "Read(//c/Users/eduar/OneDone/Desktop/Projeto apresentação/ES-PI3-2026-T2-G12/**)",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(grep -E \"\\\\.ts$\")"
     ]
   }
 }

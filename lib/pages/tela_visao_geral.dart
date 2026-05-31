@@ -607,8 +607,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
   String _formatarPrecoToken() {
     final preco = _numero(
       widget.startup['valorToken'] ??
-          widget.startup['precoToken'] ??
-          widget.startup['preco'],
+          widget.startup['tokenPrecoInicial'],
     );
 
     if (preco <= 0) return 'Não informado';

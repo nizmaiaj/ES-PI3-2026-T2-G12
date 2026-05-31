@@ -6,20 +6,15 @@ const PRECO_MINIMO = 1.0;
 
 type Periodo = 'diario' | 'semanal' | 'mensal' | 'semestral';
 
-const VARIACAO_MAX: Record<Periodo, number> = {
-  diario:    0.05,
-  semanal:   0.07,
-  mensal:    0.10,
-  semestral: 0.15,
-};
+// velocidade de retorno ao preço inicial (10% da diferença por atualização)
+const THETA = 0.1;
+// ruído aleatório máximo de ±0.5% por atualização
+const SIGMA = 0.005;
 
-const VARIACAO_MIN = 0.03;
-
-function gerarVariacao(periodo: Periodo): number {
-  const max = VARIACAO_MAX[periodo];
-  const magnitude = VARIACAO_MIN + Math.random() * (max - VARIACAO_MIN);
-  const sinal = Math.random() < 0.5 ? 1 : -1;
-  return sinal * magnitude;
+function gerarVariacao(precoInicial: number, precoAtual: number): number {
+  const reversao = THETA * (precoInicial - precoAtual) / precoAtual;
+  const ruido = (Math.random() * 2 - 1) * SIGMA;
+  return reversao + ruido;
 }
 
 export async function atualizarPrecosTokens(periodo: Periodo): Promise<void> {
@@ -35,11 +30,14 @@ export async function atualizarPrecosTokens(periodo: Periodo): Promise<void> {
     const data = doc.data();
     const precoAtual: number =
       data.valorToken ??
-      data.precoToken ??
       data.tokenPrecoInicial ??
       1.0;
 
-    const variacao = gerarVariacao(periodo);
+    const precoInicial: number =
+      data.tokenPrecoInicial ??
+      precoAtual;
+
+    const variacao = gerarVariacao(precoInicial, precoAtual);
     const novoPreco = Math.max(PRECO_MINIMO, precoAtual * (1 + variacao));
     const novoPrecoArredondado = Math.round(novoPreco * 100) / 100;
 

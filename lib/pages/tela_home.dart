@@ -1407,9 +1407,6 @@ class _TelaHomeState extends State<TelaHome> {
     );
     final precoAtual = _lerNumero(
       data?['valorToken'] ??
-          data?['precoToken'] ??
-          data?['preco'] ??
-          data?['tokenPrice'] ??
           data?['tokenPrecoInicial'],
     );
 
