@@ -89,10 +89,26 @@ class FunctionsApiClient {
       request.body = jsonEncode(body);
     }
 
-    final response = await http.Response.fromStream(
-      await _client.send(request),
-    );
-    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    late final http.Response response;
+
+    try {
+      response = await http.Response.fromStream(await _client.send(request));
+    } catch (_) {
+      throw const FunctionsApiException(
+        'Não foi possível conectar ao backend. Verifique sua conexão e tente novamente.',
+        statusCode: 0,
+      );
+    }
+
+    dynamic decoded;
+
+    if (response.body.isNotEmpty) {
+      try {
+        decoded = jsonDecode(response.body);
+      } on FormatException {
+        decoded = null;
+      }
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = decoded is Map<String, dynamic>
@@ -100,7 +116,10 @@ class FunctionsApiClient {
           : null;
 
       throw FunctionsApiException(
-        message ?? 'Não foi possível concluir a operação.',
+        message ??
+            (response.statusCode == 403
+                ? 'O backend recusou esta operação. Tente novamente após atualizar o aplicativo.'
+                : 'Não foi possível concluir a operação.'),
         statusCode: response.statusCode,
       );
     }

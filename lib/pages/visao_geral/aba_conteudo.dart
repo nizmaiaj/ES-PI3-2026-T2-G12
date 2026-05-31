@@ -343,12 +343,39 @@ class _AbaConteudoState extends State<AbaConteudo> {
   }
 
   Future<String> _resolverUrlDocumento(DocumentoStartup documento) async {
-    if (documento.url.isNotEmpty) return documento.url;
-    if (documento.storagePath.isEmpty) {
+    final storagePath = documento.storagePath.trim();
+
+    if (storagePath.isNotEmpty) {
+      return _buscarDownloadUrlStorage(storagePath);
+    }
+
+    final url = documento.url.trim();
+
+    if (url.isEmpty) {
       throw Exception('Documento sem arquivo configurado.');
     }
 
-    return FirebaseStorage.instance.ref(documento.storagePath).getDownloadURL();
+    if (_pareceUrlStorage(url)) {
+      return _buscarDownloadUrlStorage(url);
+    }
+
+    return url;
+  }
+
+  Future<String> _buscarDownloadUrlStorage(String pathOrUrl) {
+    final ref = _pareceUrlStorage(pathOrUrl)
+        ? FirebaseStorage.instance.refFromURL(pathOrUrl)
+        : FirebaseStorage.instance.ref(pathOrUrl);
+    return ref.getDownloadURL();
+  }
+
+  bool _pareceUrlStorage(String value) {
+    if (value.startsWith('gs://')) return true;
+
+    final uri = Uri.tryParse(value);
+    return uri != null &&
+        (uri.host == 'firebasestorage.googleapis.com' ||
+            uri.host == 'storage.googleapis.com');
   }
 
   Future<void> _abrirDocumento(DocumentoStartup documento) async {

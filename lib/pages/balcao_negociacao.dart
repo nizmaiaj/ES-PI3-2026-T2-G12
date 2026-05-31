@@ -51,7 +51,10 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream() {
-    return _firestore.collection('orders').snapshots();
+    return _firestore
+        .collection('orders')
+        .where('status', whereIn: ['aberta', 'parcial'])
+        .snapshots();
   }
 
   @override
