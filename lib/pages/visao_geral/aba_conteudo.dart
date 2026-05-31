@@ -4,11 +4,15 @@ import 'dart:async';
 
 import 'package:chewie/chewie.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../services/document_download.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
@@ -206,6 +210,8 @@ class AbaConteudo extends StatefulWidget {
 }
 
 class _AbaConteudoState extends State<AbaConteudo> {
+  static const _maxBytesDocumento = 100 * 1024 * 1024;
+
   List<VideoStartup> _videos = [];
   List<DocumentoStartup> _documentos = [];
   late final VideoThumbnailCache _thumbnailCache;
@@ -398,32 +404,118 @@ class _AbaConteudoState extends State<AbaConteudo> {
     setState(() => _documentoEmAcao = documento.chave);
 
     try {
+      if (baixar) {
+        await _salvarDocumento(documento);
+        return;
+      }
+
       final url = await _resolverUrlDocumento(documento);
-      final uri = baixar
-          ? _uriParaDownload(url, documento.nomeArquivoDownload)
-          : Uri.parse(url);
       final abriu = await launchUrl(
-        uri,
+        Uri.parse(url),
         mode: LaunchMode.externalApplication,
         webOnlyWindowName: '_blank',
       );
-
       if (!abriu) {
         _mostrarMensagem('Não foi possível abrir o documento.');
       }
-    } catch (_) {
-      _mostrarMensagem('Não foi possível acessar este documento.');
+    } on FirebaseException catch (error) {
+      debugPrint(
+        'Firebase Storage recusou o documento ${documento.chave}: '
+        '${error.code} - ${error.message}',
+      );
+      _mostrarMensagem(_mensagemErroStorage(error));
+    } catch (error) {
+      debugPrint('Não foi possível acessar o documento: $error');
+      _mostrarMensagem(
+        'Não foi possível acessar este documento. Detalhes: $error',
+      );
     } finally {
       if (mounted) setState(() => _documentoEmAcao = null);
     }
   }
 
-  Uri _uriParaDownload(String url, String nomeArquivo) {
-    final uri = Uri.parse(url);
-    final params = Map<String, String>.from(uri.queryParameters);
-    params['response-content-disposition'] =
-        'attachment; filename="$nomeArquivo"';
-    return uri.replace(queryParameters: params);
+  Future<void> _salvarDocumento(DocumentoStartup documento) async {
+    final nomeArquivo = documento.nomeArquivoDownload;
+    final storagePath = documento.storagePath.trim();
+    final url = documento.url.trim();
+    final caminhoStorage = storagePath.isNotEmpty
+        ? storagePath
+        : _pareceUrlStorage(url)
+        ? url
+        : null;
+
+    if (caminhoStorage != null) {
+      final bytes = await _buscarBytesDocumentoStorage(caminhoStorage);
+      if (kIsWeb) {
+        await baixarDocumentoNoNavegador(
+          nomeArquivo: nomeArquivo,
+          bytes: bytes,
+        );
+        _mostrarMensagem('Download concluído.');
+        return;
+      }
+
+      await FileSaver.instance.saveFile(
+        name: nomeArquivo,
+        bytes: bytes,
+        includeExtension: false,
+      );
+      _mostrarMensagem('Download concluído.');
+      return;
+    }
+
+    final link = LinkDetails(link: url);
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await FileSaver.instance.downloadLink(link: link, name: nomeArquivo);
+      _mostrarMensagem('Download iniciado.');
+      return;
+    }
+
+    await FileSaver.instance.saveFile(
+      name: nomeArquivo,
+      link: link,
+      includeExtension: false,
+    );
+    _mostrarMensagem('Download concluído.');
+  }
+
+  Future<Uint8List> _buscarBytesDocumentoStorage(String pathOrUrl) async {
+    for (var tentativa = 0; tentativa < 3; tentativa++) {
+      try {
+        await FirebaseAuth.instance.currentUser?.getIdToken(tentativa > 0);
+        final bytes = await _referenciaStorage(
+          pathOrUrl,
+        ).getData(_maxBytesDocumento);
+        if (bytes != null) return bytes;
+      } on FirebaseException {
+        if (tentativa == 2) rethrow;
+      }
+
+      await Future<void>.delayed(Duration(milliseconds: 250 * (tentativa + 1)));
+    }
+
+    throw Exception('O arquivo não retornou conteúdo.');
+  }
+
+  Reference _referenciaStorage(String pathOrUrl) {
+    return _pareceUrlStorage(pathOrUrl)
+        ? FirebaseStorage.instance.refFromURL(pathOrUrl)
+        : FirebaseStorage.instance.ref(pathOrUrl);
+  }
+
+  String _mensagemErroStorage(FirebaseException error) {
+    final code = error.code.replaceFirst('storage/', '');
+
+    return switch (code) {
+      'object-not-found' => 'Arquivo não encontrado no Firebase Storage.',
+      'unauthenticated' =>
+        'Sua sessão expirou. Entre novamente para baixar o documento.',
+      'unauthorized' => 'Você não possui permissão para baixar este documento.',
+      'retry-limit-exceeded' =>
+        'Não foi possível baixar o documento. Verifique sua conexão.',
+      _ => 'Não foi possível acessar este documento ($code).',
+    };
   }
 
   @override

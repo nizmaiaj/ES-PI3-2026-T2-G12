@@ -42,6 +42,7 @@ negócio passam pelas Functions HTTP autenticadas.
 - `video_player` e `chewie` para vídeos
 - `shared_preferences` para persistência do tema
 - `url_launcher` para abertura de documentos/links
+- `file_saver` para download de documentos
 
 **Backend**
 
@@ -93,6 +94,7 @@ para desenvolvimento local.
 |-- test/                   # Testes Flutter
 |-- firebase.json
 |-- firestore.rules
+|-- cors.json
 +-- storage.rules
 ```
 
@@ -275,6 +277,14 @@ Para publicar regras junto com as Functions:
 
 ```bash
 firebase deploy --only functions,firestore:rules,storage
+```
+
+O download direto de documentos no navegador também exige CORS no bucket do
+Storage. Essa configuração é separada das regras do Firebase e deve ser aplicada
+com a Google Cloud CLI:
+
+```bash
+gcloud storage buckets update gs://bd-pi3-1808d.firebasestorage.app --cors-file=cors.json
 ```
 
 ## Observações de segurança
