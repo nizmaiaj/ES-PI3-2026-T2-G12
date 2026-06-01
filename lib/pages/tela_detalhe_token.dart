@@ -54,6 +54,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
             snapshot.data ??
             _TokenDetalheDados(
               precoAtual: widget.precoAtualInicial,
+              precoInicial: 0,
               historico: const [],
               logoUrl: '',
               logoStoragePath: _logoStoragePathPadrao(),
@@ -292,7 +293,11 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
       );
     }
 
-    final historicoFiltrado = _filtrarHistorico(dados.historico);
+    final historicoFiltrado = _filtrarHistorico(
+      dados.historico,
+      precoInicial: dados.precoInicial,
+      precoAtual: dados.precoAtual,
+    );
     final variacao = _calcularVariacao(historicoFiltrado);
     final corVariacao = (variacao ?? 0) >= 0 ? _verde : _vermelho;
 
@@ -593,25 +598,16 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     List<_PontoPreco> historico = const [],
   }) {
     final precoStartup = _lerPrecoStartup(startupData);
-    final precoBase = _primeiroPrecoValido([
+    final precoInicial = _lerPrecoInicialStartup(startupData);
+    final precoAtual = _primeiroPrecoValido([
       precoStartup,
       widget.precoAtualInicial,
+      precoInicial,
       widget.precoMedioCompra,
     ]);
 
     final historicoOrdenado = [...historico]
       ..sort((a, b) => a.data.compareTo(b.data));
-
-    // O valor da startup é atualizado pelos jobs agendados e deve prevalecer
-    // sobre um eventual último negócio antigo.
-    final precoAtual = precoBase;
-    if (precoAtual > 0 &&
-        (historicoOrdenado.isEmpty ||
-            historicoOrdenado.last.preco != precoAtual)) {
-      historicoOrdenado.add(
-        _PontoPreco(data: DateTime.now(), preco: precoAtual),
-      );
-    }
 
     final logoUrl = _texto(
       startupData?['logoUrl'] ??
@@ -628,6 +624,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
 
     return _TokenDetalheDados(
       precoAtual: precoAtual,
+      precoInicial: precoInicial,
       historico: historicoOrdenado,
       logoUrl: logoUrl,
       logoStoragePath: logoStoragePath,
@@ -643,32 +640,48 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         .toList();
   }
 
-  List<_PontoPreco> _filtrarHistorico(List<_PontoPreco> historico) {
-    if (historico.isEmpty) {
-      return historico;
-    }
-
-    final inicio = _periodo.inicio(DateTime.now());
-
-    if (historico.length == 1) {
-      return historico.first.data.isBefore(inicio) ? [] : historico;
-    }
-
-    final filtrado = historico
-        .where((ponto) => !ponto.data.isBefore(inicio))
+  List<_PontoPreco> _filtrarHistorico(
+    List<_PontoPreco> historico, {
+    required double precoInicial,
+    required double precoAtual,
+  }) {
+    final fim = DateTime.now();
+    final inicio = _periodo.inicio(fim);
+    final ordenado = [...historico]..sort((a, b) => a.data.compareTo(b.data));
+    final pontosAntes = ordenado
+        .where((ponto) => ponto.data.isBefore(inicio))
         .toList();
+    final pontosNoPeriodo = ordenado
+        .where(
+          (ponto) => !ponto.data.isBefore(inicio) && !ponto.data.isAfter(fim),
+        )
+        .toList();
+    final pontosIntermediarios = pontosNoPeriodo
+        .where(
+          (ponto) => ponto.data.isAfter(inicio) && ponto.data.isBefore(fim),
+        )
+        .toList();
+    final pontoNoInicio = pontosNoPeriodo
+        .where((ponto) => ponto.data.isAtSameMomentAs(inicio))
+        .lastOrNull;
+    final precoAbertura = _primeiroPrecoValido([
+      pontoNoInicio?.preco ?? 0,
+      pontosAntes.lastOrNull?.preco ?? 0,
+      precoInicial,
+      pontosNoPeriodo.firstOrNull?.preco ?? 0,
+      precoAtual,
+    ]);
+    final precoFechamento = _primeiroPrecoValido([
+      precoAtual,
+      pontosNoPeriodo.lastOrNull?.preco ?? 0,
+      precoAbertura,
+    ]);
 
-    final pontosAntes = historico.where((ponto) => ponto.data.isBefore(inicio));
-    final pontoAbertura = pontosAntes.isEmpty ? null : pontosAntes.last;
-
-    if (pontoAbertura != null && filtrado.isNotEmpty) {
-      return [
-        _PontoPreco(data: inicio, preco: pontoAbertura.preco),
-        ...filtrado,
-      ];
-    }
-
-    return filtrado;
+    return [
+      if (precoAbertura > 0) _PontoPreco(data: inicio, preco: precoAbertura),
+      ...pontosIntermediarios,
+      if (precoFechamento > 0) _PontoPreco(data: fim, preco: precoFechamento),
+    ];
   }
 
   double? _calcularVariacao(List<_PontoPreco> historico) {
@@ -684,10 +697,13 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   double _lerPrecoStartup(Map<String, dynamic>? data) {
     if (data == null) return 0;
 
-    return _numero(
-      data['valorToken'] ??
-          data['tokenPrecoInicial'],
-    );
+    return _numero(data['valorToken'] ?? data['tokenPrecoInicial']);
+  }
+
+  double _lerPrecoInicialStartup(Map<String, dynamic>? data) {
+    if (data == null) return 0;
+
+    return _numero(data['tokenPrecoInicial']);
   }
 
   double _primeiroPrecoValido(List<double> precos) {
@@ -748,10 +764,20 @@ class _GraficoPreco extends StatelessWidget {
       );
     }
 
-    final spots = List.generate(
-      pontos.length,
-      (i) => FlSpot(i.toDouble(), pontos[i].preco),
-    );
+    final inicio = pontos.first.data;
+    final fim = pontos.last.data;
+    final duracaoEmMilissegundos = fim.difference(inicio).inMilliseconds;
+    final maxX = duracaoEmMilissegundos > 0
+        ? duracaoEmMilissegundos.toDouble()
+        : 1.0;
+    final spots = pontos
+        .map(
+          (ponto) => FlSpot(
+            ponto.data.difference(inicio).inMilliseconds.toDouble(),
+            ponto.preco,
+          ),
+        )
+        .toList();
 
     final precos = pontos.map((p) => p.preco);
     final minPreco = precos.reduce((a, b) => a < b ? a : b);
@@ -763,7 +789,7 @@ class _GraficoPreco extends StatelessWidget {
     final maxY = maxPreco + margem;
     final intervalY = ((maxY - minY) / 4).clamp(0.01, double.infinity);
     final n = pontos.length;
-    final xInterval = (n <= 5 ? 1.0 : (n / 5).ceilToDouble());
+    final xInterval = maxX / 4;
 
     return AspectRatio(
       aspectRatio: 0.78,
@@ -811,15 +837,15 @@ class _GraficoPreco extends StatelessWidget {
                 reservedSize: 22,
                 interval: xInterval,
                 getTitlesWidget: (val, meta) {
-                  final i = val.toInt();
-                  if (i < 0 || i >= pontos.length) {
+                  if (val < 0 || val > maxX) {
                     return const SizedBox.shrink();
                   }
+                  final data = inicio.add(Duration(milliseconds: val.round()));
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
                     space: 4,
                     child: Text(
-                      _formatarData(pontos[i].data, periodo),
+                      _formatarData(data, periodo),
                       style: TextStyle(
                         fontSize: 9,
                         color: themeColors.faintText,
@@ -840,13 +866,14 @@ class _GraficoPreco extends StatelessWidget {
             show: true,
             border: Border.all(color: themeColors.panelBorder),
           ),
+          minX: 0,
+          maxX: maxX,
           minY: minY,
           maxY: maxY,
           lineBarsData: [
             LineChartBarData(
               spots: spots,
-              isCurved: true,
-              curveSmoothness: 0.3,
+              isCurved: false,
               color: lineColor,
               barWidth: 2.6,
               isStrokeCapRound: true,
@@ -925,12 +952,14 @@ class _ResumoCarteiraItem extends StatelessWidget {
 class _TokenDetalheDados {
   const _TokenDetalheDados({
     required this.precoAtual,
+    required this.precoInicial,
     required this.historico,
     required this.logoUrl,
     required this.logoStoragePath,
   });
 
   final double precoAtual;
+  final double precoInicial;
   final List<_PontoPreco> historico;
   final String logoUrl;
   final String logoStoragePath;
