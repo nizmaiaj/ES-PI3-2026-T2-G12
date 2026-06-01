@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Inicializa o servidor HTTP local. A publicação no Firebase usa `index.ts`.
 import dotenv from 'dotenv';
 import app from './app';

@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Painel principal após o login: patrimônio, posições, notificações e gráfico
 // agregado dos investimentos do usuário.
 import 'dart:async';

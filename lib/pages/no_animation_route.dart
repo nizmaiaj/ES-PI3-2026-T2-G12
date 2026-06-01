@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Helper de navegação para trocas de área que não devem animar a transição.
 import 'package:flutter/material.dart';
 

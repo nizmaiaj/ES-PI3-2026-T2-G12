@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Detalha uma posição da carteira e desenha seu histórico real de preços.
 import 'dart:async';
 

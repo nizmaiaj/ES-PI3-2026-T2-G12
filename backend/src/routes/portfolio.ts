@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Consulta as posições de tokens mantidas pelo usuário autenticado.
 import express, { Request, Response } from 'express';
 import { db } from '../config/firebase';

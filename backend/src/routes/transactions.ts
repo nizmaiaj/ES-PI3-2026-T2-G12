@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Consolida compras e vendas do usuário em um único histórico cronológico.
 import express, { Request, Response } from 'express';
 import { db } from '../config/firebase';

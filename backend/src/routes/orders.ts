@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Implementa as operações do balcão: reserva para venda, compras de ofertas
 // específicas, emissão direta, livro de ordens e cancelamento.
 import express, { Request, Response } from 'express';

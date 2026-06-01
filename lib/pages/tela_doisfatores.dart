@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Tela dedicada à configuração do segundo fator por SMS e dos dados da conta.
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

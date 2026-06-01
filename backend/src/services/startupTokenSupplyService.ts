@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Reúne as regras de estoque dos tokens emitidos por uma startup. O serviço
 // suporta documentos antigos e mantém os campos canônicos atualizados.
 import { AppError } from '../middleware/errorHandler';

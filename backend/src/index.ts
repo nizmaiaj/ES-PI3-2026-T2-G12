@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Ponto de entrada das Cloud Functions. Cada exportação abaixo publica um
 // endpoint pequeno, mas reaproveita as regras dos routers Express.
 import dotenv from 'dotenv';

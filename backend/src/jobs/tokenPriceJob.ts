@@ -1,4 +1,4 @@
-//Eduarda Prado Deiró
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Agenda execuções frequentes para demonstrar a movimentação do gráfico em
 // ambiente acadêmico. Em produção, os intervalos deveriam refletir períodos reais.
 

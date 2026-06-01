@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Funções puras de validação e normalização usadas no cadastro de usuários.
 
 /** Faz uma validação estrutural simples de endereço de e-mail. */

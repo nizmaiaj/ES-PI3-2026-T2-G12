@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Middleware aplicado às rotas privadas. Ele extrai o Bearer token enviado
 // pelo aplicativo e disponibiliza o UID validado para os handlers seguintes.
 import { Request, Response, NextFunction } from 'express';

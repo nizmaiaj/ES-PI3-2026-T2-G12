@@ -1,3 +1,4 @@
+// Bruno Duarte Locatelli - RA: 25007511
 // Permite adicionar saldo fictício à carteira para demonstrar negociações.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

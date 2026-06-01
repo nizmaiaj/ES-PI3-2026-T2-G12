@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Centraliza a inicialização do Firebase Admin SDK para evitar criar mais de
 // uma instância da aplicação durante hot reloads ou chamadas concorrentes.
 import admin from 'firebase-admin';

@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Mantém a criação e a remoção do perfil, da carteira e da reserva de CPF em
 // uma única transação para impedir cadastros parcialmente gravados.
 import { db, FieldValue } from '../config/firebase';

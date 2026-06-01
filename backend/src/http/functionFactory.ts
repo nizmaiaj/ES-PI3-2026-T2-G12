@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Adapta routers Express comuns para Cloud Functions independentes. Assim o
 // mesmo código pode servir ao backend local e às funções publicadas.
 import express, { Request } from 'express';

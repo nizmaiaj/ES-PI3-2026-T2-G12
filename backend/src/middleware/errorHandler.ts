@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Padroniza erros esperados da aplicação e impede que detalhes internos sejam
 // devolvidos ao cliente quando ocorre uma falha inesperada.
 import { Request, Response, NextFunction } from 'express';

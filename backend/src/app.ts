@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Monta o servidor Express tradicional usado no desenvolvimento local.
 // Em produção, cada Cloud Function é exposta separadamente por `index.ts`.
 import express from 'express';

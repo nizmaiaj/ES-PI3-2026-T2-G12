@@ -1,3 +1,4 @@
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Rotas do catálogo de startups: dados públicos, perguntas, atualizações,
 // ofertas abertas e histórico de preços usado pelos gráficos.
 import express, { Request, Response } from 'express';

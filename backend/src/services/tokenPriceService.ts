@@ -1,4 +1,4 @@
-//Eduarda Prado Deiró
+// Gabriel Henrique Pozeti de Faria - 25022716
 // Simula a evolução dos preços dos tokens e atualiza as ofertas automáticas de
 // compra. Os jobs chamam este serviço com diferentes identificadores de período.
 
