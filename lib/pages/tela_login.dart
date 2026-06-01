@@ -1,4 +1,5 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Tela de entrada por e-mail e senha, incluindo conclusão do MFA por SMS.
 
 import 'package:flutter/material.dart';
 
@@ -10,6 +11,7 @@ import 'tela_esqueci_senha.dart';
 import 'tela_home.dart';
 import 'tela_inicial.dart';
 
+/// Coleta credenciais e encaminha o usuário autenticado para a Home.
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
 
@@ -33,6 +35,7 @@ class _TelaLoginState extends State<TelaLogin> {
     super.dispose();
   }
 
+  /// Tenta autenticar e abre o diálogo SMS quando a conta exige segundo fator.
   Future<void> _fazerLogin() async {
     setState(() => _erroLogin = null);
 

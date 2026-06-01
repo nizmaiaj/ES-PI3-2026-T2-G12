@@ -1,10 +1,12 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Feed filtrável de comunicados publicados pela startup.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
+/// Observa atualizações em tempo real e permite filtrá-las por categoria.
 class AbaAtualizacoes extends StatefulWidget {
   const AbaAtualizacoes({super.key, required this.startupId});
 
@@ -240,6 +242,7 @@ class _AbaAtualizacoesState extends State<AbaAtualizacoes> {
     );
   }
 
+  /// Aplica o filtro de categoria selecionado pelo usuário.
   List<AtualizacaoStartup> _filtrar(List<AtualizacaoStartup> atualizacoes) {
     if (_filtroAtivo == 'Todas') return atualizacoes;
 
@@ -248,6 +251,7 @@ class _AbaAtualizacoesState extends State<AbaAtualizacoes> {
         .toList();
   }
 
+  /// Exibe comunicados mais recentes primeiro.
   List<AtualizacaoStartup> _ordenar(List<AtualizacaoStartup> lista) {
     return lista..sort((a, b) {
       final ca = a.createdAt;

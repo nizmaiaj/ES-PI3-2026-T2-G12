@@ -1,5 +1,7 @@
+// Define a identidade visual compartilhada entre os modos claro e escuro.
 import 'package:flutter/material.dart';
 
+/// Constrói os temas Material e registra cores adicionais usadas pelo app.
 class AppTheme {
   static const primary = Color(0xFF4C3BCF);
   static const _lightBackground = Color(0xFFF8F9FE);
@@ -8,6 +10,7 @@ class AppTheme {
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
+  /// Monta um tema completo a partir do brilho escolhido.
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final colorScheme = ColorScheme.fromSeed(
@@ -141,6 +144,7 @@ class AppTheme {
 }
 
 @immutable
+/// Cores sem equivalência direta no `ColorScheme` padrão do Material.
 class AppThemeColors extends ThemeExtension<AppThemeColors> {
   const AppThemeColors({
     required this.modalBackdrop,

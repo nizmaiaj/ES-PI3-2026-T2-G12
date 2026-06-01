@@ -1,3 +1,5 @@
+// Middleware aplicado às rotas privadas. Ele extrai o Bearer token enviado
+// pelo aplicativo e disponibiliza o UID validado para os handlers seguintes.
 import { Request, Response, NextFunction } from 'express';
 import { auth } from '../config/firebase';
 
@@ -6,6 +8,7 @@ export interface AuthRequest extends Request {
   user?: any;
 }
 
+/** Valida o ID token do Firebase Auth e anexa o UID à requisição. */
 export async function authMiddleware(
   req: Request,
   res: Response,

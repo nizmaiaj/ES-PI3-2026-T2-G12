@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Exibe ofertas de emissão e de revenda associadas a uma startup específica.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,6 +13,7 @@ import '../widgets/password_confirmation_dialog.dart';
 import 'balcao_venda.dart';
 import 'tela_balcao_compra.dart';
 
+/// Tabela detalhada do balcão de uma startup, com atalhos para compra e venda.
 class BalcaoOfertasDaStartup extends StatefulWidget {
   const BalcaoOfertasDaStartup({
     super.key,
@@ -40,6 +42,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     _seedOfertasSeNecessario();
   }
 
+  /// Solicita ao backend a criação das ofertas automáticas quando necessário.
   Future<void> _seedOfertasSeNecessario() async {
     final startupId = _startupId;
     if (startupId == null) return;
@@ -480,6 +483,7 @@ class _BalcaoOfertasDaStartupState extends State<BalcaoOfertasDaStartup> {
     );
   }
 
+  /// Abre confirmação de quantidade e senha para comprar de outro usuário.
   Future<void> _confirmarCompraOrdemVenda(_OrdemVendaAberta ordem) async {
     final uid = _uid;
 

@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Lista ordens criadas pelo usuário e permite cancelar as ainda abertas.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +12,7 @@ import '../widgets/app_bottom_nav.dart';
 import 'balcao_negociacao.dart';
 import 'no_animation_route.dart';
 
+/// Acompanha em tempo real o estado das ordens do usuário autenticado.
 class BalcaoMinhasOrdens extends StatefulWidget {
   final Function(int)? onNavigate;
 
@@ -291,6 +293,7 @@ class _BalcaoMinhasOrdensState extends State<BalcaoMinhasOrdens> {
     );
   }
 
+  /// Cancela uma ordem pelo backend e devolve tokens reservados quando aplicável.
   Future<void> _cancelarOrdem(_OrdemUsuario ordem) async {
     if (_cancelando) return;
 

@@ -1,3 +1,7 @@
+/// Fallback em memória para dados da sessão autenticada.
+///
+/// O Firebase Auth continua sendo a fonte principal. Esta classe atende fluxos
+/// em que uma tela precisa acessar rapidamente o UID ou o token já obtido.
 class AuthSession {
   AuthSession._();
 
@@ -8,6 +12,7 @@ class AuthSession {
 
   static bool get isAuthenticated => token != null;
 
+  /// Atualiza todos os campos mantidos durante a sessão atual.
   static void save({
     required String uid,
     required String email,
@@ -20,6 +25,7 @@ class AuthSession {
     AuthSession.refreshToken = refreshToken;
   }
 
+  /// Remove credenciais locais ao sair da conta.
   static void clear() {
     uid = null;
     email = null;

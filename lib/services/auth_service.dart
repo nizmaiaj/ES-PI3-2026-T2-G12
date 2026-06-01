@@ -1,3 +1,4 @@
+// Encapsula autenticação Firebase e os fluxos de segundo fator por SMS.
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_session.dart';
 import 'functions_api_client.dart';
 
+/// Erro amigável que pode ser exibido diretamente pelas telas de autenticação.
 class AuthException implements Exception {
   AuthException(this.message);
 
@@ -14,9 +16,11 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
+/// Callback usado quando o Firebase envia um código e a UI precisa solicitá-lo.
 typedef SmsCodeResolver =
     Future<String?> Function(String verificationId, int? resendToken);
 
+/// Sinaliza ao login que ainda falta concluir o desafio MFA recebido.
 class AuthMfaRequiredException extends AuthException {
   AuthMfaRequiredException({required this.challenge})
     : super('Confirme o código enviado por SMS para concluir o login.');
@@ -24,6 +28,7 @@ class AuthMfaRequiredException extends AuthException {
   final AuthMfaChallenge challenge;
 }
 
+/// Dados necessários para concluir um login protegido por telefone.
 class AuthMfaChallenge {
   const AuthMfaChallenge({required this.resolver, required this.hint});
 
@@ -33,11 +38,13 @@ class AuthMfaChallenge {
   String get phoneNumber => hint.phoneNumber;
 }
 
+/// Serviço central de cadastro, login, logout, recuperação de senha e MFA.
 class AuthService {
   AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
+  /// Autentica por e-mail e senha e converte um eventual MFA em desafio para a UI.
   Future<void> login({required String email, required String password}) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
@@ -61,6 +68,7 @@ class AuthService {
     }
   }
 
+  /// Cria a conta no Auth, inicializa seu perfil pelo backend e salva a sessão.
   Future<void> register({
     required String nomeCompleto,
     required String email,
@@ -83,6 +91,8 @@ class AuthService {
 
       await createdUser.updateDisplayName(nomeCompleto);
 
+      // O perfil e a carteira dependem de regras transacionais implementadas
+      // pelo backend, por isso não são escritos diretamente pelo aplicativo.
       await FunctionsApiClient.instance.post(
         'usersInitializeProfile',
         body: {
@@ -106,6 +116,7 @@ class AuthService {
     }
   }
 
+  /// Solicita o envio do link padrão de recuperação do Firebase Auth.
   Future<String> forgotPassword({required String email}) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -117,11 +128,13 @@ class AuthService {
     }
   }
 
+  /// Encerra a sessão no Firebase e limpa o fallback local.
   Future<void> logout() async {
     await _auth.signOut();
     AuthSession.clear();
   }
 
+  /// Conclui o login depois que o usuário informa o código do segundo fator.
   Future<void> resolveSmsMfaSignIn({
     required AuthMfaChallenge challenge,
     required SmsCodeResolver smsCodeResolver,
@@ -160,6 +173,7 @@ class AuthService {
     }
   }
 
+  /// Cadastra o telefone como segundo fator da conta atual.
   Future<void> enrollSmsMfa({
     required String phoneNumber,
     required SmsCodeResolver smsCodeResolver,
@@ -217,6 +231,7 @@ class AuthService {
     }
   }
 
+  /// Remove todos os fatores de telefone cadastrados na conta atual.
   Future<void> unenrollSmsMfa() async {
     final user = await _currentUserForMfa();
     final factors = await user.multiFactor.getEnrolledFactors();
@@ -235,6 +250,7 @@ class AuthService {
     }
   }
 
+  /// Espelha no perfil do Firestore o estado configurado no Firebase Auth.
   Future<void> updateMfaMetadata({
     required bool enabled,
     String? phoneNumber,
@@ -249,6 +265,7 @@ class AuthService {
     }
   }
 
+  /// Normaliza números brasileiros para o formato E.164 exigido pelo Firebase.
   static String normalizePhoneNumberForSmsMfa(String value) {
     final trimmed = value.trim();
     final digits = trimmed.replaceAll(RegExp(r'\D'), '');
@@ -278,6 +295,7 @@ class AuthService {
     );
   }
 
+  /// Mantém um fallback em memória do usuário autenticado.
   Future<void> _saveSession(User? user) async {
     if (user == null || user.email == null) {
       throw AuthException('Resposta de autenticação inválida');
@@ -297,6 +315,7 @@ class AuthService {
     );
   }
 
+  /// Seleciona o primeiro fator de telefone oferecido pelo Firebase no login.
   AuthMfaChallenge? _phoneChallenge(MultiFactorResolver resolver) {
     for (final hint in resolver.hints) {
       if (hint is PhoneMultiFactorInfo) {
@@ -306,6 +325,7 @@ class AuthService {
     return null;
   }
 
+  /// Recarrega o usuário antes de alterar MFA para evitar estado desatualizado.
   Future<User> _currentUserForMfa() async {
     final user = _auth.currentUser;
 
@@ -321,6 +341,7 @@ class AuthService {
     }
   }
 
+  /// Evita cadastrar um telefone adicional quando a conta já possui um.
   Future<PhoneMultiFactorInfo?> _firstEnrolledPhoneFactor(User user) async {
     try {
       final factors = await user.multiFactor.getEnrolledFactors();
@@ -335,6 +356,10 @@ class AuthService {
     }
   }
 
+  /// Converte a API de callbacks do Firebase em um `Future` de credencial.
+  ///
+  /// O callback recebido abre o diálogo da UI quando o preenchimento automático
+  /// do SMS não estiver disponível.
   Future<PhoneAuthCredential> _verifyPhoneNumberForCredential({
     required String phoneNumber,
     required SmsCodeResolver smsCodeResolver,
@@ -390,12 +415,14 @@ class AuthService {
     return completer.future;
   }
 
+  /// Tenta disparar a verificação sem mascarar o erro principal do fluxo de MFA.
   Future<void> _sendEmailVerificationIfPossible(User user) async {
     try {
       await user.sendEmailVerification();
     } catch (_) {}
   }
 
+  /// Uniformiza exceções internas para mensagens compreensíveis pelas telas.
   AuthException _asAuthException(Object error) {
     if (error is AuthException) return error;
     if (error is FirebaseAuthException) {
@@ -404,6 +431,7 @@ class AuthService {
     return AuthException('Não foi possível concluir a verificação.');
   }
 
+  /// Traduz códigos técnicos do Firebase em mensagens de interface.
   String _authErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'email-already-in-use':

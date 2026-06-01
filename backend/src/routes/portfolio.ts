@@ -1,3 +1,4 @@
+// Consulta as posições de tokens mantidas pelo usuário autenticado.
 import express, { Request, Response } from 'express';
 import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
@@ -5,6 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
+// Lista todas as posições, incluindo preço médio de aquisição.
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();
@@ -26,6 +28,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Retorna uma posição específica ou um objeto zerado para simplificar a UI.
 router.get('/:startupId', async (req: Request, res: Response, next: any) => {
   try {
     const { startupId } = req.params;

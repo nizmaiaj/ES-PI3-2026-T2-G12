@@ -1,3 +1,5 @@
+// Adapta routers Express comuns para Cloud Functions independentes. Assim o
+// mesmo código pode servir ao backend local e às funções publicadas.
 import express, { Request } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,12 +15,14 @@ interface EndpointOptions {
   router: express.Router;
 }
 
+/** Substitui a URL externa da Function pela rota esperada pelo router Express. */
 function rewriteRequestPath(req: Request, path: string): void {
   const queryStart = req.url.indexOf('?');
   const query = queryStart >= 0 ? req.url.substring(queryStart) : '';
   req.url = `${path}${query}`;
 }
 
+/** Lê um parâmetro obrigatório enviado pela query string ou pelo corpo. */
 export function requestParameter(req: Request, name: string): string {
   const value = req.query[name] ?? req.body?.[name];
 
@@ -29,6 +33,11 @@ export function requestParameter(req: Request, name: string): string {
   return encodeURIComponent(value.trim());
 }
 
+/**
+ * Cria uma aplicação Express pequena para uma única Cloud Function.
+ * A função valida método HTTP, autenticação opcional e encaminha erros ao
+ * mesmo tratamento usado pelo servidor local.
+ */
 export function createEndpoint({
   authenticated = true,
   method,

@@ -1,4 +1,5 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Formulário de criação de conta com máscaras e validação progressiva da senha.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import 'tela_login.dart';
 
+/// Aplica a máscara visual de CPF sem alterar o valor persistido pelo backend.
 class CpfInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -30,6 +32,7 @@ class CpfInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Aplica máscara de telefone brasileiro durante a digitação.
 class PhoneInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -54,6 +57,7 @@ class PhoneInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Coleta os dados pessoais necessários para criar a conta e sua carteira.
 class TelaCadastro extends StatefulWidget {
   const TelaCadastro({super.key});
 
@@ -102,6 +106,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
     super.dispose();
   }
 
+  /// Atualiza os indicadores visuais dos requisitos de senha.
   void _validarSenha() {
     final senha = _senhaController.text;
     setState(() {
@@ -112,6 +117,7 @@ class _TelaCadastroState extends State<TelaCadastro> {
     });
   }
 
+  /// Valida o formulário e delega a criação da conta ao serviço de autenticação.
   Future<void> _fazerCadastro() async {
     setState(() => _erroCadastro = null);
 

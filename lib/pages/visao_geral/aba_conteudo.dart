@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Biblioteca multimídia da startup: vídeos, documentos, abertura e download.
 
 import 'dart:async';
 
@@ -16,6 +17,7 @@ import '../../services/document_download.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
+/// Mantém miniaturas de vídeo inicializadas e compartilhadas pela aba.
 class VideoThumbnailCache extends ChangeNotifier {
   final Map<String, VideoPlayerController> _controllers = {};
   final Set<String> _urlsAtivas = {};
@@ -108,6 +110,7 @@ class VideoThumbnailCache extends ChangeNotifier {
   }
 }
 
+/// Resolve vídeos cadastrados no documento e no diretório padrão do Storage.
 Future<List<VideoStartup>> carregarVideosStartup({
   required String? startupId,
   required Map<String, dynamic>? data,
@@ -199,6 +202,7 @@ Future<String?> _buscarStorageDownloadUrl(String storagePath) async {
   }
 }
 
+/// Aba responsável por reproduzir vídeos e oferecer ações sobre documentos.
 class AbaConteudo extends StatefulWidget {
   const AbaConteudo({super.key, required this.startupId, this.thumbnailCache});
 
@@ -241,6 +245,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
     super.dispose();
   }
 
+  /// Escuta o documento da startup e atualiza vídeos e documentos exibidos.
   void _ouvirConteudo() {
     final startupId = widget.startupId;
     if (startupId == null) return;
@@ -279,6 +284,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
         });
   }
 
+  /// Inicializa o player modal para o vídeo selecionado.
   Future<void> _playVideo(String url) async {
     if (url.isEmpty) return;
     if (_videoEmExecucaoUrl == url &&
@@ -348,6 +354,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
     );
   }
 
+  /// Resolve URL externa ou caminho autenticado do Firebase Storage.
   Future<String> _resolverUrlDocumento(DocumentoStartup documento) async {
     final storagePath = documento.storagePath.trim();
 
@@ -392,6 +399,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
     await _executarAcaoDocumento(documento, baixar: true);
   }
 
+  /// Compartilha tratamento de estado e erro entre abrir e baixar documento.
   Future<void> _executarAcaoDocumento(
     DocumentoStartup documento, {
     required bool baixar,
@@ -855,6 +863,7 @@ class _AbaConteudoState extends State<AbaConteudo> {
     );
   }
 
+  /// Classifica o arquivo para escolher ícone e cor exibidos na lista.
   _TipoDocumento _tipoDocumento(DocumentoStartup documento) {
     final referencia = [
       documento.tipo,

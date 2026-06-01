@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Área de perfil do usuário, com dados pessoais, aparência, MFA e logout.
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +12,7 @@ import '../widgets/sms_code_dialog.dart';
 import '../widgets/theme_mode_selector.dart';
 import 'tela_inicial.dart';
 
+/// Exibe dados da conta em tempo real e oferece configurações de segurança.
 class TelaUsuario extends StatefulWidget {
   final String nomeFallback;
 
@@ -37,6 +39,7 @@ class _TelaUsuarioState extends State<TelaUsuario> {
   }
 
   // Atualiza no Firebase Auth e no Firestore se o 2FA por SMS está ativado.
+  /// Sincroniza o fator no Firebase Auth e o indicador mantido no perfil.
   Future<void> _alterarMfa(bool habilitado, String telefone) async {
     final ref = _userRef;
     if (ref == null) {

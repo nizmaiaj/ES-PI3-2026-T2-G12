@@ -1,4 +1,5 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Catálogo pesquisável de startups disponíveis para consulta e negociação.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../widgets/authenticated_storage_image.dart';
 import 'balcao_negociacao.dart';
 import 'tela_visao_geral.dart';
 
+/// Lista startups em tempo real e abre sua visão geral.
 class TelaCatalogo extends StatefulWidget {
   final bool mostrarMenuInferior;
   final VoidCallback? onVoltar;
@@ -201,6 +203,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     );
   }
 
+  /// Normaliza um documento Firestore para o formato simples consumido pela UI.
   Map<String, String> _startupCatalogoFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {

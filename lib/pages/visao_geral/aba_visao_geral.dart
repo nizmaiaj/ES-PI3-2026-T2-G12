@@ -1,10 +1,12 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Resumo textual e atalhos principais da startup selecionada.
 
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
+/// Primeira aba da visão geral, com sumário e ações para investidores.
 class AbaVisaoGeral extends StatelessWidget {
   const AbaVisaoGeral({
     super.key,

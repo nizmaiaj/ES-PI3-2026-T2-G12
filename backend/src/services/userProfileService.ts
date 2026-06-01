@@ -1,3 +1,5 @@
+// Mantém a criação e a remoção do perfil, da carteira e da reserva de CPF em
+// uma única transação para impedir cadastros parcialmente gravados.
 import { db, FieldValue } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
 import { sanitizeCPF, sanitizePhoneNumber } from '../utils/validation';
@@ -12,6 +14,10 @@ interface InitializeUserProfileParams {
 
 const CPF_ALREADY_REGISTERED = 'CPF já cadastrado em outra conta';
 
+/**
+ * Cria ou atualiza o perfil inicial do usuário.
+ * A coleção `cpfRegistrations` funciona como índice de unicidade do CPF.
+ */
 export async function initializeUserProfile({
   uid,
   nomeCompleto,
@@ -27,6 +33,8 @@ export async function initializeUserProfile({
   const cpfRegistrationRef = firebaseDb.collection('cpfRegistrations').doc(sanitizedCPF);
   const matchingUsersQuery = firebaseDb.collection('users').where('cpf', '==', sanitizedCPF);
 
+  // Todas as leituras e escritas precisam ser atômicas: duas contas não podem
+  // reivindicar o mesmo CPF enquanto o cadastro está em andamento.
   await firebaseDb.runTransaction(async (transaction) => {
     const [userDoc, walletDoc, cpfRegistrationDoc, matchingUsersSnapshot] = await Promise.all([
       transaction.get(userRef),
@@ -96,6 +104,7 @@ export async function initializeUserProfile({
   });
 }
 
+/** Remove dados criados durante um cadastro que falhou antes de ser concluído. */
 export async function deleteInitializedUserProfile(uid: string, cpf: string): Promise<void> {
   const firebaseDb = db();
   const cpfRegistrationRef = firebaseDb.collection('cpfRegistrations').doc(sanitizeCPF(cpf));

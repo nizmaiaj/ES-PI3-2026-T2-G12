@@ -1,4 +1,5 @@
-//Eduarda Prado Deiró
+// Eduarda Prado Deiró
+// Contêiner das abas que apresentam todas as informações de uma startup.
 
 import 'dart:async';
 
@@ -18,6 +19,7 @@ import 'visao_geral/aba_perguntas.dart';
 import 'visao_geral/aba_sociedade.dart';
 import 'visao_geral/aba_visao_geral.dart';
 
+/// Coordena cabeçalho, indicadores e abas da visão detalhada da startup.
 class TelaVisaoGeral extends StatefulWidget {
   final Map<String, String> startup;
   final ValueChanged<int>? onNavigate;
@@ -87,6 +89,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     super.dispose();
   }
 
+  /// Atualiza as setas laterais conforme a posição atual da faixa de abas.
   void _atualizarIndicadoresTabs() {
     if (!mounted || !_tabsScrollController.hasClients) return;
 
@@ -120,6 +123,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
+  /// Inicia antecipadamente o carregamento de vídeos exibidos na aba de conteúdo.
   void _iniciarPreloadConteudo() {
     _conteudoPreloadSubscription?.cancel();
 
@@ -176,6 +180,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
     );
   }
 
+  /// Seleciona o widget correspondente à aba ativa.
   Widget _buildConteudoAtivo() {
     final sId = _startupId;
     final uid = _uid;
@@ -606,8 +611,7 @@ class _TelaVisaoGeralState extends State<TelaVisaoGeral> {
 
   String _formatarPrecoToken() {
     final preco = _numero(
-      widget.startup['valorToken'] ??
-          widget.startup['tokenPrecoInicial'],
+      widget.startup['valorToken'] ?? widget.startup['tokenPrecoInicial'],
     );
 
     if (preco <= 0) return 'Não informado';

@@ -1,7 +1,10 @@
+// Configuração de conexão gerada para o projeto Firebase do aplicativo.
+// Web e Android estão habilitados; as demais plataformas exigem configuração.
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
+/// Entrega ao Firebase Core as credenciais adequadas à plataforma atual.
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {

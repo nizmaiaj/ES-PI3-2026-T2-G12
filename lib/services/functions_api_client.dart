@@ -1,3 +1,4 @@
+// Cliente HTTP compartilhado para invocar as Cloud Functions autenticadas.
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_session.dart';
 
+/// Erro de comunicação com a API que preserva a mensagem e o status HTTP.
 class FunctionsApiException implements Exception {
   const FunctionsApiException(this.message, {required this.statusCode});
 
@@ -16,6 +18,7 @@ class FunctionsApiException implements Exception {
   String toString() => message;
 }
 
+/// Envia requisições autenticadas às Functions e normaliza respostas de erro.
 class FunctionsApiClient {
   FunctionsApiClient({http.Client? client}) : _client = client ?? http.Client();
 
@@ -62,12 +65,15 @@ class FunctionsApiClient {
     );
   }
 
+  /// Executa a requisição comum a POST, PATCH e DELETE.
   Future<dynamic> _request(
     String method,
     String functionName, {
     Map<String, dynamic>? body,
     Map<String, String>? queryParameters,
   }) async {
+    // Prefere um token atualizado do Firebase Auth e usa a sessão local apenas
+    // como fallback para fluxos legados.
     final user = FirebaseAuth.instance.currentUser;
     final token = await user?.getIdToken() ?? AuthSession.token;
 
@@ -100,6 +106,7 @@ class FunctionsApiClient {
       );
     }
 
+    // Nem toda falha de infraestrutura devolve JSON válido.
     dynamic decoded;
 
     if (response.body.isNotEmpty) {

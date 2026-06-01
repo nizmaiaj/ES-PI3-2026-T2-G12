@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Formulário para publicar uma ordem de venda com tokens da própria carteira.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/password_confirmation_dialog.dart';
 
+/// Coleta preço e quantidade, confirma a senha e cria a ordem no backend.
 class BalcaoVenda extends StatefulWidget {
   const BalcaoVenda({
     super.key,
@@ -429,6 +431,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
     );
   }
 
+  /// Abre o modal de revisão e reautenticação antes de reservar os tokens.
   Future<void> _confirmarVenda() async {
     final confirmado = await showPasswordConfirmationDialog(
       context: context,
@@ -476,6 +479,7 @@ class _BalcaoVendaState extends State<BalcaoVenda> {
     }
   }
 
+  /// Envia a ordem validada e volta à tela anterior após sucesso.
   Future<void> _registrarVenda() async {
     final uid = _uid;
     final startupId = _startupId;
@@ -680,6 +684,7 @@ String _formatarMoeda(double value) {
   return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 }
 
+/// Formata valores monetários enquanto o usuário informa o preço desejado.
 class _CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -693,8 +698,9 @@ class _CurrencyInputFormatter extends TextInputFormatter {
         selection: const TextSelection.collapsed(offset: 0),
       );
     }
-    final clamped =
-        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final clamped = digits.length > 11
+        ? digits.substring(digits.length - 11)
+        : digits;
     final centavos = int.parse(clamped);
     final reais = centavos ~/ 100;
     final cents = centavos % 100;

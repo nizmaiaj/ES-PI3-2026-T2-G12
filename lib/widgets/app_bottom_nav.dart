@@ -1,7 +1,9 @@
+// Barra inferior reutilizada pelas áreas autenticadas do aplicativo.
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// Exibe atalhos para Home, Catálogo e Balcão.
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
@@ -64,6 +66,7 @@ class AppBottomNav extends StatelessWidget {
   }
 }
 
+/// Item acessível da barra, com aparência diferente quando selecionado.
 class _AppBottomNavItem extends StatelessWidget {
   const _AppBottomNavItem({
     required this.icon,

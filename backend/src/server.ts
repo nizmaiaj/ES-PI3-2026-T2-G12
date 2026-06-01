@@ -1,3 +1,4 @@
+// Inicializa o servidor HTTP local. A publicação no Firebase usa `index.ts`.
 import dotenv from 'dotenv';
 import app from './app';
 import { initializeFirebase } from './config/firebase';

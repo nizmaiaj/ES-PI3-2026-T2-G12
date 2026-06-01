@@ -1,3 +1,5 @@
+// Ponto de entrada das Cloud Functions. Cada exportação abaixo publica um
+// endpoint pequeno, mas reaproveita as regras dos routers Express.
 import dotenv from 'dotenv';
 import { onRequest } from 'firebase-functions/v2/https';
 import './config/functions';
@@ -15,6 +17,7 @@ dotenv.config();
 
 initializeFirebase();
 
+// Autenticação pública.
 export const authRegister = onRequest(
   createEndpoint({ authenticated: false, method: 'POST', path: '/register', router: authRoutes })
 );
@@ -30,6 +33,7 @@ export const authForgotPassword = onRequest(
   })
 );
 
+// Perfil do usuário autenticado.
 export const usersGetMe = onRequest(
   createEndpoint({ method: 'GET', path: '/me', router: usersRoutes })
 );
@@ -43,6 +47,7 @@ export const usersMarkNotificationsViewed = onRequest(
   createEndpoint({ method: 'PATCH', path: '/notifications-viewed', router: usersRoutes })
 );
 
+// Carteira em reais e seu extrato.
 export const walletGet = onRequest(
   createEndpoint({ method: 'GET', path: '/', router: walletRoutes })
 );
@@ -53,6 +58,7 @@ export const walletListHistory = onRequest(
   createEndpoint({ method: 'GET', path: '/history', router: walletRoutes })
 );
 
+// Catálogo, conteúdo e preços das startups.
 export const startupsList = onRequest(
   createEndpoint({ method: 'GET', path: '/', router: startupsRoutes })
 );
@@ -113,6 +119,7 @@ export const startupsEnsureBuyOffers = onRequest(
   })
 );
 
+// Posições de tokens mantidas pelo usuário.
 export const portfolioList = onRequest(
   createEndpoint({ method: 'GET', path: '/', router: portfolioRoutes })
 );
@@ -124,6 +131,7 @@ export const portfolioGetHolding = onRequest(
   })
 );
 
+// Criação, execução, consulta e cancelamento de ordens.
 export const ordersCreateSell = onRequest(
   createEndpoint({ method: 'POST', path: '/sell', router: ordersRoutes })
 );
@@ -147,10 +155,12 @@ export const ordersCancel = onRequest(
   })
 );
 
+// Histórico consolidado de compras e vendas do usuário.
 export const transactionsListMine = onRequest(
   createEndpoint({ method: 'GET', path: '/', router: transactionsRoutes })
 );
 
+// Jobs agendados que simulam a evolução do preço dos tokens.
 export {
   updateDailyTokenPrices,
   updateMonthlyTokenPrices,

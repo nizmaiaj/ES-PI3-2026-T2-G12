@@ -1,3 +1,4 @@
+// Detalha uma posição da carteira e desenha seu histórico real de preços.
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/authenticated_storage_image.dart';
 
+/// Mostra cotação atual, variação por período e resultado da posição do usuário.
 class TelaDetalheToken extends StatefulWidget {
   const TelaDetalheToken({
     super.key,
@@ -524,6 +526,9 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     );
   }
 
+  /// Combina snapshots da startup, preços simulados e negócios executados.
+  ///
+  /// A tela reage em tempo real sempre que qualquer uma dessas fontes muda.
   Stream<_TokenDetalheDados> _monitorarDadosToken() {
     final startupId = widget.startupId.trim();
     if (startupId.isEmpty) {
@@ -593,6 +598,7 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
     return controller.stream;
   }
 
+  /// Normaliza os snapshots e separa preço inicial de preço atual.
   _TokenDetalheDados _montarDadosToken({
     Map<String, dynamic>? startupData,
     List<_PontoPreco> historico = const [],
@@ -640,6 +646,9 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
         .toList();
   }
 
+  /// Recorta os pontos para o filtro escolhido e garante as duas bordas do eixo:
+  /// o início exato do período e o instante atual. Antes do primeiro registro,
+  /// usa o último preço conhecido ou o preço inicial cadastrado da startup.
   List<_PontoPreco> _filtrarHistorico(
     List<_PontoPreco> historico, {
     required double precoInicial,
@@ -725,6 +734,10 @@ class _TelaDetalheTokenState extends State<TelaDetalheToken> {
   }
 }
 
+/// Desenha pontos posicionados pela data real, sem suavização artificial.
+///
+/// Segmentos lineares evitam que curvas Bézier pareçam voltar no tempo quando
+/// há oscilações grandes em registros muito próximos.
 class _GraficoPreco extends StatelessWidget {
   const _GraficoPreco({
     required this.pontos,
@@ -992,6 +1005,7 @@ class _PontoPreco {
   final double preco;
 }
 
+/// Períodos disponíveis e regra para calcular o início de cada janela.
 enum _PeriodoGrafico {
   diario('Diário', 'Horas'),
   semanal('Semanal', 'Dias'),

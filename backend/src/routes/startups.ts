@@ -1,3 +1,5 @@
+// Rotas do catálogo de startups: dados públicos, perguntas, atualizações,
+// ofertas abertas e histórico de preços usado pelos gráficos.
 import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
@@ -19,6 +21,7 @@ interface TransactionPricePoint {
   timestamp: Date;
 }
 
+/** Aceita datas nativas, Timestamps do Firestore e strings ISO. */
 function parseDate(value: unknown): Date | null {
   if (value instanceof Date) return value;
 
@@ -39,6 +42,7 @@ function parseDate(value: unknown): Date | null {
   return null;
 }
 
+/** Converte números e moedas textuais persistidas por versões antigas. */
 function parseNumber(value: unknown): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
@@ -53,6 +57,7 @@ function parseNumber(value: unknown): number {
   return Number.NaN;
 }
 
+/** Verifica se o usuário pode acessar o canal privado de perguntas. */
 async function userHasStartupTokens(
   firebaseDb: FirebaseFirestore.Firestore,
   userId: string,
@@ -69,6 +74,7 @@ async function userHasStartupTokens(
   });
 }
 
+/** Traduz apelidos aceitos pela API para um período canônico. */
 function normalizePricePeriod(periodo: unknown): PricePeriod {
   const normalized = typeof periodo === 'string' ? periodo.toLowerCase() : 'mensal';
 
@@ -91,6 +97,7 @@ function normalizePricePeriod(periodo: unknown): PricePeriod {
   );
 }
 
+/** Calcula o início exato da janela temporal solicitada pelo gráfico. */
 function getPeriodStart(period: PricePeriod, now = new Date()): Date {
   const start = new Date(now);
 
@@ -117,6 +124,7 @@ function getPeriodStart(period: PricePeriod, now = new Date()): Date {
   return new Date(now.getFullYear(), 0, 1);
 }
 
+/** Lê negócios executados e os normaliza como pontos de preço ordenados. */
 async function getTransactionPricePoints(
   firebaseDb: FirebaseFirestore.Firestore,
   startupId: string
@@ -153,6 +161,11 @@ async function getTransactionPricePoints(
     .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 }
 
+/**
+ * Recorta o histórico e inclui o último preço anterior como ponto de abertura.
+ * Isso evita que a linha comece artificialmente apenas no primeiro negócio da
+ * janela quando já existia uma cotação anterior.
+ */
 function filterPricePointsByPeriod(
   points: TransactionPricePoint[],
   period: PricePeriod
@@ -182,6 +195,7 @@ function filterPricePointsByPeriod(
   ];
 }
 
+// Lista o catálogo, com filtro opcional por estágio da startup.
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const { estagio } = req.query;
@@ -205,6 +219,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Retorna os dados completos de uma startup.
 router.get('/:id', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
@@ -225,6 +240,8 @@ router.get('/:id', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Perguntas privadas só aparecem ao próprio autor; perguntas públicas aparecem
+// para todos os usuários autenticados.
 router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
@@ -251,6 +268,7 @@ router.get('/:id/questions', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Cria perguntas públicas ou privadas. O canal privado exige posse de tokens.
 router.post('/:id/questions', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
@@ -304,6 +322,8 @@ router.post('/:id/questions', async (req: Request, res: Response, next: any) => 
   }
 });
 
+// Cria uma escada de ofertas automáticas da startup abaixo do preço atual.
+// Essas ofertas representam a emissão primária disponível para compra.
 router.post(
   '/:id/ensure-buy-offers',
   async (req: Request, res: Response, next: any) => {
@@ -393,6 +413,7 @@ router.post(
   }
 );
 
+// Lista comunicados publicados pela startup.
 router.get('/:id/updates', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
@@ -416,6 +437,7 @@ router.get('/:id/updates', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Lista ordens abertas ou parcialmente executadas exibidas no balcão.
 router.get('/:id/orders', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;
@@ -438,6 +460,7 @@ router.get('/:id/orders', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Retorna o preço da transação mais recente.
 router.get(
   '/:id/prices/current',
   async (req: Request, res: Response, next: any) => {
@@ -462,6 +485,7 @@ router.get(
   }
 );
 
+// Retorna a série de preços recortada para o período solicitado.
 router.get('/:id/prices', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;

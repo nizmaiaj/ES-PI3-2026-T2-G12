@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Canal público de perguntas e chat privado disponível para investidores.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import '../../services/functions_api_client.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
+/// Lista dúvidas públicas e oferece conversa privada a quem possui tokens.
 class AbaPerguntas extends StatefulWidget {
   const AbaPerguntas({
     super.key,
@@ -622,6 +624,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
 
   // ── HELPERS ───────────────────────────────────────────────────────────────
 
+  /// Escuta perguntas da startup e deixa a filtragem de privacidade para a UI.
   Stream<QuerySnapshot<Map<String, dynamic>>> _perguntasStream(
     String startupId, {
     required bool isPrivada,
@@ -640,6 +643,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
     return query.where('userId', isEqualTo: uid).snapshots();
   }
 
+  /// Confere se o usuário possui tokens antes de habilitar o canal privado.
   Future<bool> _usuarioTemTokens(String startupId) async {
     final uid = widget.uid;
     if (uid == null) return false;
@@ -654,6 +658,7 @@ class _AbaPerguntasState extends State<AbaPerguntas> {
     });
   }
 
+  /// Envia pergunta pública ou privada por uma Function autenticada.
   Future<void> _enviarPergunta({required bool isPrivada}) async {
     final sId = widget.startupId;
     final controller = isPrivada ? _controllerPrivado : _controllerPublico;

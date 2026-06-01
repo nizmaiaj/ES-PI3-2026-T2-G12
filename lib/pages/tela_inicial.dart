@@ -1,8 +1,10 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Tela de apresentação exibida antes da autenticação.
 
 import 'package:flutter/material.dart';
 import 'tela_login.dart';
 
+/// Apresenta a identidade visual e encaminha o usuário para o login.
 class TelaInicial extends StatelessWidget {
   const TelaInicial({super.key});
 

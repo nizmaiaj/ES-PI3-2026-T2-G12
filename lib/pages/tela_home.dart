@@ -1,3 +1,5 @@
+// Painel principal após o login: patrimônio, posições, notificações e gráfico
+// agregado dos investimentos do usuário.
 import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +19,7 @@ import 'tela_catalogo.dart';
 import 'tela_detalhe_token.dart';
 import 'tela_usuario.dart';
 
+/// Organiza as áreas autenticadas e resume a carteira atual.
 class TelaHome extends StatefulWidget {
   final String nomeDigitado;
 
@@ -68,6 +71,7 @@ class _TelaHomeState extends State<TelaHome> {
     super.dispose();
   }
 
+  /// Atualiza cartões e gráfico depois de operações que alteram a carteira.
   void _recarregarHome() {
     setState(() {
       _homeResumoFuture = _buscarResumoHome();
@@ -660,6 +664,7 @@ class _TelaHomeState extends State<TelaHome> {
 
   // --- MÉTODOS DE SUPORTE LÓGICO E DE DADOS ---
 
+  /// Abre a página com preço histórico e resumo da posição selecionada.
   Future<void> _abrirDetalheToken(_TokenResumo token) async {
     await Navigator.push(
       context,
@@ -680,6 +685,9 @@ class _TelaHomeState extends State<TelaHome> {
     }
   }
 
+  /// Observa leitura, vendas e comunicados das startups investidas.
+  ///
+  /// O indicador de novidades é recalculado a cada snapshot recebido.
   void _iniciarMonitoramentoNotificacoes() {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -767,6 +775,7 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
+  /// Ajusta dinamicamente os listeners de comunicados conforme a carteira muda.
   void _atualizarMonitoramentoUpdates(Set<String> startupIds) {
     final removidas = _updatesSubscriptions.keys
         .where((startupId) => !startupIds.contains(startupId))
@@ -810,6 +819,7 @@ class _TelaHomeState extends State<TelaHome> {
     _recalcularIndicadorNotificacoes();
   }
 
+  /// Decide se existe algum evento posterior à última abertura da central.
   void _recalcularIndicadorNotificacoes() {
     final ultimaNotificacao = _dataMaisRecente([
       _ultimaVendaEm,
@@ -833,6 +843,7 @@ class _TelaHomeState extends State<TelaHome> {
     _notificacoesNovasController.add(temNovas);
   }
 
+  /// Abre a central e persiste o momento em que as novidades foram vistas.
   Future<void> _abrirNotificacoes() async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -1098,6 +1109,7 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
+  /// Combina vendas concluídas e comunicados em uma lista cronológica.
   Future<List<_NotificacaoHome>> _buscarNotificacoesUsuario(String uid) async {
     final firestore = FirebaseFirestore.instance;
     final startupCache = <String, Future<_StartupResumo>>{};
@@ -1246,6 +1258,7 @@ class _TelaHomeState extends State<TelaHome> {
     return grupos.expand((grupo) => grupo).toList();
   }
 
+  /// Calcula patrimônio e posições exibidos no início da Home.
   Future<_HomeResumo> _buscarResumoHome() async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -1263,6 +1276,7 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
+  /// Agrupa holdings por startup e anexa preço, nome e logotipo atuais.
   Future<List<_TokenResumo>> _buscarTokensDoUsuario(
     FirebaseFirestore firestore,
     String uid,
@@ -1406,8 +1420,7 @@ class _TelaHomeState extends State<TelaHome> {
           : '',
     );
     final precoAtual = _lerNumero(
-      data?['valorToken'] ??
-          data?['tokenPrecoInicial'],
+      data?['valorToken'] ?? data?['tokenPrecoInicial'],
     );
 
     if (nome is String && nome.trim().isNotEmpty) {
@@ -1647,6 +1660,7 @@ class _TelaHomeState extends State<TelaHome> {
     return '${texto[0].toUpperCase()}${texto.substring(1)}';
   }
 
+  /// Monta o cartão e o gráfico agregado de aportes do usuário.
   Widget _buildGraficoInvestimentos() {
     final colorScheme = Theme.of(context).colorScheme;
     final themeColors = Theme.of(context).extension<AppThemeColors>()!;
@@ -1843,6 +1857,7 @@ class _TelaHomeState extends State<TelaHome> {
     );
   }
 
+  /// Busca compras do período e soma seus valores nos buckets do eixo X.
   Future<List<_PontoGrafico>> _buscarDadosGrafico(String filtro) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
     if (uid == null) return [];
@@ -1895,6 +1910,7 @@ class _TelaHomeState extends State<TelaHome> {
     return _gerarPontos(filtro, agora, inicio, buckets);
   }
 
+  /// Preenche buckets ausentes com zero para manter o intervalo visual completo.
   List<_PontoGrafico> _gerarPontos(
     String filtro,
     DateTime agora,

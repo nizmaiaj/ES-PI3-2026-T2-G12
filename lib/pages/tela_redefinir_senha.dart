@@ -1,9 +1,11 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Interface de redefinição local da senha após o fluxo de recuperação.
 
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// Permite digitar e confirmar uma nova senha.
 class TelaRedefinirSenha extends StatefulWidget {
   const TelaRedefinirSenha({super.key});
 

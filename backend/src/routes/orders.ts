@@ -1,3 +1,5 @@
+// Implementa as operações do balcão: reserva para venda, compras de ofertas
+// específicas, emissão direta, livro de ordens e cancelamento.
 import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
@@ -47,6 +49,7 @@ interface HoldingData {
   precoMedioCompra: number;
 }
 
+/** Converte valores numéricos e moedas textuais gravadas por versões antigas. */
 function parseNumber(value: unknown): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
@@ -61,6 +64,7 @@ function parseNumber(value: unknown): number {
   return 0;
 }
 
+/** Obtém o preço atual publicado pela startup. */
 function currentTokenPrice(startup: FirebaseFirestore.DocumentData): number {
   return parseNumber(
     startup.valorToken ??
@@ -68,6 +72,7 @@ function currentTokenPrice(startup: FirebaseFirestore.DocumentData): number {
   );
 }
 
+/** Calcula o saldo ainda disponível de uma ordem parcial. */
 function remainingQuantity(order: FirebaseFirestore.DocumentData): number {
   const explicitRemaining = parseNumber(order.quantidadeRestante);
   if (explicitRemaining > 0) return explicitRemaining;
@@ -75,10 +80,15 @@ function remainingQuantity(order: FirebaseFirestore.DocumentData): number {
   return Math.max(0, parseNumber(order.quantidade) - parseNumber(order.quantidadeExecutada));
 }
 
+/** Aceita apenas estados nos quais uma ordem ainda pode ser negociada. */
 function isOpenStatus(status: unknown): boolean {
   return status === 'aberta' || status === 'parcial' || status === 'pendente';
 }
 
+/**
+ * Retorna primeiro a posição canônica (`userId_startupId`) e depois possíveis
+ * documentos legados do mesmo usuário. A escrita posterior consolida os dados.
+ */
 async function getHoldingRefs(
   firebaseDb: FirebaseFirestore.Firestore,
   userId: string,
@@ -97,6 +107,7 @@ async function getHoldingRefs(
   return [canonicalRef, ...legacyRefs];
 }
 
+/** Soma posições canônicas e legadas e recalcula seu preço médio ponderado. */
 async function readHolding(
   transaction: FirebaseFirestore.Transaction,
   refs: FirebaseFirestore.DocumentReference[]
@@ -120,6 +131,7 @@ async function readHolding(
   };
 }
 
+/** Persiste a posição consolidada e remove duplicatas legadas. */
 function writeHolding(
   transaction: FirebaseFirestore.Transaction,
   refs: FirebaseFirestore.DocumentReference[],
@@ -145,6 +157,10 @@ function writeHolding(
   legacyRefs.forEach((ref) => transaction.delete(ref));
 }
 
+/**
+ * Registra os efeitos contábeis comuns de uma compra: negócio executado, ponto
+ * de preço para gráficos e lançamentos no extrato em reais.
+ */
 function createTransactionRecords({
   buyerId,
   buyOrderId,
@@ -215,12 +231,14 @@ function createTransactionRecords({
   }
 }
 
+/** Traduz a quantidade executada para o estado persistido da ordem. */
 function getOrderStatus(executed: number, total: number): OrderStatus {
   if (executed <= 0) return 'aberta';
   if (executed >= total) return 'executada';
   return 'parcial';
 }
 
+/** Valida quantidades de tokens, que não podem ser fracionárias. */
 function assertIntegerTokenValue(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
     throw new AppError(400, `${fieldName} deve ser um número inteiro positivo`);
@@ -229,6 +247,7 @@ function assertIntegerTokenValue(value: unknown, fieldName: string): number {
   return value;
 }
 
+/** Valida preços e valores monetários positivos. */
 function assertPositiveMoneyValue(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     throw new AppError(400, `${fieldName} deve ser um número positivo`);
@@ -237,6 +256,7 @@ function assertPositiveMoneyValue(value: unknown, fieldName: string): number {
   return value;
 }
 
+// Reserva tokens da carteira do vendedor e publica uma nova ordem aberta.
 router.post('/sell', async (req: Request, res: Response, next: any) => {
   try {
     const { startupId } = req.body;
@@ -307,6 +327,7 @@ router.post('/sell', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Compra tokens reservados por outro usuário em uma ordem de venda específica.
 router.post('/buy-sell-order', async (req: Request, res: Response, next: any) => {
   try {
     const { ordemId } = req.body;
@@ -458,6 +479,7 @@ router.post('/buy-sell-order', async (req: Request, res: Response, next: any) =>
   }
 });
 
+// Compra tokens emitidos pela startup por meio de uma oferta automática.
 router.post('/buy-startup-offer', async (req: Request, res: Response, next: any) => {
   try {
     const { ofertaId } = req.body;
@@ -598,6 +620,7 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
   }
 });
 
+// Emite tokens diretamente pelo preço atual quando não há oferta selecionada.
 router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
   try {
     const { startupId } = req.body;
@@ -706,6 +729,8 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Endpoint genérico do livro de ordens. Procura preços compatíveis e executa
+// quantos negócios forem possíveis dentro de uma única transação Firestore.
 router.post('/', async (req: Request, res: Response, next: any) => {
   try {
     const { startupId, tipo } = req.body;
@@ -778,6 +803,8 @@ router.post('/', async (req: Request, res: Response, next: any) => {
           return b.data.preco - a.data.preco;
         });
 
+      // A ordem percorre as ofertas opostas por prioridade de preço. Cada match
+      // descreve uma execução parcial que será contabilizada mais abaixo.
       let currentOrderExecuted = 0;
       const matches: MatchData[] = [];
       const updatedOppositeExecutions = new Map<string, number>();
@@ -814,6 +841,8 @@ router.post('/', async (req: Request, res: Response, next: any) => {
         });
       }
 
+      // Agrupa referências para ler e atualizar cada carteira e posição apenas
+      // uma vez, mesmo quando há vários matches para a mesma pessoa.
       const walletRefs = new Map<string, FirebaseFirestore.DocumentReference>();
       const holdingRefs = new Map<string, FirebaseFirestore.DocumentReference>();
       const holdingOwners = new Map<string, string>();
@@ -823,6 +852,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
         { quantidade: number; precoMedioCompra: number }
       >();
 
+      // Aplica os efeitos de todos os matches em memória antes de persistir.
       for (const match of matches) {
         walletRefs.set(match.buyerId, firebaseDb.collection('wallets').doc(match.buyerId));
         walletRefs.set(match.sellerId, firebaseDb.collection('wallets').doc(match.sellerId));
@@ -899,6 +929,8 @@ router.post('/', async (req: Request, res: Response, next: any) => {
         totalCapitalAportado += total;
       }
 
+      // Depois das validações, grava ordem, contrapartes, saldos, posições,
+      // histórico de transações e pontos usados pelos gráficos.
       const now = FieldValue.serverTimestamp();
       const orderData: OrderData = {
         id: orderDocRef.id,
@@ -1022,6 +1054,7 @@ router.post('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Lista as ordens criadas pelo usuário autenticado.
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();
@@ -1044,6 +1077,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Cancela uma ordem aberta e devolve à carteira os tokens ainda reservados.
 router.delete('/:id', async (req: Request, res: Response, next: any) => {
   try {
     const { id } = req.params;

@@ -1,7 +1,9 @@
+// Controle visual compartilhado para alternar a aparência do aplicativo.
 import 'package:flutter/material.dart';
 
 import '../services/app_theme_controller.dart';
 
+/// Observa o controlador global e exibe as opções claro, escuro e sistema.
 class ThemeModeSelector extends StatelessWidget {
   const ThemeModeSelector({super.key});
 

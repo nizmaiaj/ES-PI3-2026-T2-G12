@@ -1,6 +1,8 @@
+// Modal simples usado pelos fluxos de ativação e confirmação do MFA.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Solicita ao usuário o código SMS e devolve `null` quando ele cancela.
 Future<String?> showSmsCodeDialog(
   BuildContext context, {
   required String phoneNumber,
@@ -18,6 +20,7 @@ Future<String?> showSmsCodeDialog(
   );
 }
 
+/// Mantém o texto digitado e valida localmente os seis dígitos.
 class _SmsCodeDialog extends StatefulWidget {
   const _SmsCodeDialog({
     required this.phoneNumber,

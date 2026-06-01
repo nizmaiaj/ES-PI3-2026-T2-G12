@@ -1,3 +1,4 @@
+// Gerencia a carteira fictícia em reais e seu extrato de movimentações.
 import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
@@ -5,6 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
+// Consulta o saldo atual do usuário autenticado.
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();
@@ -21,6 +23,7 @@ router.get('/', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Adiciona crédito simulado e registra a movimentação na mesma transação.
 router.post('/credit', async (req: Request, res: Response, next: any) => {
   try {
     const { valor } = req.body;
@@ -70,6 +73,7 @@ router.post('/credit', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Lista depósitos, compras e vendas do extrato em ordem decrescente.
 router.get('/history', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();

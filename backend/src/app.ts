@@ -1,3 +1,5 @@
+// Monta o servidor Express tradicional usado no desenvolvimento local.
+// Em produção, cada Cloud Function é exposta separadamente por `index.ts`.
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -24,8 +26,10 @@ app.use(
 );
 app.use(express.json());
 
+// Cadastro, login e recuperação de senha precisam ser públicos.
 app.use('/auth', authRoutes);
 
+// As rotas abaixo só são executadas após validar o token do Firebase Auth.
 app.use(authMiddleware as express.RequestHandler);
 
 app.use('/users', usersRoutes);

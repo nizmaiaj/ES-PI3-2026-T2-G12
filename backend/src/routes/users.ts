@@ -1,3 +1,5 @@
+// Rotas privadas do perfil: leitura dos dados pessoais, inicialização após
+// cadastro, metadados de MFA e controle de notificações visualizadas.
 import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
@@ -11,6 +13,7 @@ import {
 
 const router = express.Router();
 
+// Retorna somente o perfil associado ao token autenticado.
 router.get('/me', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();
@@ -27,6 +30,7 @@ router.get('/me', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Permite inicializar perfis de contas criadas fora do fluxo principal.
 router.post('/initialize-profile', async (req: Request, res: Response, next: any) => {
   try {
     const authReq = req as AuthRequest;
@@ -61,6 +65,7 @@ router.post('/initialize-profile', async (req: Request, res: Response, next: any
   }
 });
 
+// Persiste apenas metadados do MFA; a confirmação do SMS ocorre no Firebase Auth.
 router.patch('/mfa', async (req: Request, res: Response, next: any) => {
   try {
     const authReq = req as AuthRequest;
@@ -92,6 +97,7 @@ router.patch('/mfa', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Salva a última abertura da central para calcular o indicador de novidades.
 router.patch('/notifications-viewed', async (req: Request, res: Response, next: any) => {
   try {
     const authReq = req as AuthRequest;

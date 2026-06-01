@@ -1,3 +1,4 @@
+// Permite adicionar saldo fictício à carteira para demonstrar negociações.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
@@ -8,6 +9,7 @@ import '../services/functions_api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
+/// Formulário de depósito simulado conectado à Function da carteira.
 class TelaAdicionarCredito extends StatefulWidget {
   const TelaAdicionarCredito({super.key});
 
@@ -217,6 +219,7 @@ class _TelaAdicionarCreditoState extends State<TelaAdicionarCredito> {
     );
   }
 
+  /// Valida o valor, solicita o crédito ao backend e informa o resultado.
   Future<void> _adicionarCredito() async {
     final valor = _lerValorDigitado(_valorController.text);
 

@@ -1,10 +1,12 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Tela visual de código temporário usada por fluxos de verificação legados.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
+/// Distribui os dígitos do código em campos separados para facilitar a entrada.
 class TelaVerificacaoCodigo extends StatefulWidget {
   final String email;
   const TelaVerificacaoCodigo({super.key, required this.email});

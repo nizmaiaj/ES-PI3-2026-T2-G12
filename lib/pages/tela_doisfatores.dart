@@ -1,3 +1,4 @@
+// Tela dedicada à configuração do segundo fator por SMS e dos dados da conta.
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +10,7 @@ import '../widgets/sms_code_dialog.dart';
 import '../widgets/theme_mode_selector.dart';
 import 'tela_inicial.dart';
 
+/// Permite ativar ou remover MFA e encerrar a sessão atual.
 class TelaDoisFatores extends StatefulWidget {
   final String nomeFallback;
 
@@ -35,6 +37,7 @@ class _TelaDoisFatoresState extends State<TelaDoisFatores> {
   }
 
   // Atualiza no Firebase Auth e no Firestore se o 2FA por SMS está ativado.
+  /// Sincroniza o fator no Firebase Auth e os metadados exibidos pelo perfil.
   Future<void> _alterarMfa(bool habilitado, String telefone) async {
     final ref = _userRef;
     if (ref == null) {

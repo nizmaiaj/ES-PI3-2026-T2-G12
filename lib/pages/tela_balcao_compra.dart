@@ -1,4 +1,5 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Formulário de compra com atualização em tempo real do saldo e da emissão.
 
 import 'dart:async';
 
@@ -12,6 +13,7 @@ import '../services/password_reauthentication_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 
+/// Permite comprar de uma oferta escolhida ou diretamente da startup.
 class TelaBalcaoCompra extends StatefulWidget {
   const TelaBalcaoCompra({
     super.key,
@@ -94,6 +96,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     super.dispose();
   }
 
+  /// Monitora mudanças no estoque primário enquanto o formulário permanece aberto.
   void _observarDisponibilidadeEmissao() {
     final startupId = _startupId;
     if (startupId == null) return;
@@ -115,6 +118,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
         });
   }
 
+  /// Recalcula o total imediatamente após cada alteração da quantidade.
   void _calcularTotal() {
     final qtd = int.tryParse(_quantidadeController.text.trim()) ?? 0;
     final limiteCompra = _limiteCompra;
@@ -564,6 +568,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     );
   }
 
+  /// Abre a revisão da compra e exige senha antes de executar a operação.
   Future<void> _abrirConfirmacaoCompra(int quantidade) async {
     final uid = _uid;
     final startupId = _startupId;
@@ -826,6 +831,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
     Navigator.popUntil(context, (route) => route.isFirst);
   }
 
+  /// Escolhe a Function correta conforme exista ou não uma oferta selecionada.
   Future<void> _executarCompra({
     required String uid,
     required String startupId,

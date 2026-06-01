@@ -1,3 +1,5 @@
+// Rotas públicas de autenticação. O Firebase Admin cria usuários, enquanto a
+// API REST do Firebase Auth devolve tokens utilizáveis pelo aplicativo.
 import express, { Request, Response } from 'express';
 import { auth } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
@@ -33,6 +35,7 @@ interface FirebasePasswordAuthResponse {
   email: string;
 }
 
+/** Autentica e devolve ID token e refresh token do Firebase. */
 async function signInWithPassword(
   email: string,
   password: string
@@ -62,6 +65,7 @@ async function signInWithPassword(
   return data as FirebasePasswordAuthResponse;
 }
 
+/** Solicita ao Firebase o envio do link de redefinição de senha. */
 async function sendPasswordResetEmail(email: string): Promise<void> {
   const apiKey = process.env.FIREBASE_API_KEY;
 
@@ -83,6 +87,7 @@ async function sendPasswordResetEmail(email: string): Promise<void> {
   }
 }
 
+// Cria a conta no Auth e os documentos auxiliares no Firestore.
 router.post('/register', async (req: Request, res: Response, next: any) => {
   let createdUserUid: string | null = null;
 
@@ -138,6 +143,7 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
       expiresIn: authResult.expiresIn,
     });
   } catch (error) {
+    // Compensa um cadastro interrompido para não deixar usuário órfão no Auth.
     if (createdUserUid) {
       await deleteInitializedUserProfile(createdUserUid, req.body?.cpf ?? '').catch(() => undefined);
       await auth().deleteUser(createdUserUid).catch(() => undefined);
@@ -147,6 +153,7 @@ router.post('/register', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Autentica uma conta existente.
 router.post('/login', async (req: Request, res: Response, next: any) => {
   try {
     const { email, password } = req.body;
@@ -169,6 +176,7 @@ router.post('/login', async (req: Request, res: Response, next: any) => {
   }
 });
 
+// Valida a existência do usuário antes de pedir o e-mail de recuperação.
 router.post('/forgot-password', async (req: Request, res: Response, next: any) => {
   try {
     const { email } = req.body;

@@ -1,8 +1,10 @@
+// Teste básico de navegação pública antes da autenticação.
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:es_pi3_2026_t2_g12/main.dart';
 
 void main() {
+  // Garante que o botão inicial continua levando ao formulário de login.
   testWidgets('navega da tela inicial para o login', (
     WidgetTester tester,
   ) async {

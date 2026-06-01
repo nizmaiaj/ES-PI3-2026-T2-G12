@@ -1,9 +1,11 @@
+// Modal reutilizável para confirmar operações sensíveis com a senha atual.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/password_reauthentication_service.dart';
 import '../theme/app_theme.dart';
 
+/// Abre a confirmação e devolve `true` somente após reautenticar no Firebase.
 Future<bool> showPasswordConfirmationDialog({
   required BuildContext context,
   String title = 'Confirme sua identidade para concluir a compra',
@@ -32,6 +34,8 @@ Future<bool> showPasswordConfirmationDialog({
           final colorScheme = Theme.of(context).colorScheme;
           final themeColors = Theme.of(context).extension<AppThemeColors>()!;
 
+          // A validação adicional permite que cada tela confira seus próprios
+          // campos antes de iniciar a reautenticação.
           Future<void> confirm() async {
             if (processing) return;
 

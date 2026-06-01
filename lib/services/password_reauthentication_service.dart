@@ -1,5 +1,7 @@
+// Reautentica operações sensíveis, como confirmação de compras.
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// Confirma a identidade do usuário atual usando novamente sua senha.
 Future<void> reauthenticateCurrentUserWithPassword(String password) async {
   final user = FirebaseAuth.instance.currentUser;
   final email = user?.email;

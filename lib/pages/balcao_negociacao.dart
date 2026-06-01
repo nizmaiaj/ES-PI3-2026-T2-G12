@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Tela principal do balcão: ofertas de emissão, vendas de usuários e posições.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,8 +14,10 @@ import 'balcao_minhasordens.dart';
 import 'balcao_venda.dart';
 import 'no_animation_route.dart';
 
+/// Seções disponíveis dentro do balcão de negociação.
 enum _BalcaoSecao { compras, vendas, meusTokens }
 
+/// Consolida dados em tempo real e encaminha o usuário aos fluxos de negociação.
 class BalcaoNegociacao extends StatefulWidget {
   final Function(int)? onNavigate;
   final VoidCallback? onCarteiraAlterada;
@@ -648,6 +651,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     );
   }
 
+  /// Confirma senha e executa a compra de uma ordem de venda selecionada.
   Future<void> _confirmarCompraOrdemVenda(
     String uid,
     _OrdemVendaAberta ordem,
@@ -697,6 +701,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     });
   }
 
+  /// Filtra e normaliza somente ordens de venda ainda negociáveis.
   List<_OrdemVendaAberta> _ordensVendaAbertas(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     List<_StartupOferta> startups,
@@ -724,6 +729,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     return ordens;
   }
 
+  /// Consolida posições legadas ou duplicadas por startup.
   Map<String, _HoldingToken> _agruparHoldings(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
@@ -745,6 +751,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
     return holdings;
   }
 
+  /// Bloqueia ações repetidas e converte falhas em mensagens de interface.
   Future<void> _executarComFeedback(Future<void> Function() acao) async {
     if (_processando) return;
 

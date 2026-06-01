@@ -1,3 +1,5 @@
+// Reúne as regras de estoque dos tokens emitidos por uma startup. O serviço
+// suporta documentos antigos e mantém os campos canônicos atualizados.
 import { AppError } from '../middleware/errorHandler';
 
 export interface StartupTokenSupply {
@@ -6,6 +8,7 @@ export interface StartupTokenSupply {
   tokensDisponiveisParaEmissao: number;
 }
 
+/** Converte números persistidos como number ou moeda textual. */
 function parseNumber(value: unknown): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
@@ -20,6 +23,7 @@ function parseNumber(value: unknown): number {
   return Number.NaN;
 }
 
+/** Rejeita estoques negativos, fracionários ou ausentes. */
 function assertTokenCount(value: unknown, fieldName: string): number {
   const count = parseNumber(value);
 
@@ -30,6 +34,7 @@ function assertTokenCount(value: unknown, fieldName: string): number {
   return count;
 }
 
+/** Lê o limite total mesmo quando o documento ainda usa um nome legado. */
 function totalTokenLimit(startup: FirebaseFirestore.DocumentData): number {
   return assertTokenCount(
     startup.totalTokens ??
@@ -41,6 +46,7 @@ function totalTokenLimit(startup: FirebaseFirestore.DocumentData): number {
   );
 }
 
+/** Diferencia emissão primária de revenda entre usuários. */
 function isStartupIssuance(transaction: FirebaseFirestore.DocumentData): boolean {
   if (transaction.origem === 'emissao_startup') return true;
   if (transaction.origem === 'mercado_secundario') return false;
@@ -48,6 +54,7 @@ function isStartupIssuance(transaction: FirebaseFirestore.DocumentData): boolean
   return typeof transaction.sellerId !== 'string' || transaction.sellerId.trim().length === 0;
 }
 
+/** Identifica ordens de venda que ainda reservam tokens do vendedor. */
 function isReservedSellOrder(order: FirebaseFirestore.DocumentData): boolean {
   return (
     order.tipo === 'venda' &&
@@ -57,6 +64,7 @@ function isReservedSellOrder(order: FirebaseFirestore.DocumentData): boolean {
   );
 }
 
+/** Calcula quanto de uma ordem ainda não foi executado. */
 function remainingOrderTokens(order: FirebaseFirestore.DocumentData): number {
   if (order.quantidadeRestante !== undefined) {
     return assertTokenCount(order.quantidadeRestante, 'quantidade restante da ordem');
@@ -67,6 +75,11 @@ function remainingOrderTokens(order: FirebaseFirestore.DocumentData): number {
   return Math.max(0, quantidade - executada);
 }
 
+/**
+ * Reconstrói o total já emitido para startups antigas que ainda não possuem
+ * `tokensEmCirculacao`. Usa o maior valor observável para não liberar emissão
+ * duplicada quando parte dos dados está em formato legado.
+ */
 async function historicalIssuedTokens(
   firestoreTransaction: FirebaseFirestore.Transaction,
   firebaseDb: FirebaseFirestore.Firestore,
@@ -100,6 +113,7 @@ async function historicalIssuedTokens(
   return Math.max(issuedFromTransactions, heldTokens + reservedTokens);
 }
 
+/** Lê o estoque atual e calcula quanto ainda pode ser emitido. */
 export async function readStartupTokenSupply(
   firestoreTransaction: FirebaseFirestore.Transaction,
   firebaseDb: FirebaseFirestore.Firestore,
@@ -119,6 +133,7 @@ export async function readStartupTokenSupply(
   };
 }
 
+/** Impede operações maiores do que o tamanho total da emissão. */
 export function assertWithinTotalTokenLimit(
   supply: StartupTokenSupply,
   quantidade: number
@@ -131,6 +146,7 @@ export function assertWithinTotalTokenLimit(
   }
 }
 
+/** Impede novas emissões quando o estoque primário acabou. */
 export function assertStartupCanIssueTokens(
   supply: StartupTokenSupply,
   quantidade: number
@@ -145,6 +161,7 @@ export function assertStartupCanIssueTokens(
   }
 }
 
+/** Persiste os campos canônicos de estoque dentro da transação corrente. */
 export function writeStartupTokenSupply(
   firestoreTransaction: FirebaseFirestore.Transaction,
   startupRef: FirebaseFirestore.DocumentReference,

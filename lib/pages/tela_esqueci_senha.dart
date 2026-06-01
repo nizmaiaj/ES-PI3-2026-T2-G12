@@ -1,10 +1,12 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Solicita ao Firebase o envio de um link para recuperação da senha.
 
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
+/// Formulário de recuperação associado ao e-mail da conta.
 class TelaEsqueciSenha extends StatefulWidget {
   const TelaEsqueciSenha({super.key});
 
@@ -26,6 +28,7 @@ class _TelaEsqueciSenhaState extends State<TelaEsqueciSenha> {
     super.dispose();
   }
 
+  /// Valida o e-mail, chama o serviço e apresenta sucesso ou erro na própria tela.
   Future<void> _enviarEmail() async {
     setState(() {
       _mensagem = null;

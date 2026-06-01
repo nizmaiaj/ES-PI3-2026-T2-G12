@@ -1,4 +1,5 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
+// Etapa legada de revisão final da compra e confirmação por senha.
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../services/balcao_service.dart';
 import '../services/password_reauthentication_service.dart';
 import '../theme/app_theme.dart';
 
+/// Resume a compra e exige reautenticação antes de alterar a carteira.
 class TelaBalcaoFinalizacaoCompra extends StatefulWidget {
   const TelaBalcaoFinalizacaoCompra({
     super.key,
@@ -401,6 +403,7 @@ class _TelaBalcaoFinalizacaoCompraState
     );
   }
 
+  /// Confirma a identidade e chama o endpoint adequado para concluir a compra.
   Future<void> _finalizarCompra() async {
     final uid = _uid;
     final startupId = _startupId;

@@ -1,5 +1,8 @@
+// Centraliza a inicialização do Firebase Admin SDK para evitar criar mais de
+// uma instância da aplicação durante hot reloads ou chamadas concorrentes.
 import admin from 'firebase-admin';
 
+/** Inicializa o Admin SDK com credenciais explícitas ou credenciais padrão. */
 export function initializeFirebase() {
   if (admin.apps.length > 0) {
     return admin.app();

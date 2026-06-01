@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Modelos, parsers, streams e desenho compartilhados pelas abas da visão geral.
 
 import 'dart:math' as math;
 
@@ -16,10 +17,12 @@ const kVgCoresSocios = [
   Color(0xFF0EA5E9),
 ];
 
+/// Escolhe uma cor cíclica para cada sócio representado no gráfico.
 Color corSocio(int index) => kVgCoresSocios[index % kVgCoresSocios.length];
 
 // ── MODELOS ──────────────────────────────────────────────────────────────────
 
+/// Modelo normalizado de sócio usado por cards e gráfico societário.
 class SocioStartup {
   const SocioStartup({
     required this.nome,
@@ -100,6 +103,7 @@ class SocioStartup {
   }
 }
 
+/// Fatia do gráfico de participação societária.
 class SegmentoDonut {
   const SegmentoDonut({
     required this.percentual,
@@ -112,6 +116,7 @@ class SegmentoDonut {
   final String label;
 }
 
+/// Pergunta pública ou privada publicada na área da startup.
 class PerguntaStartup {
   const PerguntaStartup({
     required this.id,
@@ -148,6 +153,7 @@ class PerguntaStartup {
       foiRespondida ? resposta : 'Aguardando resposta do empreendedor.';
 }
 
+/// Comunicado publicado no feed de atualizações.
 class AtualizacaoStartup {
   const AtualizacaoStartup({
     required this.tipo,
@@ -189,6 +195,7 @@ class AtualizacaoStartup {
   String get tipoExibido => tipoAtualizacaoExibido(tipo);
 }
 
+/// Referência a documento externo ou armazenado no Firebase Storage.
 class DocumentoStartup {
   const DocumentoStartup({
     required this.titulo,
@@ -304,6 +311,7 @@ class DocumentoStartup {
   }
 }
 
+/// Referência resolvida de vídeo exibido na biblioteca multimídia.
 class VideoStartup {
   const VideoStartup({
     required this.titulo,
@@ -393,12 +401,14 @@ class VideoStartup {
 
 // ── FUNÇÕES UTILITÁRIAS ───────────────────────────────────────────────────────
 
+/// Normaliza textos vindos de documentos Firestore heterogêneos.
 String parseText(dynamic value, {String fallback = ''}) {
   if (value == null) return fallback;
   final texto = value.toString().trim();
   return texto.isEmpty ? fallback : texto;
 }
 
+/// Normaliza números e moedas persistidos como texto ou valor numérico.
 double parseNumber(dynamic value, {double fallback = 0}) {
   if (value is int) return value.toDouble();
   if (value is double) return value;
@@ -429,6 +439,7 @@ String formatPercentual(double value) {
   return '${value.toStringAsFixed(1).replaceAll('.', ',')}%';
 }
 
+/// Converte Timestamp, DateTime ou texto ISO para uma data Dart.
 DateTime? parseDateTime(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
@@ -436,6 +447,7 @@ DateTime? parseDateTime(dynamic value) {
   return null;
 }
 
+/// Converte listas de formatos antigos em documentos uniformes.
 List<DocumentoStartup> parseDocumentosStartup(dynamic value) {
   if (value is Iterable) {
     return value
@@ -454,6 +466,7 @@ List<DocumentoStartup> parseDocumentosStartup(dynamic value) {
   return const [];
 }
 
+/// Converte listas de formatos antigos em vídeos uniformes.
 List<VideoStartup> parseVideosStartup(dynamic value) {
   if (value is Iterable) {
     return value
@@ -505,6 +518,7 @@ String tipoAtualizacaoExibido(String value) {
 
 // ── STREAMS COMPARTILHADOS ────────────────────────────────────────────────────
 
+/// Observa se o usuário possui tokens da startup para liberar área privada.
 Stream<bool> usuarioTemTokensStream(String startupId, String? uid) {
   if (uid == null) return Stream.value(false);
   return FirebaseFirestore.instance
@@ -522,6 +536,7 @@ Stream<bool> usuarioTemTokensStream(String startupId, String? uid) {
 
 // ── GRÁFICO PIZZA ─────────────────────────────────────────────────────────────
 
+/// Desenha manualmente o gráfico em formato de rosquinha da sociedade.
 class GraficoPizzaPainter extends CustomPainter {
   const GraficoPizzaPainter(this.segmentos);
 

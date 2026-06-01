@@ -1,9 +1,11 @@
+// Carrega imagens privadas do Firebase Storage usando a sessão autenticada.
 import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
+/// Exibe uma imagem do Storage ou um widget alternativo quando o download falha.
 class AuthenticatedStorageImage extends StatefulWidget {
   const AuthenticatedStorageImage({
     super.key,
@@ -22,6 +24,7 @@ class AuthenticatedStorageImage extends StatefulWidget {
   final double? width;
   final int maxBytes;
 
+  /// Identifica caminhos locais do bucket e URLs reconhecidas pelo Storage.
   static bool isStoragePathOrUrl(String value) {
     if (value.startsWith('gs://') || value.startsWith('startups/')) {
       return true;
@@ -39,6 +42,7 @@ class AuthenticatedStorageImage extends StatefulWidget {
 }
 
 class _AuthenticatedStorageImageState extends State<AuthenticatedStorageImage> {
+  // Compartilha downloads em andamento ou concluídos entre widgets iguais.
   static final Map<String, Future<Uint8List?>> _cache = {};
 
   late Future<Uint8List?> _bytesFuture;
@@ -59,6 +63,7 @@ class _AuthenticatedStorageImageState extends State<AuthenticatedStorageImage> {
     }
   }
 
+  /// Reutiliza o cache e remove falhas para permitir uma tentativa futura.
   Future<Uint8List?> _load() {
     final cacheKey = '${widget.pathOrUrl}|${widget.maxBytes}';
     final cached = _cache[cacheKey];
@@ -74,6 +79,7 @@ class _AuthenticatedStorageImageState extends State<AuthenticatedStorageImage> {
     return future;
   }
 
+  /// Renova o token nas retentativas e aplica atraso progressivo curto.
   Future<Uint8List?> _downloadWithRetry() async {
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
@@ -93,6 +99,7 @@ class _AuthenticatedStorageImageState extends State<AuthenticatedStorageImage> {
     return null;
   }
 
+  /// Converte caminho de bucket ou URL absoluta em referência do SDK.
   Reference _reference(String pathOrUrl) {
     return AuthenticatedStorageImage.isStoragePathOrUrl(pathOrUrl) &&
             (pathOrUrl.startsWith('gs://') ||

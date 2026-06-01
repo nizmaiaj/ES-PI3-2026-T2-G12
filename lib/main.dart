@@ -1,3 +1,4 @@
+// Inicializa dependências globais e monta a raiz visual do aplicativo.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -30,7 +31,7 @@ Future<void> main() async {
   runApp(const MeuApp());
 }
 
-// O widget principal que configura o aplicativo
+/// Configura navegação inicial, temas e comportamento global de rolagem.
 class MeuApp extends StatelessWidget {
   const MeuApp({super.key});
 
@@ -53,6 +54,7 @@ class MeuApp extends StatelessWidget {
   }
 }
 
+/// Remove o efeito elástico padrão para manter a rolagem consistente nas telas.
 class _SemOverscrollElastic extends MaterialScrollBehavior {
   const _SemOverscrollElastic();
 

@@ -1,11 +1,14 @@
+// Camada fina entre as telas do balcão e as Cloud Functions de negociação.
 import 'functions_api_client.dart';
 
+/// Valida dados básicos no cliente e delega as regras financeiras ao backend.
 class BalcaoService {
   BalcaoService({FunctionsApiClient? apiClient})
     : _apiClient = apiClient ?? FunctionsApiClient.instance;
 
   final FunctionsApiClient _apiClient;
 
+  /// Reserva tokens do vendedor em uma nova ordem aberta.
   Future<void> criarOrdemVenda({
     required String vendedorId,
     required String startupId,
@@ -31,6 +34,7 @@ class BalcaoService {
     );
   }
 
+  /// Compra tokens de uma ordem de venda publicada por outro usuário.
   Future<void> comprarOrdemVenda({
     required String compradorId,
     required String ordemId,
@@ -49,6 +53,7 @@ class BalcaoService {
     );
   }
 
+  /// Compra tokens de uma oferta automática de emissão primária.
   Future<void> comprarDeOferta({
     required String compradorId,
     required String ofertaId,
@@ -67,6 +72,7 @@ class BalcaoService {
     );
   }
 
+  /// Compra diretamente da startup usando seu preço atual.
   Future<void> comprarDiretamente({
     required String compradorId,
     required String startupId,
@@ -89,6 +95,7 @@ class BalcaoService {
     );
   }
 
+  /// Cancela uma ordem e solicita a devolução de reservas quando necessário.
   Future<void> cancelarOrdem({
     required String usuarioId,
     required String ordemId,
@@ -100,6 +107,7 @@ class BalcaoService {
     await _apiClient.delete('ordersCancel', queryParameters: {'id': ordemId});
   }
 
+  /// Garante que a startup tenha ofertas automáticas para exibir no balcão.
   Future<void> garantirOfertasCompra(String startupId) async {
     if (startupId.trim().isEmpty) {
       return;

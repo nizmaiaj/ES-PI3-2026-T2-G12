@@ -1,4 +1,6 @@
 //Eduarda Prado Deiró
+// Simula a evolução dos preços dos tokens e atualiza as ofertas automáticas de
+// compra. Os jobs chamam este serviço com diferentes identificadores de período.
 
 import { db, FieldValue } from '../config/firebase';
 
@@ -14,12 +16,14 @@ const SIGMA = 0.005;
 // Mesmos fatores usados em ensure-buy-offers
 const SYSTEM_OFFER_FACTORS = [0.885, 0.91, 0.93, 0.95, 0.97];
 
+/** Combina retorno gradual ao preço inicial com uma pequena variação aleatória. */
 function gerarVariacao(precoInicial: number, precoAtual: number): number {
   const reversao = THETA * (precoInicial - precoAtual) / precoAtual;
   const ruido = (Math.random() * 2 - 1) * SIGMA;
   return reversao + ruido;
 }
 
+/** Atualiza todas as startups e registra um ponto histórico para cada preço. */
 export async function atualizarPrecosTokens(periodo: Periodo): Promise<void> {
   const firestore = db();
   const snapshot = await firestore.collection('startups').get();

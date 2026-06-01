@@ -1,9 +1,12 @@
+// Consolida compras e vendas do usuário em um único histórico cronológico.
 import express, { Request, Response } from 'express';
 import { db } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
+// O Firestore consulta comprador e vendedor separadamente; a API une os dois
+// resultados para entregar um extrato completo ao aplicativo.
 router.get('/', async (req: Request, res: Response, next: any) => {
   try {
     const firebaseDb = db();

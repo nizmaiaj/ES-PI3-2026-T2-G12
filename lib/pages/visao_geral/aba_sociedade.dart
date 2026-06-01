@@ -1,4 +1,5 @@
 // Eduarda Prado Deiró - RA: 25004440
+// Estrutura societária da startup, com gráfico de participação e biografias.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'visao_geral_utils.dart';
 
+/// Carrega os sócios e alterna entre resumo e apresentação expandida.
 class AbaSociedade extends StatefulWidget {
   const AbaSociedade({super.key, required this.startupId});
 
@@ -434,6 +436,7 @@ class _AbaSociedadeState extends State<AbaSociedade> {
     );
   }
 
+  /// Converte formatos legados do Firestore em uma lista uniforme de sócios.
   List<SocioStartup> _sociosFromData(Map<String, dynamic>? data) {
     if (data == null) return const [];
     final raw =
