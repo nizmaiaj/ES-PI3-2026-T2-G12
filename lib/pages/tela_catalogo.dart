@@ -207,6 +207,13 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     final data = doc.data();
     final socios = data['socios'];
     final nome = _texto(data['nome'] ?? data['name'] ?? data['startupName']);
+    final totalTokens = _numero(
+      data['totalTokens'] ??
+          data['tokensEmitidos'] ??
+          data['quantidadeTokens'] ??
+          data['tokens'] ??
+          data['tokensDisponiveis'],
+    );
 
     return {
       'id': doc.id,
@@ -227,19 +234,14 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       'capital': _formatarNumeroBr(
         _numero(data['capitalAportado'] ?? data['capital']),
       ),
-      'tokens': _formatarNumeroBr(
-        _numero(
-          data['totalTokens'] ??
-              data['tokensDisponiveis'] ??
-              data['quantidadeTokens'] ??
-              data['tokens'],
-        ),
+      'tokens': _formatarNumeroBr(totalTokens),
+      'tokensDisponiveisParaEmissao': _formatarNumeroBr(
+        _numero(data['tokensDisponiveisParaEmissao'] ?? totalTokens),
       ),
       'socios': _quantidadeSocios(socios),
       'status': _texto(data['estagio'] ?? data['status']),
       'valorToken': _numero(
-        data['valorToken'] ??
-            data['tokenPrecoInicial'],
+        data['valorToken'] ?? data['tokenPrecoInicial'],
       ).toString(),
     };
   }

@@ -107,7 +107,9 @@ As principais coleções esperadas pela aplicação são:
 - `wallets`: saldo fictício em reais por usuário.
 - `walletCredits`: depósitos, compras e vendas registradas na carteira.
 - `startups`: dados institucionais, preço do token, capital, sócios, vídeos,
-  documentos e metadados da startup.
+  documentos e metadados da startup. `totalTokens` limita a oferta máxima,
+  `tokensEmCirculacao` registra os tokens já emitidos e
+  `tokensDisponiveisParaEmissao` registra o saldo que ainda pode ser emitido.
 - `startups/{startupId}/questions`: perguntas públicas e privadas.
 - `startups/{startupId}/updates`: comunicados e atualizações da startup.
 - `startups/{startupId}/priceHistory`: histórico gerado pelos jobs agendados.

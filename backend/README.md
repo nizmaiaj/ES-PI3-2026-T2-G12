@@ -150,6 +150,11 @@ npm run lint
 
 Ver documentação detalhada em `DATAMODEL.md` (a ser criado com descrição das coleções do Firestore).
 
+Nos documentos de `startups`, `totalTokens` é o teto de tokens que podem existir
+simultaneamente. O backend mantém `tokensEmCirculacao` e
+`tokensDisponiveisParaEmissao` ao executar emissões pela startup. Revendas apenas
+transferem tokens existentes entre investidores.
+
 ## A Fazer
 
 - Testes automatizados do backend

@@ -2,6 +2,10 @@ import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import {
+  readStartupTokenSupply,
+  writeStartupTokenSupply,
+} from '../services/startupTokenSupplyService';
 
 const router = express.Router();
 
@@ -306,36 +310,6 @@ router.post(
     try {
       const { id } = req.params;
       const firebaseDb = db();
-      const existingOrders = await firebaseDb
-        .collection('orders')
-        .where('startupId', '==', id)
-        .get();
-
-      const alreadyExists = existingOrders.docs.some(
-        (doc) => doc.data().tipo === 'ofertacompra'
-      );
-
-      if (alreadyExists) {
-        res.json({ created: false });
-        return;
-      }
-
-      const startupDoc = await firebaseDb.collection('startups').doc(id).get();
-
-      if (!startupDoc.exists) {
-        throw new AppError(404, 'Startup não encontrada');
-      }
-
-      const startup = startupDoc.data() || {};
-      const currentPrice = parseNumber(
-        startup.valorToken ??
-          startup.tokenPrecoInicial
-      );
-
-      if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-        throw new AppError(400, 'Startup sem preço de token válido');
-      }
-
       const offers = [
         { factor: 0.885, quantity: 100 },
         { factor: 0.91, quantity: 50 },
@@ -343,30 +317,76 @@ router.post(
         { factor: 0.95, quantity: 75 },
         { factor: 0.97, quantity: 30 },
       ];
-      const batch = firebaseDb.batch();
-      const now = FieldValue.serverTimestamp();
+      const startupRef = firebaseDb.collection('startups').doc(id);
+      const result = await firebaseDb.runTransaction(async (transaction) => {
+        const startupDoc = await transaction.get(startupRef);
 
-      offers.forEach(({ factor, quantity }, index) => {
-        const ref = firebaseDb.collection('orders').doc(`system_buy_offer_${id}_${index}`);
-        const price = Math.round(currentPrice * factor * 100) / 100;
+        if (!startupDoc.exists) {
+          throw new AppError(404, 'Startup não encontrada');
+        }
 
-        batch.set(ref, {
-          id: ref.id,
-          tipo: 'ofertacompra',
-          startupId: id,
-          preco: price,
-          precoUnitario: price,
-          quantidade: quantity,
-          quantidadeRestante: quantity,
-          quantidadeExecutada: 0,
-          status: 'aberta',
-          createdAt: now,
-          updatedAt: now,
+        const startup = startupDoc.data() || {};
+        const currentPrice = parseNumber(
+          startup.valorToken ??
+            startup.tokenPrecoInicial
+        );
+
+        if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+          throw new AppError(400, 'Startup sem preço de token válido');
+        }
+
+        const supply = await readStartupTokenSupply(transaction, firebaseDb, id, startup);
+        const existingOrders = await transaction.get(
+          firebaseDb.collection('orders').where('startupId', '==', id)
+        );
+        const alreadyExists = existingOrders.docs.some(
+          (doc) => doc.data().tipo === 'ofertacompra'
+        );
+        const now = FieldValue.serverTimestamp();
+
+        writeStartupTokenSupply(
+          transaction,
+          startupRef,
+          supply,
+          supply.tokensEmCirculacao,
+          now
+        );
+
+        if (alreadyExists) {
+          return { created: false, ...supply };
+        }
+
+        let availableToOffer = supply.tokensDisponiveisParaEmissao;
+        let createdOffers = 0;
+
+        offers.forEach(({ factor, quantity }, index) => {
+          const offeredQuantity = Math.min(quantity, availableToOffer);
+          if (offeredQuantity <= 0) return;
+
+          const ref = firebaseDb.collection('orders').doc(`system_buy_offer_${id}_${index}`);
+          const price = Math.round(currentPrice * factor * 100) / 100;
+
+          transaction.set(ref, {
+            id: ref.id,
+            tipo: 'ofertacompra',
+            startupId: id,
+            preco: price,
+            precoUnitario: price,
+            quantidade: offeredQuantity,
+            quantidadeRestante: offeredQuantity,
+            quantidadeExecutada: 0,
+            status: 'aberta',
+            createdAt: now,
+            updatedAt: now,
+          });
+          availableToOffer -= offeredQuantity;
+          createdOffers++;
         });
+
+        return { created: createdOffers > 0, ...supply };
       });
 
-      await batch.commit();
-      res.status(201).json({ created: true });
+      res.status(result.created ? 201 : 200).json(result);
     } catch (error) {
       next(error);
     }

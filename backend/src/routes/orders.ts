@@ -2,6 +2,12 @@ import express, { Request, Response } from 'express';
 import { db, FieldValue } from '../config/firebase';
 import { AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import {
+  assertStartupCanIssueTokens,
+  assertWithinTotalTokenLimit,
+  readStartupTokenSupply,
+  writeStartupTokenSupply,
+} from '../services/startupTokenSupplyService';
 
 const router = express.Router();
 
@@ -60,30 +66,6 @@ function currentTokenPrice(startup: FirebaseFirestore.DocumentData): number {
     startup.valorToken ??
       startup.tokenPrecoInicial
   );
-}
-
-function assertWithinIssuedTokenLimit(
-  startup: FirebaseFirestore.DocumentData,
-  quantidade: number
-): void {
-  const tokensEmitidos = parseNumber(
-    startup.totalTokens ??
-      startup.tokensEmitidos ??
-      startup.tokensDisponiveis ??
-      startup.quantidadeTokens ??
-      startup.tokens
-  );
-
-  if (!Number.isFinite(tokensEmitidos) || tokensEmitidos < 0) {
-    throw new AppError(400, 'Startup sem quantidade de tokens emitidos válida');
-  }
-
-  if (quantidade > tokensEmitidos) {
-    throw new AppError(
-      400,
-      `A quantidade desejada é maior que os ${tokensEmitidos} tokens emitidos pela startup`
-    );
-  }
 }
 
 function remainingQuantity(order: FirebaseFirestore.DocumentData): number {
@@ -196,6 +178,7 @@ function createTransactionRecords({
     startupId,
     buyerId,
     ...(sellerId ? { sellerId } : {}),
+    origem: sellerId ? 'mercado_secundario' : 'emissao_startup',
     quantidade,
     precoUnitario: preco,
     valorTotal: total,
@@ -276,6 +259,14 @@ router.post('/sell', async (req: Request, res: Response, next: any) => {
       if (!startupDoc.exists) {
         throw new AppError(404, 'Startup não encontrada');
       }
+
+      const supply = await readStartupTokenSupply(
+        transaction,
+        firebaseDb,
+        startupId,
+        startupDoc.data() || {}
+      );
+      assertWithinTotalTokenLimit(supply, quantidade);
 
       if (holding.quantidade < quantidade) {
         throw new AppError(400, 'Tokens insuficientes para venda');
@@ -371,7 +362,13 @@ router.post('/buy-sell-order', async (req: Request, res: Response, next: any) =>
         throw new AppError(400, 'Quantidade indisponível nesta oferta');
       }
 
-      assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
+      const supply = await readStartupTokenSupply(
+        transaction,
+        firebaseDb,
+        startupId,
+        startupDoc.data() || {}
+      );
+      assertWithinTotalTokenLimit(supply, quantidade);
 
       if (!buyerWalletDoc.exists) {
         throw new AppError(404, 'Carteira do comprador não encontrada');
@@ -484,7 +481,8 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
 
     await firebaseDb.runTransaction(async (transaction) => {
       const offerDoc = await transaction.get(offerRef);
-      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
+      const startupRef = firebaseDb.collection('startups').doc(startupId);
+      const startupDoc = await transaction.get(startupRef);
       const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
       const walletDoc = await transaction.get(walletRef);
       const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
@@ -513,7 +511,13 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
         throw new AppError(400, 'Quantidade indisponível nesta oferta');
       }
 
-      assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
+      const supply = await readStartupTokenSupply(
+        transaction,
+        firebaseDb,
+        startupId,
+        startupDoc.data() || {}
+      );
+      assertStartupCanIssueTokens(supply, quantidade);
 
       if (!walletDoc.exists) {
         throw new AppError(404, 'Carteira não encontrada');
@@ -540,6 +544,13 @@ router.post('/buy-startup-offer', async (req: Request, res: Response, next: any)
         ...(newRemaining === 0 ? { executadaEm: now } : {}),
       });
       transaction.update(walletRef, { saldoReais: balance - total, updatedAt: now });
+      writeStartupTokenSupply(
+        transaction,
+        startupRef,
+        supply,
+        supply.tokensEmCirculacao + quantidade,
+        now
+      );
       writeHolding(
         transaction,
         buyerHoldingRefs,
@@ -601,7 +612,8 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
     const buyerHoldingRefs = await getHoldingRefs(firebaseDb, authReq.uid, startupId);
 
     await firebaseDb.runTransaction(async (transaction) => {
-      const startupDoc = await transaction.get(firebaseDb.collection('startups').doc(startupId));
+      const startupRef = firebaseDb.collection('startups').doc(startupId);
+      const startupDoc = await transaction.get(startupRef);
       const walletRef = firebaseDb.collection('wallets').doc(authReq.uid);
       const walletDoc = await transaction.get(walletRef);
       const buyerHolding = await readHolding(transaction, buyerHoldingRefs);
@@ -616,8 +628,14 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
 
       const startup = startupDoc.data() || {};
       const price = currentTokenPrice(startup);
+      const supply = await readStartupTokenSupply(
+        transaction,
+        firebaseDb,
+        startupId,
+        startup
+      );
 
-      assertWithinIssuedTokenLimit(startup, quantidade);
+      assertStartupCanIssueTokens(supply, quantidade);
 
       if (!Number.isFinite(price) || price <= 0) {
         throw new AppError(400, 'Startup sem preço de token válido');
@@ -635,6 +653,13 @@ router.post('/buy-direct', async (req: Request, res: Response, next: any) => {
       const buyOrderRef = firebaseDb.collection('orders').doc();
 
       transaction.update(walletRef, { saldoReais: balance - total, updatedAt: now });
+      writeStartupTokenSupply(
+        transaction,
+        startupRef,
+        supply,
+        supply.tokensEmCirculacao + quantidade,
+        now
+      );
       writeHolding(
         transaction,
         buyerHoldingRefs,
@@ -708,9 +733,13 @@ router.post('/', async (req: Request, res: Response, next: any) => {
         throw new AppError(404, 'Startup não encontrada');
       }
 
-      if (tipo === 'compra') {
-        assertWithinIssuedTokenLimit(startupDoc.data() || {}, quantidade);
-      }
+      const supply = await readStartupTokenSupply(
+        transaction,
+        firebaseDb,
+        startupId,
+        startupDoc.data() || {}
+      );
+      assertWithinTotalTokenLimit(supply, quantidade);
 
       if (tipo === 'venda') {
         const sellerHoldingRef = firebaseDb

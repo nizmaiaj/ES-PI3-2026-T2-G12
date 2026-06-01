@@ -1,5 +1,7 @@
 // Gabriel Rocca Padua dos Santos - RA: 25002330
 
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -37,9 +39,12 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
 
   final _quantidadeController = TextEditingController();
   final _balcaoService = BalcaoService();
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _startupSubscription;
   bool _erroQuantidade = false;
   bool _processandoCompra = false;
   double _totalEstimado = 0.0;
+  int? _tokensDisponiveisAtualizados;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid ?? AuthSession.uid;
 
@@ -55,32 +60,59 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       widget.ofertaPreco ??
       _numero(widget.startup['valorToken'], fallback: 1.45);
 
-  int? get _tokensEmitidos => _quantidadeTokens(widget.startup['tokens']);
+  int? get _tokensDisponiveisParaEmissao => _quantidadeTokens(
+    _tokensDisponiveisAtualizados ??
+        widget.startup['tokensDisponiveisParaEmissao'] ??
+        widget.startup['tokens'],
+  );
 
   int? get _limiteCompra {
-    final tokensEmitidos = _tokensEmitidos;
+    final tokensDisponiveis = _tokensDisponiveisParaEmissao;
     final ofertaMaxQtd = widget.ofertaMaxQtd;
 
-    if (tokensEmitidos == null) return ofertaMaxQtd;
-    if (ofertaMaxQtd == null) return tokensEmitidos;
-    return tokensEmitidos < ofertaMaxQtd ? tokensEmitidos : ofertaMaxQtd;
+    if (tokensDisponiveis == null) return ofertaMaxQtd;
+    if (ofertaMaxQtd == null) return tokensDisponiveis;
+    return tokensDisponiveis < ofertaMaxQtd ? tokensDisponiveis : ofertaMaxQtd;
   }
 
-  bool _quantidadeAcimaDosTokensEmitidos(int quantidade) {
-    final tokensEmitidos = _tokensEmitidos;
-    return tokensEmitidos != null && quantidade > tokensEmitidos;
+  bool _quantidadeAcimaDaDisponibilidade(int quantidade) {
+    final tokensDisponiveis = _tokensDisponiveisParaEmissao;
+    return tokensDisponiveis != null && quantidade > tokensDisponiveis;
   }
 
   @override
   void initState() {
     super.initState();
     _quantidadeController.addListener(_calcularTotal);
+    _observarDisponibilidadeEmissao();
   }
 
   @override
   void dispose() {
+    _startupSubscription?.cancel();
     _quantidadeController.dispose();
     super.dispose();
+  }
+
+  void _observarDisponibilidadeEmissao() {
+    final startupId = _startupId;
+    if (startupId == null) return;
+
+    _startupSubscription = FirebaseFirestore.instance
+        .collection('startups')
+        .doc(startupId)
+        .snapshots()
+        .listen((snapshot) {
+          final tokensDisponiveis = _quantidadeTokens(
+            snapshot.data()?['tokensDisponiveisParaEmissao'],
+          );
+          if (!mounted || tokensDisponiveis == _tokensDisponiveisAtualizados) {
+            return;
+          }
+
+          setState(() => _tokensDisponiveisAtualizados = tokensDisponiveis);
+          _calcularTotal();
+        });
   }
 
   void _calcularTotal() {
@@ -237,8 +269,8 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
               Text(
                 widget.ofertaMaxQtd != null
                     ? 'Disponível: ${widget.ofertaMaxQtd} tokens'
-                    : _tokensEmitidos != null
-                    ? 'Emitidos: $_tokensEmitidos tokens'
+                    : _tokensDisponiveisParaEmissao != null
+                    ? 'Disponível: $_tokensDisponiveisParaEmissao tokens'
                     : 'Qtd de tokens:',
                 style: TextStyle(color: themeColors.mutedText, fontSize: 12),
               ),
@@ -541,7 +573,7 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
       return;
     }
 
-    if (_quantidadeAcimaDosTokensEmitidos(quantidade)) {
+    if (_quantidadeAcimaDaDisponibilidade(quantidade)) {
       _mostrarMensagem(_mensagemErroQuantidade());
       return;
     }
@@ -829,10 +861,10 @@ class _TelaBalcaoCompraState extends State<TelaBalcaoCompra> {
 
   String _mensagemErroQuantidade() {
     final quantidade = int.tryParse(_quantidadeController.text.trim()) ?? 0;
-    final tokensEmitidos = _tokensEmitidos;
+    final tokensDisponiveis = _tokensDisponiveisParaEmissao;
 
-    if (tokensEmitidos != null && quantidade > tokensEmitidos) {
-      return 'A quantidade desejada é maior que os $tokensEmitidos tokens emitidos pela startup.';
+    if (tokensDisponiveis != null && quantidade > tokensDisponiveis) {
+      return 'A startup possui somente $tokensDisponiveis tokens disponíveis para emissão.';
     }
 
     final ofertaMaxQtd = widget.ofertaMaxQtd;

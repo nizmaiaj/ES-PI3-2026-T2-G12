@@ -312,7 +312,7 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
               valorToken: startup.valorToken,
               botaoTexto: 'Comprar',
               botaoCor: _azulPrimario,
-              bloqueado: _processando,
+              bloqueado: _processando || startup.quantidadeDisponivel <= 0,
               onPressed: () => _abrirOfertasDaStartup(
                 startup,
                 tokensCarteira: holdings[startup.id]?.quantidade ?? 0,
@@ -571,7 +571,9 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
           startup: {
             'id': startup.id,
             'nome': startup.nome,
-            'tokens': startup.quantidadeDisponivel.toString(),
+            'tokens': startup.totalTokens.toString(),
+            'tokensDisponiveisParaEmissao': startup.quantidadeDisponivel
+                .toString(),
             'tokensCarteira': tokensCarteira.toString(),
             'valorToken': startup.valorToken.toStringAsFixed(2),
           },
@@ -589,7 +591,9 @@ class _BalcaoNegociacaoState extends State<BalcaoNegociacao> {
           startup: {
             'id': startup.id,
             'nome': startup.nome,
-            'tokens': startup.quantidadeDisponivel.toString(),
+            'tokens': startup.totalTokens.toString(),
+            'tokensDisponiveisParaEmissao': startup.quantidadeDisponivel
+                .toString(),
             'tokensCarteira': tokensDisponiveis.toString(),
             'valorToken': startup.valorToken.toStringAsFixed(2),
           },
@@ -1121,19 +1125,23 @@ class _StartupOferta {
   const _StartupOferta({
     required this.id,
     required this.nome,
+    required this.totalTokens,
     required this.quantidadeDisponivel,
     required this.valorToken,
   });
 
   factory _StartupOferta.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
-    final quantidadeCampo = _primeiroCampoNumerico(data, const [
+    final totalTokensCampo = _primeiroCampoNumerico(data, const [
       'totalTokens',
       'tokensEmitidos',
-      'tokensDisponiveis',
       'quantidadeTokens',
       'tokens',
+      'tokensDisponiveis',
     ]);
+    final totalTokens = _numero(
+      data[totalTokensCampo] ?? data['quantidade'],
+    ).toInt();
 
     return _StartupOferta(
       id: doc.id,
@@ -1141,18 +1149,17 @@ class _StartupOferta {
         data['nome'] ?? data['name'] ?? data['startupName'],
         fallback: 'Nome',
       ),
+      totalTokens: totalTokens,
       quantidadeDisponivel: _numero(
-        data[quantidadeCampo] ?? data['quantidade'],
+        data['tokensDisponiveisParaEmissao'] ?? totalTokens,
       ).toInt(),
-      valorToken: _numero(
-        data['valorToken'] ??
-            data['tokenPrecoInicial'],
-      ),
+      valorToken: _numero(data['valorToken'] ?? data['tokenPrecoInicial']),
     );
   }
 
   final String id;
   final String nome;
+  final int totalTokens;
   final int quantidadeDisponivel;
   final double valorToken;
 }
